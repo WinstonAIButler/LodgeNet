@@ -199,6 +199,10 @@ section.band{padding-block:72px}
 .legend span::before{content:"";display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px;background:var(--blue-soft)}
 .legend span.f::before{background:var(--gold-soft);outline:1px solid var(--gold)}
 
+/* save bar */
+.data-bar{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;justify-content:space-between;padding:8px 18px;border-bottom:1px solid var(--line);background:var(--sunk)}
+.data-acts{display:flex;flex-wrap:wrap;gap:6px}
+
 /* members */
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 .mem-wrap{display:grid;grid-template-columns:1fr 320px;gap:24px}

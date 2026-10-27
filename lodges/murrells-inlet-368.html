@@ -35,7 +35,7 @@
     <div class="page-head">
       <div class="eyebrow">Lodge dashboard · Murrells Inlet, SC</div>
       <h1>Murrells Inlet Lodge No. 368</h1>
-      <p>Grand Lodge of Ancient Free Masons of South Carolina. Officers come from the lodge\'s Stated Communication template. Changes on this page are not saved yet, and no money moves.</p>
+      <p>Grand Lodge of Ancient Free Masons of South Carolina. Officers come from the lodge\'s Stated Communication template. Changes save automatically in this browser. Use Export to send a copy. No money moves.</p>
     </div>
   </div>
   <div class="pavement" aria-hidden="true"></div>
@@ -54,6 +54,15 @@
             <button class="tab" role="tab" id="t-mem" aria-controls="p-mem" aria-selected="false">Members</button>
             <button class="tab" role="tab" id="t-min" aria-controls="p-min" aria-selected="false">Minutes</button>
           </div>
+        </div>
+        <div class="data-bar">
+          <span class="hint" id="save-state" aria-live="polite"></span>
+          <span class="data-acts">
+            <button type="button" class="btn line sm" id="data-export">Export</button>
+            <button type="button" class="btn line sm" id="data-import">Import</button>
+            <button type="button" class="btn line sm" id="data-reset">Start over</button>
+            <input type="file" id="data-file" accept="application/json,.json" hidden>
+          </span>
         </div>
 
         <!-- WEBSITE -->

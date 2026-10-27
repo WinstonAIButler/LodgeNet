@@ -3,7 +3,10 @@
   const money=n=>"$"+n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,",");
   const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
   /* a lodge page can set window.LODGE before this script to load its own data */
-  const CFG=window.LODGE||{};
+  /* edits are kept in this browser under a key per page; Export/Import moves them between browsers */
+  const STORE_KEY="lodgenet:"+(location.pathname.replace(/\.html$/,"").replace(/\/$/,"")||"/");
+  let SAVED=null;try{SAVED=JSON.parse(localStorage.getItem(STORE_KEY)||"null")}catch(e){SAVED=null}
+  const CFG=Object.assign({},window.LODGE||{},SAVED||{});
   Object.entries(CFG.form||{}).forEach(([id,v])=>{const el=document.getElementById(id);if(el)el.value=v});
   const handle=id=>$(id).value.trim().replace(/^[@$]/,"").replace(/^https?:\/\/\S+\//,"");
 
@@ -42,12 +45,13 @@
   /* ---------- members & officer seats ---------- */
   let nextMember=1;
   const M=(name,deg,pm,dues)=>({id:nextMember++,name,deg:deg||"Master Mason",pm:!!pm,dues:dues||"Paid 2026",active:true});
-  const members=CFG.members?CFG.members.map(a=>M(...a)):[
+  const members=CFG.membersFull?CFG.membersFull.map(m=>({...m})):CFG.members?CFG.members.map(a=>M(...a)):[
     M("Daniel R. Ortega"),M("Marcus Hale"),M("Peter Lindqvist"),M("Walter Simms","",1),M("James Whitfield","",1),
     M("Andre Baptiste"),M("Kevin O'Rourke"),M("Samuel Carter"),M("Luis Ferreira"),M("Harold Benson","",1),
     M("Thomas Greene","",1),M("Robert Kline","",1,"Owes 2026"),M("George Patterson","",1),M("David Okafor"),
     M("Michael Tran","","", "Owes 2026"),M("Brian Walsh","Fellowcraft"),M("Thomas Reyes","Entered Apprentice")
   ];
+  nextMember=Math.max(0,...members.map(m=>m.id))+1;
   const SEATS=[
     {k:"WM",ab:"WM",t:"Worshipful Master"},{k:"SW",ab:"SW",t:"Senior Warden"},{k:"JW",ab:"JW",t:"Junior Warden"},
     {k:"TREAS",ab:"Treas.",t:"Treasurer"},{k:"SEC",ab:"Sec.",t:"Secretary"},{k:"SD",ab:"SD",t:"Senior Deacon"},
@@ -121,7 +125,7 @@
   }
   ["#f-name","#f-num","#f-jur","#f-gl","#f-town","#f-sched","#f-email","#f-fb","#f-ig","#f-x","#f-yt","#f-tt","#f-pp","#f-venmo","#f-cash"].forEach(s=>$(s).addEventListener("input",()=>{renderSite();renderMinutes();$("#site-status").textContent="Draft · unpublished changes"}));
   $("#swatches").addEventListener("click",e=>{const b=e.target.closest(".swatch");if(!b)return;siteColor=b.dataset.c;document.querySelectorAll(".swatch").forEach(s=>s.setAttribute("aria-pressed",s===b));renderSite();$("#site-status").textContent="Draft · unpublished changes"});
-  let gmail=false;
+  let gmail=!!CFG.gmail;
   function renderGmail(){
     const st=$("#gmail-state");st.textContent=gmail?"Connected":"Not connected";st.className="pill"+(gmail?" ok":"");
     $("#gmail-btn").textContent=gmail?"Disconnect":"Connect Gmail";
@@ -263,7 +267,7 @@
       old:"N/A",nb:"Fish Fry committee appointed: Bros. Hale, Lindqvist and Carter.\nBikes for Books: 12 bicycles pledged for spring.",
       edu:"N/A",sick:"N/A",sw:"N/A",jw:"N/A",wm:"Thanked the brethren for a good summer.",ddgm:"N/A",closed:"8:40",dinner:"180",wo:"60"}}
   ];
-  let current=minutes[0],editing=CFG.minutes?minutes[0].status==="Draft":false,nextMin=minutes.length+1;
+  let current=minutes[0],editing=!SAVED&&CFG.minutes?minutes[0].status==="Draft":false,nextMin=Math.max(0,...minutes.map(m=>m.id))+1;
   const lodgeParts=()=>{
     const raw=$("#f-name").value.trim()||"Your Lodge";
     return {base:raw.replace(/\s+lodge$/i,""),num:$("#f-num").value.trim(),abbr:$("#f-jur").value.split(" ")[0],gl:$("#f-gl").value.trim()||"Grand Lodge"};
@@ -340,7 +344,45 @@
     minutes.unshift(m);current=m;editing=true;renderMinutes();
   });
 
-  renderMembers();
+  /* ---------- saving ---------- */
+  function snapshot(){
+    const form={};document.querySelectorAll("#site-form input[id],#site-form select[id]").forEach(el=>form[el.id]=el.value);
+    return {app:"LodgeNet",version:1,page:STORE_KEY,savedAt:new Date().toISOString(),form,color:siteColor,
+      membersFull:members,officers,events,minutes,gmail,nextStated:CFG.nextStated};
+  }
+  const stamp=d=>new Date(d).toLocaleString("en-US",{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"});
+  function setState(t){const el=$("#save-state");if(el)el.textContent=t}
+  let saveTimer=null;
+  function save(){
+    try{const snap=snapshot();localStorage.setItem(STORE_KEY,JSON.stringify(snap));setState("Saved in this browser · "+stamp(snap.savedAt))}
+    catch(e){setState("Couldn't save in this browser. Use Export to keep a copy.")}
+  }
+  const queueSave=()=>{clearTimeout(saveTimer);saveTimer=setTimeout(save,400)};
+  ["input","change"].forEach(t=>$(".console").addEventListener(t,queueSave));
+  $(".console").addEventListener("click",e=>{if(e.target.closest("button"))queueSave()});
+  setState(SAVED?"Saved in this browser · "+stamp(SAVED.savedAt):"Not saved yet. Changes save automatically.");
+  $("#data-export").addEventListener("click",()=>{
+    const snap=snapshot(),slug=STORE_KEY.split("/").pop()||"lodge";
+    const url=URL.createObjectURL(new Blob([JSON.stringify(snap,null,2)],{type:"application/json"}));
+    const a=document.createElement("a");a.href=url;a.download=`${slug}-lodgenet-${snap.savedAt.slice(0,10)}.json`;
+    document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+  });
+  $("#data-import").addEventListener("click",()=>$("#data-file").click());
+  $("#data-file").addEventListener("change",async e=>{
+    const f=e.target.files[0];if(!f)return;
+    try{const d=JSON.parse(await f.text());
+      if(d.app!=="LodgeNet"||!d.form||!Array.isArray(d.membersFull))throw new Error("not a LodgeNet export");
+      localStorage.setItem(STORE_KEY,JSON.stringify(d));location.reload();
+    }catch(err){setState("That file isn't a LodgeNet export, so nothing was changed.")}
+    e.target.value="";
+  });
+  $("#data-reset").addEventListener("click",()=>{
+    if(!confirm("Discard everything saved in this browser for this lodge and start over?"))return;
+    clearTimeout(saveTimer);try{localStorage.removeItem(STORE_KEY)}catch(e){}
+    location.reload();
+  });
+
+  renderMembers();renderGmail();
   renderCal();renderCart();renderMinutes();
 })();
 
