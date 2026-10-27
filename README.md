@@ -2,12 +2,20 @@
 
 A platform that gives Masonic lodges their own website, a merch store that funds their charities, a calendar for Stated Communications and public fundraisers, and a Secretary's desk for meeting minutes.
 
-This repo currently holds the prototype: a single static page (`index.html`) with a marketing site and an interactive demo using a sample lodge. Demo changes are kept in the browser only, and checkout takes no payment.
+This repo currently holds the static prototype site:
+
+- `index.html`: home page
+- `features.html`: detail on the website, store, calendar and minutes tools
+- `demo.html`: interactive demo with a sample lodge (`/demo#store`, `#calendar`, `#minutes` open a tab directly)
+- `pricing.html`: proposed plans and FAQ
+- `assets/styles.css` and `assets/demo.js`: shared styles and demo logic
+
+Demo changes are kept in the browser only, and checkout takes no payment.
 
 ## Deploy
 
-The site is static, so Vercel serves it with no build step. Import this repo in Vercel (Add New → Project), keep the framework preset at "Other", and deploy. Every push to `main` redeploys.
+The site is static, so Vercel serves it with no build step. Import this repo in Vercel (Add New → Project), keep the framework preset at "Other", and deploy. Every push to `main` redeploys. `vercel.json` turns on clean URLs, so pages are served at `/features`, `/demo` and `/pricing`.
 
 ## Run locally
 
-Open `index.html` in a browser, or run `npx serve .`.
+Run `npx serve .` from the repo root (it also serves clean URLs). Opening the files directly won't resolve the `/assets/...` paths.
