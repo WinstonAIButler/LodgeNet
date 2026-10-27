@@ -7,6 +7,37 @@
   const STORE_KEY="lodgenet:"+(location.pathname.replace(/\.html$/,"").replace(/\/$/,"")||"/");
   let SAVED=null;try{SAVED=JSON.parse(localStorage.getItem(STORE_KEY)||"null")}catch(e){SAVED=null}
   const CFG=Object.assign({},window.LODGE||{},SAVED||{});
+  /* ---------- states and their Grand Lodges ----------
+     style: F = Free and Accepted Masons (F.&A.M.), A = Ancient Free and Accepted Masons (A.F.&A.M.) */
+  const STATES=[["AL","Alabama","F"],["AK","Alaska","F"],["AZ","Arizona","F"],["AR","Arkansas","F"],["CA","California","F"],
+    ["CO","Colorado","A"],["CT","Connecticut","A"],["DE","Delaware","A"],["DC","District of Columbia","F"],["FL","Florida","F"],
+    ["GA","Georgia","F"],["HI","Hawaii","F"],["ID","Idaho","A"],["IL","Illinois","A"],["IN","Indiana","F"],["IA","Iowa","A"],
+    ["KS","Kansas","A"],["KY","Kentucky","F"],["LA","Louisiana","F"],["ME","Maine","A"],["MD","Maryland","A"],
+    ["MA","Massachusetts","A"],["MI","Michigan","F"],["MN","Minnesota","A"],["MS","Mississippi","F"],["MO","Missouri","A"],
+    ["MT","Montana","A"],["NE","Nebraska","A"],["NV","Nevada","F"],["NH","New Hampshire","F"],["NJ","New Jersey","F"],
+    ["NM","New Mexico","A"],["NY","New York","F"],["NC","North Carolina","A"],["ND","North Dakota","A"],["OH","Ohio","F"],
+    ["OK","Oklahoma","A"],["OR","Oregon","A"],["PA","Pennsylvania","F"],["RI","Rhode Island","F"],["SC","South Carolina","AFM"],
+    ["SD","South Dakota","A"],["TN","Tennessee","F"],["TX","Texas","A"],["UT","Utah","F"],["VT","Vermont","F"],
+    ["VA","Virginia","A"],["WA","Washington","F"],["WV","West Virginia","A"],["WI","Wisconsin","F"],["WY","Wyoming","A"]];
+  const STYLE={F:["Free and Accepted Masons","F.&A.M."],A:["Ancient Free and Accepted Masons","A.F.&A.M."],AFM:["Ancient Free Masons","A.F.M."]};
+  function grandLodge(code,family){
+    const st=STATES.find(x=>x[0]===code);if(!st)return null;
+    const of=code==="DC"?"the District of Columbia":st[1];
+    if(family==="pha")return {gl:`Most Worshipful Prince Hall Grand Lodge of ${of}`,jur:"F.&A.M. (PHA)"};
+    const [words,abbr]=STYLE[st[2]];
+    return {gl:code==="MA"?"Grand Lodge of Masons in Massachusetts":`Grand Lodge of ${words} of ${of}`,jur:abbr};
+  }
+  (function(){const sel=document.getElementById("f-state");if(!sel)return;
+    sel.innerHTML=STATES.map(([c,n,t])=>`<option value="${c}">${n} (${STYLE[t][1]})</option>`).join("");
+    sel.value=sel.dataset.default||"OH";})();
+  function fillGrandLodge(){const g=grandLodge(document.getElementById("f-state").value,document.getElementById("f-family").value);
+    if(g){document.getElementById("f-gl").value=g.gl;document.getElementById("f-jur").value=g.jur}}
+
+  /* older saves kept the town as "City, ST" */
+  const savedForm=Object.assign({},(CFG.form||{}));
+  if(savedForm["f-town"]&&!savedForm["f-city"]){const [c,st]=savedForm["f-town"].split(/,\s*/);savedForm["f-city"]=c;if(st&&STATES.some(x=>x[0]===st.toUpperCase()))savedForm["f-state"]=st.toUpperCase();delete savedForm["f-town"]}
+  CFG.form=savedForm;
+  if(!CFG.form["f-gl"]){Object.entries(CFG.form).forEach(([id,v])=>{const el=document.getElementById(id);if(el)el.value=v});fillGrandLodge()}
   Object.entries(CFG.form||{}).forEach(([id,v])=>{const el=document.getElementById(id);if(el)el.value=v});
   const handle=id=>$(id).value.trim().replace(/^[@$]/,"").replace(/^https?:\/\/\S+\//,"");
 
@@ -106,7 +137,8 @@
     const name=$("#f-name").value.trim()||"Your Lodge", num=$("#f-num").value.trim(), jur=$("#f-jur").value;
     const full=name+(num?" No. "+num:"");
     $("#pv-title").textContent=full+", "+jur;
-    $("#pv-sub").textContent=[$("#f-town").value.trim(),"Stated Communications "+$("#f-sched").value.trim()].filter(Boolean).join(" · ");
+    const town=[$("#f-city").value.trim(),$("#f-state").value].filter(Boolean).join(", ");
+    $("#pv-sub").textContent=[town,"Stated Communications "+$("#f-sched").value.trim()].filter(Boolean).join(" · ");
     $("#pv-url").textContent=(name.toLowerCase().replace(/lodge/g,"").replace(/[^a-z0-9]/g,"")+num)+".lodgenet.org";
     $("#cb-name").textContent=full;
     $("#pv-officers").innerHTML=["WM","SW","JW","TREAS","SEC"].map(k=>{const x=SEATS.find(s=>s.k===k),m=member(officers[k]);
@@ -123,8 +155,9 @@
     if(selected&&selected.k==="fund")renderDetail();
     $("#pv-events").innerHTML=up.map(e=>`<li><b>${fmt(parse(e.d),{month:"short",day:"numeric"})}</b> · ${esc(e.t)}</li>`).join("");
   }
-  ["#f-name","#f-num","#f-jur","#f-gl","#f-town","#f-sched","#f-email","#f-fb","#f-ig","#f-x","#f-yt","#f-tt","#f-pp","#f-venmo","#f-cash"].forEach(s=>$(s).addEventListener("input",()=>{renderSite();renderMinutes();$("#site-status").textContent="Draft · unpublished changes"}));
+  ["#f-name","#f-num","#f-jur","#f-gl","#f-city","#f-sched","#f-email","#f-fb","#f-ig","#f-x","#f-yt","#f-tt","#f-pp","#f-venmo","#f-cash"].forEach(s=>$(s).addEventListener("input",()=>{renderSite();renderMinutes();$("#site-status").textContent="Draft · unpublished changes"}));
   $("#swatches").addEventListener("click",e=>{const b=e.target.closest(".swatch");if(!b)return;siteColor=b.dataset.c;document.querySelectorAll(".swatch").forEach(s=>s.setAttribute("aria-pressed",s===b));renderSite();$("#site-status").textContent="Draft · unpublished changes"});
+  ["#f-state","#f-family"].forEach(id=>$(id).addEventListener("change",()=>{fillGrandLodge();renderSite();renderMinutes();$("#site-status").textContent="Draft · unpublished changes"}));
   let gmail=!!CFG.gmail;
   function renderGmail(){
     const st=$("#gmail-state");st.textContent=gmail?"Connected":"Not connected";st.className="pill"+(gmail?" ok":"");

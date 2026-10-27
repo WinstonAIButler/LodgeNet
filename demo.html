@@ -70,13 +70,18 @@
             <form id="site-form" autocomplete="off">
               <div class="field"><label for="f-name">Lodge name</label><input id="f-name" value="Cedar Hollow Lodge"></div>
               <div class="field"><label for="f-num">Lodge number</label><input id="f-num" value="214" inputmode="numeric"></div>
-              <div class="field"><label for="f-jur">Jurisdiction</label>
-                <select id="f-jur">
-                  <option>F.&amp;A.M.</option><option>A.F.&amp;A.M.</option><option>A.F.M.</option><option>A.F.&amp;A.M. (Prince Hall)</option><option>F.&amp;A.M. (Prince Hall)</option>
-                </select>
+              <div class="field"><label for="f-state">State</label>
+                <select id="f-state" data-default="OH"></select>
               </div>
-              <div class="field"><label for="f-gl">Grand Lodge</label><input id="f-gl" value="Grand Lodge of Free &amp; Accepted Masons of Ohio"></div>
-              <div class="field"><label for="f-town">Town</label><input id="f-town" value="Millbrook, Ohio"></div>
+              <div class="field"><label for="f-family">Grand Lodge</label>
+                <select id="f-family"><option value="main">State Grand Lodge</option><option value="pha">Prince Hall Grand Lodge</option></select>
+              </div>
+              <div class="auto-gl">
+                <div class="field"><label for="f-gl">Grand Lodge name</label><input id="f-gl" value=""></div>
+                <div class="field"><label for="f-jur">Jurisdiction</label><input id="f-jur" value="" style="max-width:12em"></div>
+                <p class="hint">Filled in from the state. Edit them if your lodge's charter reads differently.</p>
+              </div>
+              <div class="field"><label for="f-city">City</label><input id="f-city" value="Millbrook"></div>
               <div class="field"><label for="f-sched">Stated Communications</label><input id="f-sched" value="2nd Tuesday of each month, 7:30 PM"></div>
               <div class="field"><label>Lodge color</label>
                 <div class="swatches" id="swatches">

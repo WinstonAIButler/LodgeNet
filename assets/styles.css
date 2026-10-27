@@ -199,6 +199,10 @@ section.band{padding-block:72px}
 .legend span::before{content:"";display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px;background:var(--blue-soft)}
 .legend span.f::before{background:var(--gold-soft);outline:1px solid var(--gold)}
 
+/* grand lodge filled from the state */
+.auto-gl{border-left:3px solid var(--gold);padding-left:12px;margin-bottom:14px}
+.auto-gl .hint{margin-top:-6px}
+
 /* save bar */
 .data-bar{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;justify-content:space-between;padding:8px 18px;border-bottom:1px solid var(--line);background:var(--sunk)}
 .data-acts{display:flex;flex-wrap:wrap;gap:6px}
