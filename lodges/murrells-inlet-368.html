@@ -71,14 +71,28 @@
             <form id="site-form" autocomplete="off">
               <div class="field"><label for="f-name">Lodge name</label><input id="f-name" value="Cedar Hollow Lodge"></div>
               <div class="field"><label for="f-num">Lodge number</label><input id="f-num" value="214" inputmode="numeric"></div>
-              <div class="field"><label for="f-jur">Jurisdiction</label>
-                <select id="f-jur">
-                  <option>F.&amp;A.M.</option><option>A.F.&amp;A.M.</option><option>A.F.M.</option><option>A.F.&amp;A.M. (Prince Hall)</option><option>F.&amp;A.M. (Prince Hall)</option>
-                </select>
+              <div class="field"><label for="f-state">State</label>
+                <select id="f-state" data-default="SC"></select>
               </div>
-              <div class="field"><label for="f-gl">Grand Lodge</label><input id="f-gl" value="Grand Lodge of Free &amp; Accepted Masons of Ohio"></div>
-              <div class="field"><label for="f-town">Town</label><input id="f-town" value="Millbrook, Ohio"></div>
-              <div class="field"><label for="f-sched">Stated Communications</label><input id="f-sched" value="2nd Tuesday of each month, 7:30 PM"></div>
+              <div class="field"><label for="f-family">Grand Lodge</label>
+                <select id="f-family"><option value="main">State Grand Lodge</option><option value="pha">Prince Hall Grand Lodge</option></select>
+              </div>
+              <div class="auto-gl">
+                <div class="field"><label for="f-gl">Grand Lodge name</label><input id="f-gl" value=""></div>
+                <div class="field"><label for="f-jur">Jurisdiction</label><input id="f-jur" value="" style="max-width:12em"></div>
+                <p class="hint">Filled in from the state. Edit them if your lodge's charter reads differently.</p>
+              </div>
+              <div class="field"><label for="f-city">City</label><input id="f-city" value="Murrells Inlet"></div>
+              <fieldset class="field sched">
+                <legend>Stated Communications</legend>
+                <div class="sched-row">
+                  <select id="f-week" aria-label="Week of the month"><option value="1">1st</option><option value="2">2nd</option><option value="3">3rd</option><option value="4">4th</option></select>
+                  <select id="f-day" aria-label="Day of the week"><option>Monday</option><option>Tuesday</option><option>Wednesday</option><option>Thursday</option><option>Friday</option><option>Saturday</option><option>Sunday</option></select>
+                  <input id="f-time" type="time" value="" aria-label="Meeting time">
+                </div>
+                <span class="hint" id="sched-text">of each month</span>
+                <input id="f-sched" type="hidden" value="2nd Tuesday of each month, 7:30 PM">
+              </fieldset>
               <div class="field"><label>Lodge color</label>
                 <div class="swatches" id="swatches">
                   <button type="button" class="swatch" style="background:#1c3a75" data-c="#1c3a75" aria-label="Lodge blue" aria-pressed="true"></button>
@@ -251,8 +265,8 @@
 </footer>
 <script>
 window.LODGE={
-  form:{"f-name":"Murrells Inlet Lodge","f-num":"368","f-jur":"A.F.M.","f-gl":"Grand Lodge of Ancient Free Masons of South Carolina",
-    "f-town":"Murrells Inlet, SC","f-sched":"2nd Tuesday of each month","f-email":"",
+  form:{"f-name":"Murrells Inlet Lodge","f-num":"368","f-state":"SC","f-family":"main","f-city":"Murrells Inlet",
+   "f-sched":"2nd Tuesday of each month","f-email":"",
     "f-fb":"","f-ig":"","f-x":"","f-yt":"","f-tt":"","f-pp":"","f-venmo":"","f-cash":""},
   /* [name, degree, past master, dues] */
   members:[

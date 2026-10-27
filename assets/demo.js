@@ -7,7 +7,57 @@
   const STORE_KEY="lodgenet:"+(location.pathname.replace(/\.html$/,"").replace(/\/$/,"")||"/");
   let SAVED=null;try{SAVED=JSON.parse(localStorage.getItem(STORE_KEY)||"null")}catch(e){SAVED=null}
   const CFG=Object.assign({},window.LODGE||{},SAVED||{});
+  /* ---------- states and their Grand Lodges ----------
+     style: F = Free and Accepted Masons (F.&A.M.), A = Ancient Free and Accepted Masons (A.F.&A.M.) */
+  const STATES=[["AL","Alabama","F"],["AK","Alaska","F"],["AZ","Arizona","F"],["AR","Arkansas","F"],["CA","California","F"],
+    ["CO","Colorado","A"],["CT","Connecticut","A"],["DE","Delaware","A"],["DC","District of Columbia","F"],["FL","Florida","F"],
+    ["GA","Georgia","F"],["HI","Hawaii","F"],["ID","Idaho","A"],["IL","Illinois","A"],["IN","Indiana","F"],["IA","Iowa","A"],
+    ["KS","Kansas","A"],["KY","Kentucky","F"],["LA","Louisiana","F"],["ME","Maine","A"],["MD","Maryland","A"],
+    ["MA","Massachusetts","A"],["MI","Michigan","F"],["MN","Minnesota","A"],["MS","Mississippi","F"],["MO","Missouri","A"],
+    ["MT","Montana","A"],["NE","Nebraska","A"],["NV","Nevada","F"],["NH","New Hampshire","F"],["NJ","New Jersey","F"],
+    ["NM","New Mexico","A"],["NY","New York","F"],["NC","North Carolina","A"],["ND","North Dakota","A"],["OH","Ohio","F"],
+    ["OK","Oklahoma","A"],["OR","Oregon","A"],["PA","Pennsylvania","F"],["RI","Rhode Island","F"],["SC","South Carolina","AFM"],
+    ["SD","South Dakota","A"],["TN","Tennessee","F"],["TX","Texas","A"],["UT","Utah","F"],["VT","Vermont","F"],
+    ["VA","Virginia","A"],["WA","Washington","F"],["WV","West Virginia","A"],["WI","Wisconsin","F"],["WY","Wyoming","A"]];
+  const STYLE={F:["Free and Accepted Masons","F.&A.M."],A:["Ancient Free and Accepted Masons","A.F.&A.M."],AFM:["Ancient Free Masons","A.F.M."]};
+  function grandLodge(code,family){
+    const st=STATES.find(x=>x[0]===code);if(!st)return null;
+    const of=code==="DC"?"the District of Columbia":st[1];
+    if(family==="pha")return {gl:`Most Worshipful Prince Hall Grand Lodge of ${of}`,jur:"F.&A.M. (PHA)"};
+    const [words,abbr]=STYLE[st[2]];
+    return {gl:code==="MA"?"Grand Lodge of Masons in Massachusetts":`Grand Lodge of ${words} of ${of}`,jur:abbr};
+  }
+  (function(){const sel=document.getElementById("f-state");if(!sel)return;
+    sel.innerHTML=STATES.map(([c,n,t])=>`<option value="${c}">${n} (${STYLE[t][1]})</option>`).join("");
+    sel.value=sel.dataset.default||"OH";})();
+  function fillGrandLodge(){const g=grandLodge(document.getElementById("f-state").value,document.getElementById("f-family").value);
+    if(g){document.getElementById("f-gl").value=g.gl;document.getElementById("f-jur").value=g.jur}}
+
+  /* ---------- Stated Communication schedule ---------- */
+  const DAYS=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+  const ORD=["","1st","2nd","3rd","4th"];
+  const time12=t=>{if(!t)return "";let [h,m]=t.split(":").map(Number);const ap=h>=12?"PM":"AM";h=h%12||12;return `${h}:${String(m).padStart(2,"0")} ${ap}`};
+  function readSched(str){
+    const w=/(1st|2nd|3rd|4th)/i.exec(str||""),d=/(Mon|Tues|Wednes|Thurs|Fri|Satur|Sun)day/i.exec(str||""),t=/(\d{1,2}):(\d{2})\s*(AM|PM)/i.exec(str||"");
+    let time="";if(t){let h=+t[1]%12;if(t[3].toUpperCase()==="PM")h+=12;time=`${String(h).padStart(2,"0")}:${t[2]}`}
+    return {week:w?String(ORD.indexOf(w[1].toLowerCase())):"2",day:d?d[0][0].toUpperCase()+d[0].slice(1).toLowerCase():"Tuesday",time};
+  }
+  function schedText(){
+    const el=id=>document.getElementById(id);
+    return `${ORD[+el("f-week").value]} ${el("f-day").value} of each month`+(el("f-time").value?`, ${time12(el("f-time").value)}`:"");
+  }
+  function nthWeekday(y,m,n,dayName){const first=new Date(y,m,1),off=(DAYS.indexOf(dayName)-first.getDay()+7)%7;return new Date(y,m,1+off+7*(n-1))}
+
+  /* older saves kept the town as "City, ST" */
+  const savedForm=Object.assign({},(CFG.form||{}));
+  if(savedForm["f-town"]&&!savedForm["f-city"]){const [c,st]=savedForm["f-town"].split(/,\s*/);savedForm["f-city"]=c;if(st&&STATES.some(x=>x[0]===st.toUpperCase()))savedForm["f-state"]=st.toUpperCase();delete savedForm["f-town"]}
+  CFG.form=savedForm;
+  if(!CFG.form["f-gl"]){Object.entries(CFG.form).forEach(([id,v])=>{const el=document.getElementById(id);if(el)el.value=v});fillGrandLodge()}
+  const applySchedule=()=>{const f=CFG.form||{};if(f["f-week"])return;
+    const r=readSched(f["f-sched"]||document.getElementById("f-sched").value);
+    document.getElementById("f-week").value=r.week;document.getElementById("f-day").value=r.day;document.getElementById("f-time").value=r.time;};
   Object.entries(CFG.form||{}).forEach(([id,v])=>{const el=document.getElementById(id);if(el)el.value=v});
+  applySchedule();document.getElementById("f-sched").value=schedText();document.getElementById("sched-text").textContent=schedText();
   const handle=id=>$(id).value.trim().replace(/^[@$]/,"").replace(/^https?:\/\/\S+\//,"");
 
   /* ---------- payment links ---------- */
@@ -106,7 +156,8 @@
     const name=$("#f-name").value.trim()||"Your Lodge", num=$("#f-num").value.trim(), jur=$("#f-jur").value;
     const full=name+(num?" No. "+num:"");
     $("#pv-title").textContent=full+", "+jur;
-    $("#pv-sub").textContent=[$("#f-town").value.trim(),"Stated Communications "+$("#f-sched").value.trim()].filter(Boolean).join(" · ");
+    const town=[$("#f-city").value.trim(),$("#f-state").value].filter(Boolean).join(", ");
+    $("#pv-sub").textContent=[town,"Stated Communications "+$("#f-sched").value.trim()].filter(Boolean).join(" · ");
     $("#pv-url").textContent=(name.toLowerCase().replace(/lodge/g,"").replace(/[^a-z0-9]/g,"")+num)+".lodgenet.org";
     $("#cb-name").textContent=full;
     $("#pv-officers").innerHTML=["WM","SW","JW","TREAS","SEC"].map(k=>{const x=SEATS.find(s=>s.k===k),m=member(officers[k]);
@@ -123,8 +174,11 @@
     if(selected&&selected.k==="fund")renderDetail();
     $("#pv-events").innerHTML=up.map(e=>`<li><b>${fmt(parse(e.d),{month:"short",day:"numeric"})}</b> · ${esc(e.t)}</li>`).join("");
   }
-  ["#f-name","#f-num","#f-jur","#f-gl","#f-town","#f-sched","#f-email","#f-fb","#f-ig","#f-x","#f-yt","#f-tt","#f-pp","#f-venmo","#f-cash"].forEach(s=>$(s).addEventListener("input",()=>{renderSite();renderMinutes();$("#site-status").textContent="Draft · unpublished changes"}));
+  ["#f-name","#f-num","#f-jur","#f-gl","#f-city","#f-sched","#f-email","#f-fb","#f-ig","#f-x","#f-yt","#f-tt","#f-pp","#f-venmo","#f-cash"].forEach(s=>$(s).addEventListener("input",()=>{renderSite();renderMinutes();$("#site-status").textContent="Draft · unpublished changes"}));
   $("#swatches").addEventListener("click",e=>{const b=e.target.closest(".swatch");if(!b)return;siteColor=b.dataset.c;document.querySelectorAll(".swatch").forEach(s=>s.setAttribute("aria-pressed",s===b));renderSite();$("#site-status").textContent="Draft · unpublished changes"});
+  ["#f-state","#f-family"].forEach(id=>$(id).addEventListener("change",()=>{fillGrandLodge();renderSite();renderMinutes();$("#site-status").textContent="Draft · unpublished changes"}));
+  ["#f-week","#f-day","#f-time"].forEach(id=>$(id).addEventListener("change",()=>{
+    $("#f-sched").value=schedText();$("#sched-text").textContent=schedText();regenStated();renderCal();renderMinutes();$("#site-status").textContent="Draft · unpublished changes"}));
   let gmail=!!CFG.gmail;
   function renderGmail(){
     const st=$("#gmail-state");st.textContent=gmail?"Connected":"Not connected";st.className="pill"+(gmail?" ok":"");
@@ -202,6 +256,21 @@
   /* ---------- calendar ---------- */
   let view=new Date(2026,10,1);
   let selected=events.find(e=>e.k==="fund"&&parse(e.d)>=TODAY)||events.find(e=>parse(e.d)>=TODAY);
+  /* Stated Communications on the calendar follow the schedule; notes on a matching date are kept */
+  let nextStated=CFG.nextStated||"";
+  function regenStated(){
+    const keep={};events.filter(e=>e.t==="Stated Communication").forEach(e=>keep[e.d]=e);
+    events=events.filter(e=>e.t!=="Stated Communication");
+    const n=+$("#f-week").value,day=$("#f-day").value,tm=time12($("#f-time").value)||"Time not set";
+    const iso=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+    const gen=[];
+    for(let k=-2;k<=8;k++){const base=new Date(TODAY.getFullYear(),TODAY.getMonth()+k,1);
+      const d=iso(nthWeekday(base.getFullYear(),base.getMonth(),n,day)),old=keep[d];
+      gen.push({d,t:"Stated Communication",k:"lodge",time:tm,note:old?old.note:"Regular Communication on the third degree."});}
+    events=events.concat(gen);
+    nextStated=(gen.find(e=>parse(e.d)>=TODAY)||{}).d||nextStated;
+    if(selected&&!events.includes(selected))selected=events.find(e=>e.d===selected.d)||gen.find(e=>parse(e.d)>=TODAY);
+  }
   function renderCal(){
     $("#cal-title").textContent=fmt(view,{month:"long",year:"numeric"});
     const first=new Date(view.getFullYear(),view.getMonth(),1);
@@ -340,7 +409,7 @@
     if(t.hasAttribute("data-date")&&t.value){current.date=t.value;renderMinutes()}
   });
   $("#min-new").addEventListener("click",()=>{
-    const m={id:nextMin++,date:CFG.nextStated||"2026-11-10",status:"Draft",seats:{...officers},f:{...BLANK}};
+    const m={id:nextMin++,date:nextStated||"2026-11-10",status:"Draft",seats:{...officers},f:{...BLANK}};
     minutes.unshift(m);current=m;editing=true;renderMinutes();
   });
 
@@ -348,7 +417,7 @@
   function snapshot(){
     const form={};document.querySelectorAll("#site-form input[id],#site-form select[id]").forEach(el=>form[el.id]=el.value);
     return {app:"LodgeNet",version:1,page:STORE_KEY,savedAt:new Date().toISOString(),form,color:siteColor,
-      membersFull:members,officers,events,minutes,gmail,nextStated:CFG.nextStated};
+      membersFull:members,officers,events,minutes,gmail,nextStated};
   }
   const stamp=d=>new Date(d).toLocaleString("en-US",{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"});
   function setState(t){const el=$("#save-state");if(el)el.textContent=t}
@@ -382,7 +451,7 @@
     location.reload();
   });
 
-  renderMembers();renderGmail();
+  renderMembers();renderGmail();regenStated();
   renderCal();renderCart();renderMinutes();
 })();
 

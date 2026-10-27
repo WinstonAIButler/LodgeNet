@@ -199,6 +199,18 @@ section.band{padding-block:72px}
 .legend span::before{content:"";display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px;background:var(--blue-soft)}
 .legend span.f::before{background:var(--gold-soft);outline:1px solid var(--gold)}
 
+/* grand lodge filled from the state */
+.auto-gl{border-left:3px solid var(--gold);padding-left:12px;margin-bottom:14px}
+.auto-gl .hint{margin-top:-6px}
+
+/* stated communication schedule */
+.sched{border:0;padding:0;margin:0 0 14px}
+.sched legend{font-size:13px;font-weight:600;padding:0;margin-bottom:6px}
+.sched-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.sched-row select,.sched-row input{width:auto;flex:1 1 auto}
+.sched-row #f-week{flex:0 0 5.5em}
+.sched-row .hint{flex:0 0 auto}
+
 /* save bar */
 .data-bar{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;justify-content:space-between;padding:8px 18px;border-bottom:1px solid var(--line);background:var(--sunk)}
 .data-acts{display:flex;flex-wrap:wrap;gap:6px}
