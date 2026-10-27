@@ -82,7 +82,16 @@
                 <p class="hint">Filled in from the state. Edit them if your lodge's charter reads differently.</p>
               </div>
               <div class="field"><label for="f-city">City</label><input id="f-city" value="Millbrook"></div>
-              <div class="field"><label for="f-sched">Stated Communications</label><input id="f-sched" value="2nd Tuesday of each month, 7:30 PM"></div>
+              <fieldset class="field sched">
+                <legend>Stated Communications</legend>
+                <div class="sched-row">
+                  <select id="f-week" aria-label="Week of the month"><option value="1">1st</option><option value="2">2nd</option><option value="3">3rd</option><option value="4">4th</option></select>
+                  <select id="f-day" aria-label="Day of the week"><option>Monday</option><option>Tuesday</option><option>Wednesday</option><option>Thursday</option><option>Friday</option><option>Saturday</option><option>Sunday</option></select>
+                  <input id="f-time" type="time" value="" aria-label="Meeting time">
+                </div>
+                <span class="hint" id="sched-text">of each month</span>
+                <input id="f-sched" type="hidden" value="2nd Tuesday of each month, 7:30 PM">
+              </fieldset>
               <div class="field"><label>Lodge color</label>
                 <div class="swatches" id="swatches">
                   <button type="button" class="swatch" style="background:#1c3a75" data-c="#1c3a75" aria-label="Lodge blue" aria-pressed="true"></button>

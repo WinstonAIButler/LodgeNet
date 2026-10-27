@@ -33,12 +33,31 @@
   function fillGrandLodge(){const g=grandLodge(document.getElementById("f-state").value,document.getElementById("f-family").value);
     if(g){document.getElementById("f-gl").value=g.gl;document.getElementById("f-jur").value=g.jur}}
 
+  /* ---------- Stated Communication schedule ---------- */
+  const DAYS=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+  const ORD=["","1st","2nd","3rd","4th"];
+  const time12=t=>{if(!t)return "";let [h,m]=t.split(":").map(Number);const ap=h>=12?"PM":"AM";h=h%12||12;return `${h}:${String(m).padStart(2,"0")} ${ap}`};
+  function readSched(str){
+    const w=/(1st|2nd|3rd|4th)/i.exec(str||""),d=/(Mon|Tues|Wednes|Thurs|Fri|Satur|Sun)day/i.exec(str||""),t=/(\d{1,2}):(\d{2})\s*(AM|PM)/i.exec(str||"");
+    let time="";if(t){let h=+t[1]%12;if(t[3].toUpperCase()==="PM")h+=12;time=`${String(h).padStart(2,"0")}:${t[2]}`}
+    return {week:w?String(ORD.indexOf(w[1].toLowerCase())):"2",day:d?d[0][0].toUpperCase()+d[0].slice(1).toLowerCase():"Tuesday",time};
+  }
+  function schedText(){
+    const el=id=>document.getElementById(id);
+    return `${ORD[+el("f-week").value]} ${el("f-day").value} of each month`+(el("f-time").value?`, ${time12(el("f-time").value)}`:"");
+  }
+  function nthWeekday(y,m,n,dayName){const first=new Date(y,m,1),off=(DAYS.indexOf(dayName)-first.getDay()+7)%7;return new Date(y,m,1+off+7*(n-1))}
+
   /* older saves kept the town as "City, ST" */
   const savedForm=Object.assign({},(CFG.form||{}));
   if(savedForm["f-town"]&&!savedForm["f-city"]){const [c,st]=savedForm["f-town"].split(/,\s*/);savedForm["f-city"]=c;if(st&&STATES.some(x=>x[0]===st.toUpperCase()))savedForm["f-state"]=st.toUpperCase();delete savedForm["f-town"]}
   CFG.form=savedForm;
   if(!CFG.form["f-gl"]){Object.entries(CFG.form).forEach(([id,v])=>{const el=document.getElementById(id);if(el)el.value=v});fillGrandLodge()}
+  const applySchedule=()=>{const f=CFG.form||{};if(f["f-week"])return;
+    const r=readSched(f["f-sched"]||document.getElementById("f-sched").value);
+    document.getElementById("f-week").value=r.week;document.getElementById("f-day").value=r.day;document.getElementById("f-time").value=r.time;};
   Object.entries(CFG.form||{}).forEach(([id,v])=>{const el=document.getElementById(id);if(el)el.value=v});
+  applySchedule();document.getElementById("f-sched").value=schedText();document.getElementById("sched-text").textContent=schedText();
   const handle=id=>$(id).value.trim().replace(/^[@$]/,"").replace(/^https?:\/\/\S+\//,"");
 
   /* ---------- payment links ---------- */
@@ -158,6 +177,8 @@
   ["#f-name","#f-num","#f-jur","#f-gl","#f-city","#f-sched","#f-email","#f-fb","#f-ig","#f-x","#f-yt","#f-tt","#f-pp","#f-venmo","#f-cash"].forEach(s=>$(s).addEventListener("input",()=>{renderSite();renderMinutes();$("#site-status").textContent="Draft · unpublished changes"}));
   $("#swatches").addEventListener("click",e=>{const b=e.target.closest(".swatch");if(!b)return;siteColor=b.dataset.c;document.querySelectorAll(".swatch").forEach(s=>s.setAttribute("aria-pressed",s===b));renderSite();$("#site-status").textContent="Draft · unpublished changes"});
   ["#f-state","#f-family"].forEach(id=>$(id).addEventListener("change",()=>{fillGrandLodge();renderSite();renderMinutes();$("#site-status").textContent="Draft · unpublished changes"}));
+  ["#f-week","#f-day","#f-time"].forEach(id=>$(id).addEventListener("change",()=>{
+    $("#f-sched").value=schedText();$("#sched-text").textContent=schedText();regenStated();renderCal();renderMinutes();$("#site-status").textContent="Draft · unpublished changes"}));
   let gmail=!!CFG.gmail;
   function renderGmail(){
     const st=$("#gmail-state");st.textContent=gmail?"Connected":"Not connected";st.className="pill"+(gmail?" ok":"");
@@ -235,6 +256,21 @@
   /* ---------- calendar ---------- */
   let view=new Date(2026,10,1);
   let selected=events.find(e=>e.k==="fund"&&parse(e.d)>=TODAY)||events.find(e=>parse(e.d)>=TODAY);
+  /* Stated Communications on the calendar follow the schedule; notes on a matching date are kept */
+  let nextStated=CFG.nextStated||"";
+  function regenStated(){
+    const keep={};events.filter(e=>e.t==="Stated Communication").forEach(e=>keep[e.d]=e);
+    events=events.filter(e=>e.t!=="Stated Communication");
+    const n=+$("#f-week").value,day=$("#f-day").value,tm=time12($("#f-time").value)||"Time not set";
+    const iso=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+    const gen=[];
+    for(let k=-2;k<=8;k++){const base=new Date(TODAY.getFullYear(),TODAY.getMonth()+k,1);
+      const d=iso(nthWeekday(base.getFullYear(),base.getMonth(),n,day)),old=keep[d];
+      gen.push({d,t:"Stated Communication",k:"lodge",time:tm,note:old?old.note:"Regular Communication on the third degree."});}
+    events=events.concat(gen);
+    nextStated=(gen.find(e=>parse(e.d)>=TODAY)||{}).d||nextStated;
+    if(selected&&!events.includes(selected))selected=events.find(e=>e.d===selected.d)||gen.find(e=>parse(e.d)>=TODAY);
+  }
   function renderCal(){
     $("#cal-title").textContent=fmt(view,{month:"long",year:"numeric"});
     const first=new Date(view.getFullYear(),view.getMonth(),1);
@@ -373,7 +409,7 @@
     if(t.hasAttribute("data-date")&&t.value){current.date=t.value;renderMinutes()}
   });
   $("#min-new").addEventListener("click",()=>{
-    const m={id:nextMin++,date:CFG.nextStated||"2026-11-10",status:"Draft",seats:{...officers},f:{...BLANK}};
+    const m={id:nextMin++,date:nextStated||"2026-11-10",status:"Draft",seats:{...officers},f:{...BLANK}};
     minutes.unshift(m);current=m;editing=true;renderMinutes();
   });
 
@@ -381,7 +417,7 @@
   function snapshot(){
     const form={};document.querySelectorAll("#site-form input[id],#site-form select[id]").forEach(el=>form[el.id]=el.value);
     return {app:"LodgeNet",version:1,page:STORE_KEY,savedAt:new Date().toISOString(),form,color:siteColor,
-      membersFull:members,officers,events,minutes,gmail,nextStated:CFG.nextStated};
+      membersFull:members,officers,events,minutes,gmail,nextStated};
   }
   const stamp=d=>new Date(d).toLocaleString("en-US",{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"});
   function setState(t){const el=$("#save-state");if(el)el.textContent=t}
@@ -415,7 +451,7 @@
     location.reload();
   });
 
-  renderMembers();renderGmail();
+  renderMembers();renderGmail();regenStated();
   renderCal();renderCart();renderMinutes();
 })();
 
