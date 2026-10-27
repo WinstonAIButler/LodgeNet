@@ -31,6 +31,7 @@ Lodges sign in with Supabase (Auth for email and password, Postgres for the lodg
 - `lodge_members` gives each account a role on a lodge: `owner` manages the roll, `officer` edits, `member` reads. Row Level Security enforces it, and the site can only change `lodges.data`, so plans are set in SQL.
 - The owner invites by email from `/login`. The brother chooses Create account with that email, and once the email is confirmed the invite becomes a membership (`claim_invites()`).
 - A lodge page sets `slug` in `window.LODGE` and loads `<script src="/assets/auth.js" data-app="/assets/demo.js">`: the dashboard opens only for that lodge's members and saves to the account. The first officer to sign in carries any edits saved in their browser up to the account.
+- Plan codes: an owner enters a code under My lodges (Pricing links to `/login#code`) and `redeem_plan_code()` puts the lodge on the code's plan at no charge (`lodges.comped`). Codes are added in the SQL editor, e.g. `insert into plan_codes(code,plan,max_uses) values('LODGE-XXXX-XXXX','lodge',10)`, and can't be read from the site. Keep real codes out of this repo.
 - Saves replace the whole document, so if two officers edit at the same moment the later save wins.
 
 Setup: create a Supabase project (or add the Supabase integration in Vercel, which sets the variables), run `supabase/schema.sql` then the lodge's SQL in the SQL editor, and under Authentication → URL Configuration set the Site URL to the live domain and add `https://*.vercel.app/**` as a redirect URL for previews.
