@@ -11,7 +11,7 @@ This repo currently holds the static prototype site:
 - `lodges/murrells-inlet-368.html`: dashboard for Murrells Inlet Lodge No. 368 (served at `/lodges/murrells-inlet-368`). Each lodge page sets `window.LODGE` (name, Grand Lodge, members, officer seats, events, store items) before loading `assets/demo.js`
 - `assets/styles.css` and `assets/demo.js`: shared styles and demo logic
 
-Demo changes are kept in the browser only, and checkout takes no payment.
+Edits on the demo and lodge pages save automatically in the viewer's browser (localStorage, one key per page). The bar under the dashboard header can Export them as JSON, Import a JSON export, or Start over. To make an export a lodge's permanent starting data, copy its values into that lodge page's `window.LODGE`. Checkout takes no payment.
 
 ## Deploy
 

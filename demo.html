@@ -34,7 +34,7 @@
     <div class="page-head">
       <div class="eyebrow">Live demo · sample data</div>
       <h1>Run a lodge for a few minutes</h1>
-      <p>This is the dashboard a lodge officer sees. Everything below is an example lodge, and your changes stay in this browser tab only. No real accounts are contacted and no money moves.</p>
+      <p>This is the dashboard a lodge officer sees. Everything below is an example lodge, and your changes are saved in this browser only. No real accounts are contacted and no money moves.</p>
     </div>
   </div>
   <div class="pavement" aria-hidden="true"></div>
@@ -53,6 +53,15 @@
             <button class="tab" role="tab" id="t-mem" aria-controls="p-mem" aria-selected="false">Members</button>
             <button class="tab" role="tab" id="t-min" aria-controls="p-min" aria-selected="false">Minutes</button>
           </div>
+        </div>
+        <div class="data-bar">
+          <span class="hint" id="save-state" aria-live="polite"></span>
+          <span class="data-acts">
+            <button type="button" class="btn line sm" id="data-export">Export</button>
+            <button type="button" class="btn line sm" id="data-import">Import</button>
+            <button type="button" class="btn line sm" id="data-reset">Start over</button>
+            <input type="file" id="data-file" accept="application/json,.json" hidden>
+          </span>
         </div>
 
         <!-- WEBSITE -->
