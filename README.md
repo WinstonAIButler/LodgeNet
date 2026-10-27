@@ -8,9 +8,13 @@ This repo currently holds the static prototype site:
 - `features.html`: detail on the website, store, calendar and minutes tools
 - `demo.html`: interactive demo with a sample lodge (`/demo#store`, `#calendar`, `#members`, `#minutes` open a tab directly)
 - `pricing.html`: pick a plan ("Start now" in the header lands here) and FAQ
+- `login.html`: the Login tab. Sign in, create an account, reset a password, and see "My lodges"; a lodge's account owner manages its roll and invites here
 - `start.html`: a new, blank lodge in the dashboard layout; `/start?plan=starter|lodge|district` (Starter hides the store)
 - `lodges/murrells-inlet-368.html`: dashboard for Murrells Inlet Lodge No. 368 (served at `/lodges/murrells-inlet-368`). Each lodge page sets `window.LODGE` (name, Grand Lodge, members, officer seats, events, store items) before loading `assets/demo.js`
 - `assets/styles.css` and `assets/demo.js`: shared styles and demo logic
+- `assets/auth.js` and `assets/login.js`: sign-in (see Accounts below); `api/config.js` is the one Vercel function
+- `supabase/schema.sql`: accounts database; `supabase/murrells-inlet-368.sql` adds that lodge
+- `assets/vendor/supabase.umd.min.js`: supabase-js 2.117.3 (MIT)
 - `assets/vendor/jspdf.umd.min.js`: jsPDF 2.5.1 (MIT), loaded only when someone saves minutes as a PDF
 
 Edits on the demo and lodge pages save automatically in the viewer's browser (localStorage, one key per page). The bar under the dashboard header can Export them as JSON, Import a JSON export, or Start over. To make an export a lodge's permanent starting data, copy its values into that lodge page's `window.LODGE`. Checkout takes no payment.
@@ -18,6 +22,18 @@ Edits on the demo and lodge pages save automatically in the viewer's browser (lo
 ### Minutes
 
 The Secretary fills in a short form; the full Stated Communication write-up (and the PDF) is generated from it in the lodge's template wording. Each part of the minutes is a section plugin in the `MS` list in `assets/demo.js`: its fields, plus how it reads in `longForm()`. Opening, attendance, previous minutes and closing are always on; the rest can be switched on or off per lodge with the Sections button (saved as `minuteSections`). Anything left blank on the short form is left out of the write-up. Minutes saved in the old free-text format are converted on load.
+
+## Accounts
+
+Lodges sign in with Supabase (Auth for email and password, Postgres for the lodge's data). `/api/config` gives the browser the project URL and public key from Vercel's environment (`SUPABASE_URL` and `SUPABASE_ANON_KEY`, or the `NEXT_PUBLIC_` / publishable-key names the Vercel Supabase integration sets). With neither set, the site runs browser-only exactly as before and `/login` says sign-in isn't switched on.
+
+- A lodge row in `lodges` holds its plan (`starter`, `lodge` or `district`) and its dashboard as one JSON document in `data`, the same shape as an Export.
+- `lodge_members` gives each account a role on a lodge: `owner` manages the roll, `officer` edits, `member` reads. Row Level Security enforces it, and the site can only change `lodges.data`, so plans are set in SQL.
+- The owner invites by email from `/login`. The brother chooses Create account with that email, and once the email is confirmed the invite becomes a membership (`claim_invites()`).
+- A lodge page sets `slug` in `window.LODGE` and loads `<script src="/assets/auth.js" data-app="/assets/demo.js">`: the dashboard opens only for that lodge's members and saves to the account. The first officer to sign in carries any edits saved in their browser up to the account.
+- Saves replace the whole document, so if two officers edit at the same moment the later save wins.
+
+Setup: create a Supabase project (or add the Supabase integration in Vercel, which sets the variables), run `supabase/schema.sql` then the lodge's SQL in the SQL editor, and under Authentication → URL Configuration set the Site URL to the live domain and add `https://*.vercel.app/**` as a redirect URL for previews.
 
 ## Deploy
 
