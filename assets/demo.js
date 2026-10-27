@@ -28,8 +28,9 @@
     return {gl:code==="MA"?"Grand Lodge of Masons in Massachusetts":`Grand Lodge of ${words} of ${of}`,jur:abbr};
   }
   (function(){const sel=document.getElementById("f-state");if(!sel)return;
-    sel.innerHTML=STATES.map(([c,n,t])=>`<option value="${c}">${n} (${STYLE[t][1]})</option>`).join("");
-    sel.value=sel.dataset.default||"OH";})();
+    const def=sel.dataset.default!==undefined?sel.dataset.default:"OH";
+    sel.innerHTML=(def===""?'<option value="">Choose your state</option>':"")+STATES.map(([c,n,t])=>`<option value="${c}">${n} (${STYLE[t][1]})</option>`).join("");
+    sel.value=def;})();
   function fillGrandLodge(){const g=grandLodge(document.getElementById("f-state").value,document.getElementById("f-family").value);
     if(g){document.getElementById("f-gl").value=g.gl;document.getElementById("f-jur").value=g.jur}}
 
@@ -119,6 +120,7 @@
   }
   function renderMembers(){
     const act=members.filter(m=>m.active);
+    if(!act.length){$("#mem-count").textContent="No members yet";$("#mem-rows").innerHTML='<tr><td colspan="6" class="hint">Add your first brother below. Officers are picked from Master Masons on this list.</td></tr>';$("#seat-defaults").innerHTML=SEATS.map(x=>`<div class="seat-row"><label for="sd-${x.k}" title="${x.t}">${x.ab}</label>${seatSelect("data-sdef",x,officers[x.k]).replace("<select ",`<select id="sd-${x.k}" `)}</div>`).join("");return}
     $("#mem-count").textContent=`${act.length} members · ${act.filter(m=>m.deg==="Master Mason").length} Master Masons`;
     const seatOf=id=>SEATS.filter(x=>+officers[x.k]===id).map(x=>x.ab).join(", ");
     $("#mem-rows").innerHTML=act.map(m=>`<tr>
@@ -155,10 +157,10 @@
   function renderSite(){
     const name=$("#f-name").value.trim()||"Your Lodge", num=$("#f-num").value.trim(), jur=$("#f-jur").value;
     const full=name+(num?" No. "+num:"");
-    $("#pv-title").textContent=full+", "+jur;
+    $("#pv-title").textContent=full+(jur?", "+jur:"");
     const town=[$("#f-city").value.trim(),$("#f-state").value].filter(Boolean).join(", ");
     $("#pv-sub").textContent=[town,"Stated Communications "+$("#f-sched").value.trim()].filter(Boolean).join(" · ");
-    $("#pv-url").textContent=(name.toLowerCase().replace(/lodge/g,"").replace(/[^a-z0-9]/g,"")+num)+".lodgenet.org";
+    $("#pv-url").textContent=(name==="Your Lodge"&&!num)?"yourlodge.lodgenet.org":(name.toLowerCase().replace(/lodge/g,"").replace(/[^a-z0-9]/g,"")+num)+".lodgenet.org";
     $("#cb-name").textContent=full;
     $("#pv-officers").innerHTML=["WM","SW","JW","TREAS","SEC"].map(k=>{const x=SEATS.find(s=>s.k===k),m=member(officers[k]);
       return `<dt>${x.t}</dt><dd>${m?esc(m.name+(m.pm&&k!=="WM"?", PM":"")):"Vacant"}</dd>`}).join("");
@@ -336,13 +338,19 @@
       old:"N/A",nb:"Fish Fry committee appointed: Bros. Hale, Lindqvist and Carter.\nBikes for Books: 12 bicycles pledged for spring.",
       edu:"N/A",sick:"N/A",sw:"N/A",jw:"N/A",wm:"Thanked the brethren for a good summer.",ddgm:"N/A",closed:"8:40",dinner:"180",wo:"60"}}
   ];
-  let current=minutes[0],editing=!SAVED&&CFG.minutes?minutes[0].status==="Draft":false,nextMin=Math.max(0,...minutes.map(m=>m.id))+1;
+  let current=minutes[0],editing=!SAVED&&CFG.minutes&&minutes[0]?minutes[0].status==="Draft":false,nextMin=Math.max(0,...minutes.map(m=>m.id))+1;
   const lodgeParts=()=>{
     const raw=$("#f-name").value.trim()||"Your Lodge";
     return {base:raw.replace(/\s+lodge$/i,""),num:$("#f-num").value.trim(),abbr:$("#f-jur").value.split(" ")[0],gl:$("#f-gl").value.trim()||"Grand Lodge"};
   };
   function statusPill(s){return `<span class="pill ${s==="Approved"?"ok":s==="Draft"?"":"warn"}">${s}</span>`}
   function renderMinutes(){
+    if(!current){
+      $("#min-list").innerHTML='<p class="hint">No minutes yet.</p>';
+      $("#min-toolbar").innerHTML="";
+      $("#min-doc").innerHTML='<p style="text-align:center;margin:2in 0">Click "New minutes from template" to start the minutes for your next Stated Communication.</p>';
+      return;
+    }
     const L=lodgeParts(),m=current,f=m.f,ed=editing;
     $("#min-list").innerHTML=minutes.map(x=>`<button type="button" class="min-item" data-id="${x.id}" aria-current="${x===current}">
       <b>Stated Communication</b><span>${fmt(parse(x.date),{month:"long",day:"numeric",year:"numeric"})}</span>${statusPill(x.status)}</button>`).join("");
@@ -413,11 +421,25 @@
     minutes.unshift(m);current=m;editing=true;renderMinutes();
   });
 
+  /* ---------- plan (new lodges from /start) ---------- */
+  const PLANS={starter:{name:"Lodge Starter",price:"$0 / month"},lodge:{name:"Lodge",price:"$19 / month"},district:{name:"District / Grand Lodge",price:"custom pricing"}};
+  let plan=CFG.plan!==undefined?(new URLSearchParams(location.search).get("plan")||CFG.plan):"";
+  if(plan&&!PLANS[plan])plan="lodge";
+  if(plan){
+    const P=PLANS[plan];
+    $("#plan-line").innerHTML=`${P.name} plan · ${P.price} · <a href="/pricing">Change plan</a>`;
+    const eb=$("#plan-eyebrow");if(eb)eb.textContent=`Step 2 · Set up your lodge · ${P.name} plan`;
+    if(plan==="starter"){
+      $("#p-store .store-wrap").hidden=true;
+      $("#p-store").insertAdjacentHTML("afterbegin",'<div class="card" style="max-width:560px"><h4>The store comes with the Lodge plan</h4><p class="hint">Lodge Starter includes your website, calendar, members and minutes. Move to the Lodge plan ($19 / month) to sell shirts, pins and coins and take donations through PayPal, Venmo or Cash App.</p><a class="btn sm" href="/pricing" style="justify-self:start">See plans</a></div>');
+    }
+  }
+
   /* ---------- saving ---------- */
   function snapshot(){
     const form={};document.querySelectorAll("#site-form input[id],#site-form select[id]").forEach(el=>form[el.id]=el.value);
     return {app:"LodgeNet",version:1,page:STORE_KEY,savedAt:new Date().toISOString(),form,color:siteColor,
-      membersFull:members,officers,events,minutes,gmail,nextStated};
+      membersFull:members,officers,events,minutes,gmail,nextStated,...(plan?{plan}:{})};
   }
   const stamp=d=>new Date(d).toLocaleString("en-US",{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"});
   function setState(t){const el=$("#save-state");if(el)el.textContent=t}
