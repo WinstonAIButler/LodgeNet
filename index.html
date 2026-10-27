@@ -1,0 +1,701 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="LodgeNet gives Masonic lodges a website, merch store, fundraiser calendar and meeting minutes in one place.">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>LodgeNet</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a lodge-blue masthead over a mosaic-pavement band, then a working demo console with four tabs (Website, Store, Calendar, Minutes). */
+:root{
+  --bg:#f5f6f9; --surface:#ffffff; --sunk:#eceff5; --line:#d7dce7;
+  --fg:#16213a; --muted:#56607a;
+  --blue:#1c3a75; --blue-ink:#ffffff; --blue-soft:#e3e9f6;
+  --gold:#a8812c; --gold-soft:#f4ead2;
+  --ok:#2c7a4b; --ok-soft:#e1f1e7; --warn:#9a6a09; --warn-soft:#fbefd3;
+  --tile-a:#16213a; --tile-b:#f5f6f9;
+  --display:"Cinzel", "Trajan Pro", Georgia, serif;
+  --body:"Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono:"IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+  --r:6px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0e1424; --surface:#151d31; --sunk:#1b2540; --line:#2a3656;
+  --fg:#e7ebf4; --muted:#9aa5c0;
+  --blue:#3a64b8; --blue-ink:#ffffff; --blue-soft:#1d2b4f;
+  --gold:#d6b064; --gold-soft:#3a3020;
+  --ok:#6cc890; --ok-soft:#173326; --warn:#e7b65a; --warn-soft:#3a2d12;
+  --tile-a:#e7ebf4; --tile-b:#0e1424; color-scheme:dark;}}
+:root[data-theme="dark"]{
+  --bg:#0e1424; --surface:#151d31; --sunk:#1b2540; --line:#2a3656;
+  --fg:#e7ebf4; --muted:#9aa5c0;
+  --blue:#3a64b8; --blue-ink:#ffffff; --blue-soft:#1d2b4f;
+  --gold:#d6b064; --gold-soft:#3a3020;
+  --ok:#6cc890; --ok-soft:#173326; --warn:#e7b65a; --warn-soft:#3a2d12;
+  --tile-a:#e7ebf4; --tile-b:#0e1424; color-scheme:dark;}
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:16px;line-height:1.55}
+h1,h2,h3{text-wrap:balance;margin:0}
+p{margin:0}
+a{color:var(--blue)}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.wrap{max-width:1120px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--gold)}
+.mono{font-family:var(--mono)}
+.num{font-variant-numeric:tabular-nums}
+
+/* masthead */
+.top{background:#13264f;color:#fff}
+.nav{display:flex;align-items:center;justify-content:space-between;gap:16px;padding-block:18px}
+.brand{display:flex;align-items:center;gap:10px;font-family:var(--display);font-weight:700;letter-spacing:.06em;font-size:20px;color:#fff;text-decoration:none}
+.brand svg{width:30px;height:30px;color:#d6b064}
+.nav ul{display:flex;gap:22px;list-style:none;margin:0;padding:0;font-size:14px}
+.nav ul a{color:#c9d3ea;text-decoration:none}
+.nav ul a:hover{color:#fff}
+.hero{display:grid;grid-template-columns:1.15fr .85fr;gap:48px;align-items:center;padding-block:56px 64px}
+.hero h1{font-family:var(--display);font-weight:700;font-size:clamp(34px,5vw,56px);line-height:1.08;letter-spacing:.01em}
+.hero h1 em{font-style:normal;color:#d6b064}
+.hero p.lede{margin-top:20px;font-size:18px;color:#c9d3ea;max-width:34em}
+.cta{display:flex;flex-wrap:wrap;gap:12px;margin-top:28px}
+.btn{display:inline-flex;align-items:center;gap:8px;border:1px solid transparent;border-radius:var(--r);padding:10px 18px;font-weight:600;font-size:15px;cursor:pointer;text-decoration:none;background:var(--blue);color:var(--blue-ink)}
+.btn:hover{filter:brightness(1.08)}
+.btn.gold{background:#d6b064;color:#13264f}
+.btn.ghost{background:transparent;border-color:rgba(255,255,255,.35);color:#fff}
+.btn.line{background:transparent;border-color:var(--line);color:var(--fg)}
+.btn.sm{padding:6px 12px;font-size:13px}
+.hero-card{background:#0d1b3a;border:1px solid #2a3f74;border-radius:10px;padding:22px;font-size:14px;color:#c9d3ea}
+.hero-card h3{font-family:var(--display);color:#fff;font-size:18px;margin-bottom:4px}
+.hero-card .row{display:flex;justify-content:space-between;gap:12px;padding-block:10px;border-top:1px solid #22356a}
+.hero-card .row:first-of-type{border-top:0}
+.hero-card .row b{color:#fff;font-weight:600}
+.hero-card .tag{font-family:var(--mono);font-size:11px;color:#d6b064;letter-spacing:.08em;text-transform:uppercase}
+.pavement{height:28px;background:repeating-conic-gradient(var(--tile-a) 0 25%, var(--tile-b) 0 50%) 0 0/28px 28px}
+
+/* sections */
+section.band{padding-block:72px}
+.sec-head{max-width:640px;margin-bottom:36px;display:grid;gap:10px}
+.sec-head h2{font-family:var(--display);font-size:clamp(26px,3.4vw,36px);font-weight:700}
+.sec-head p{color:var(--muted);font-size:17px}
+.features{display:grid;grid-template-columns:repeat(4,1fr);gap:20px}
+.feat{display:grid;gap:10px;align-content:start;padding-top:18px;border-top:2px solid var(--blue)}
+.feat h3{font-size:18px;font-weight:700}
+.feat p{color:var(--muted);font-size:15px}
+.feat .eyebrow{color:var(--blue)}
+
+/* demo console */
+#demo{background:var(--sunk);border-block:1px solid var(--line)}
+.console{background:var(--surface);border:1px solid var(--line);border-radius:10px;overflow:hidden;box-shadow:0 12px 32px rgba(16,30,64,.08)}
+.console-bar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;padding:14px 18px;border-bottom:1px solid var(--line)}
+.lodge-id{display:grid;gap:2px}
+.lodge-id b{font-family:var(--display);font-size:16px}
+.lodge-id span{font-size:12px;color:var(--muted)}
+.tabs{display:flex;gap:4px;background:var(--sunk);padding:4px;border-radius:8px;overflow-x:auto}
+.tab{border:0;background:transparent;padding:7px 14px;border-radius:6px;font-size:14px;font-weight:600;color:var(--muted);cursor:pointer;white-space:nowrap}
+.tab[aria-selected="true"]{background:var(--surface);color:var(--fg);box-shadow:0 1px 2px rgba(0,0,0,.12)}
+.panel{padding:24px}
+.panel-grid{display:grid;grid-template-columns:320px 1fr;gap:24px}
+.panel-grid > *{min-width:0}
+.field{display:grid;gap:6px;margin-bottom:14px}
+.field label{font-size:13px;font-weight:600}
+.field input,.field select,.field textarea{width:100%;background:var(--bg);border:1px solid var(--line);border-radius:var(--r);padding:9px 11px;font-size:14px}
+.field textarea{min-height:90px;resize:vertical;font-family:var(--mono);font-size:13px;line-height:1.6}
+.swatches{display:flex;gap:8px}
+.swatch{width:30px;height:30px;border-radius:50%;border:2px solid var(--surface);outline:1px solid var(--line);cursor:pointer}
+.swatch[aria-pressed="true"]{outline:2px solid var(--gold)}
+.hint{font-size:12px;color:var(--muted)}
+.pill{display:inline-block;font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;padding:2px 8px;border-radius:999px;background:var(--sunk);color:var(--muted)}
+.pill.ok{background:var(--ok-soft);color:var(--ok)}
+.pill.warn{background:var(--warn-soft);color:var(--warn)}
+.pill.gold{background:var(--gold-soft);color:var(--gold)}
+
+/* lodge site preview (uses its own chosen color) */
+.browser{border:1px solid var(--line);border-radius:8px;overflow:hidden;background:#fff;color:#1b2333}
+.browser-bar{display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--sunk);border-bottom:1px solid var(--line);font-family:var(--mono);font-size:12px;color:var(--muted)}
+.dots{display:flex;gap:5px}.dots i{width:9px;height:9px;border-radius:50%;background:var(--line);display:block}
+.site-hero{background:var(--site);color:#fff;padding:28px 24px;display:grid;gap:8px}
+.site-hero .sc{width:40px;height:40px;color:#e6c77d}
+.site-hero h4{font-family:var(--display);font-size:24px;margin:0;line-height:1.2}
+.site-hero p{opacity:.85;font-size:14px}
+.site-nav{display:flex;flex-wrap:wrap;gap:16px;padding:10px 24px;border-bottom:1px solid #e3e6ee;font-size:13px;font-weight:600;color:var(--site)}
+.site-body{display:grid;grid-template-columns:1fr 1fr;gap:20px;padding:20px 24px 24px;font-size:14px}
+.site-body h5{font-family:var(--display);font-size:14px;margin:0 0 8px;color:var(--site);letter-spacing:.04em}
+.site-body li{margin-bottom:6px}
+.site-body ul{padding-left:18px;margin:0}
+.site-officers{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:13px}
+.site-officers dt{color:#5a6276}.site-officers dd{margin:0;font-weight:600}
+
+/* store */
+.store-wrap{display:grid;grid-template-columns:1fr 300px;gap:24px}
+.store-wrap > *{min-width:0}
+.products{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.product{border:1px solid var(--line);border-radius:8px;overflow:hidden;display:grid;grid-template-rows:auto 1fr}
+.product canvas{width:100%;aspect-ratio:4/3;display:block;background:var(--sunk);max-width:100%}
+.product .pbody{padding:12px;display:grid;gap:6px;align-content:start}
+.product h4{margin:0;font-size:15px}
+.product .meta{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.product .price{font-weight:700}
+.cart{border:1px solid var(--line);border-radius:8px;padding:16px;display:grid;gap:12px;align-content:start;background:var(--bg)}
+.cart h4{margin:0;font-size:16px}
+.cart-line{display:flex;justify-content:space-between;gap:8px;font-size:14px}
+.cart-total{border-top:1px solid var(--line);padding-top:10px;display:grid;gap:4px}
+.toast{font-size:13px;padding:10px 12px;border-radius:var(--r);background:var(--ok-soft);color:var(--ok)}
+
+/* calendar */
+.cal-wrap{display:grid;grid-template-columns:1fr 320px;gap:24px}
+.cal-wrap > *{min-width:0}
+.cal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:8px}
+.cal-head h3{font-family:var(--display);font-size:20px}
+.cal-scroll{overflow-x:auto}
+.cal{display:grid;grid-template-columns:repeat(7,minmax(84px,1fr));border-top:1px solid var(--line);border-left:1px solid var(--line);min-width:600px}
+.cal .dow{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding:6px 8px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);background:var(--sunk)}
+.cal .day{min-height:92px;padding:6px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);display:grid;gap:4px;align-content:start;font-size:12px}
+.cal .day.out{background:var(--sunk);color:var(--muted)}
+.cal .day .d{font-family:var(--mono);font-size:12px}
+.cal .day.today .d{background:var(--gold);color:#fff;border-radius:4px;padding:0 5px;justify-self:start}
+.ev{border:0;text-align:left;padding:3px 6px;border-radius:4px;font-size:11.5px;line-height:1.3;cursor:pointer;background:var(--blue-soft);color:var(--blue);font-weight:600}
+.ev.fund{background:var(--gold-soft);color:var(--gold)}
+:root[data-theme="dark"] .ev{color:var(--fg)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .ev{color:var(--fg)}}
+.side{display:grid;gap:16px;align-content:start}
+.card{border:1px solid var(--line);border-radius:8px;padding:16px;display:grid;gap:10px;background:var(--bg)}
+.card h4{margin:0;font-size:16px}
+.bar{height:8px;border-radius:999px;background:var(--sunk);overflow:hidden}
+.bar i{display:block;height:100%;background:var(--gold)}
+.legend{display:flex;gap:14px;font-size:12px;color:var(--muted)}
+.legend span::before{content:"";display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px;background:var(--blue-soft)}
+.legend span.f::before{background:var(--gold-soft);outline:1px solid var(--gold)}
+
+/* minutes */
+.min-wrap{display:grid;grid-template-columns:280px 1fr;gap:24px}
+.min-wrap > *{min-width:0}
+.min-list{display:grid;gap:8px;align-content:start}
+.min-item{border:1px solid var(--line);border-radius:8px;padding:12px;text-align:left;background:var(--bg);cursor:pointer;display:grid;gap:4px}
+.min-item[aria-current="true"]{border-color:var(--blue);box-shadow:inset 3px 0 0 var(--blue)}
+.min-item b{font-size:14px}
+.min-item span{font-size:12px;color:var(--muted)}
+.doc{border:1px solid var(--line);border-radius:8px;padding:28px;background:var(--surface)}
+.doc-head{text-align:center;display:grid;gap:4px;padding-bottom:16px;border-bottom:1px double var(--line);margin-bottom:16px}
+.doc-head h3{font-family:var(--display);font-size:18px}
+.doc-head p{font-size:13px;color:var(--muted)}
+.doc pre{white-space:pre-wrap;font-family:var(--mono);font-size:13px;line-height:1.75;margin:0}
+.doc-actions{display:flex;flex-wrap:wrap;gap:8px;justify-content:space-between;align-items:center;margin-top:18px;padding-top:14px;border-top:1px solid var(--line)}
+.notice{font-size:13px;color:var(--muted);background:var(--sunk);border-radius:var(--r);padding:10px 12px}
+
+/* pricing */
+.tiers{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+.tier{border:1px solid var(--line);border-radius:10px;padding:24px;display:grid;gap:14px;align-content:start;background:var(--surface)}
+.tier.feat-tier{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold)}
+.tier h3{font-family:var(--display);font-size:20px}
+.tier .amt{font-size:34px;font-weight:700}
+.tier .amt small{font-size:14px;font-weight:500;color:var(--muted)}
+.tier ul{margin:0;padding-left:18px;color:var(--muted);font-size:14px;display:grid;gap:6px}
+footer{background:#13264f;color:#c9d3ea;font-size:13px}
+footer .wrap{padding-block:28px;display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px}
+
+@media (max-width:900px){
+  .hero,.panel-grid,.store-wrap,.cal-wrap,.min-wrap{grid-template-columns:1fr}
+  .features{grid-template-columns:repeat(2,1fr)}
+  .products{grid-template-columns:repeat(2,1fr)}
+  .tiers{grid-template-columns:1fr}
+  .nav ul{display:none}
+}
+@media (max-width:520px){
+  .features,.products,.site-body{grid-template-columns:1fr}
+  .panel{padding:16px}
+  .doc{padding:18px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="sc" viewBox="0 0 64 64">
+    <g fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="32" cy="9" r="4"/>
+      <path d="M30 12 L12 50 M34 12 L52 50"/>
+      <path d="M10 30 L32 54 L54 30"/>
+    </g>
+  </symbol>
+</svg>
+
+<header class="top">
+  <div class="wrap">
+    <nav class="nav" aria-label="Main">
+      <a class="brand" href="#top"><svg><use href="#sc"/></svg>LodgeNet</a>
+      <ul>
+        <li><a href="#features">Features</a></li>
+        <li><a href="#demo">Live demo</a></li>
+        <li><a href="#pricing">Pricing</a></li>
+      </ul>
+      <a class="btn gold sm" href="#demo">Try the demo</a>
+    </nav>
+    <div class="hero" id="top">
+      <div>
+        <div class="eyebrow">For Blue Lodges, Chapters &amp; Districts</div>
+        <h1 style="margin-top:12px">Your lodge, <em>on the level</em> and online.</h1>
+        <p class="lede">LodgeNet gives every lodge its own website, a merch store that funds your charities, a shared calendar for Stated Communications and fundraisers, and a Secretary's desk for meeting minutes. Set up in an evening, run by the brethren you already have.</p>
+        <div class="cta">
+          <a class="btn gold" href="#demo">Build your lodge site</a>
+          <a class="btn ghost" href="#features">See what's included</a>
+        </div>
+      </div>
+      <aside class="hero-card" aria-label="Example lodge at a glance">
+        <span class="tag">Sample lodge · this week</span>
+        <h3>Cedar Hollow Lodge No. 214</h3>
+        <div class="row"><span>Stated Communication</span><b class="num">Tue, Nov 10 · 7:30 PM</b></div>
+        <div class="row"><span>Pancake Breakfast raised</span><b class="num">$3,180 of $5,000</b></div>
+        <div class="row"><span>Store orders this month</span><b class="num">27</b></div>
+        <div class="row"><span>Minutes awaiting approval</span><b>October Stated</b></div>
+      </aside>
+    </div>
+  </div>
+  <div class="pavement" aria-hidden="true"></div>
+</header>
+
+<main>
+  <section class="band" id="features">
+    <div class="wrap">
+      <div class="sec-head">
+        <div class="eyebrow">What's in the box</div>
+        <h2>Four tools the Secretary and Treasurer will actually use</h2>
+        <p>Everything is built around how a lodge already runs: officers, degrees, Stated and Special Communications, and the charities you raise money for.</p>
+      </div>
+      <div class="features">
+        <div class="feat"><span class="eyebrow">Website</span><h3>A lodge site in minutes</h3><p>Pick your name, number and colors. Meeting schedule, officers, history and a "Become a Mason" inquiry form are filled in for you.</p></div>
+        <div class="feat"><span class="eyebrow">Merch store</span><h3>Sell with purpose</h3><p>Lodge shirts, pins, caps and 100-year anniversary coins. Choose which charity each sale supports and see proceeds per fundraiser.</p></div>
+        <div class="feat"><span class="eyebrow">Calendar</span><h3>Meetings and fundraisers</h3><p>Recurring Stated Communications, degree nights, and public fundraisers with goals, RSVPs and progress the community can follow.</p></div>
+        <div class="feat"><span class="eyebrow">Minutes</span><h3>The Secretary's desk</h3><p>Start from a business-meeting template, mark drafts for approval at the next Stated, and keep an archive members can search.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="band" id="demo">
+    <div class="wrap">
+      <div class="sec-head">
+        <div class="eyebrow">Live demo · sample data</div>
+        <h2>Run a lodge for a few minutes</h2>
+        <p>This is the dashboard a lodge officer sees. Everything below is an example lodge, and your changes stay on this page only.</p>
+      </div>
+
+      <div class="console">
+        <div class="console-bar">
+          <div class="lodge-id"><b id="cb-name">Cedar Hollow Lodge No. 214</b><span>Signed in as the Lodge Secretary (sample)</span></div>
+          <div class="tabs" role="tablist" aria-label="Lodge tools">
+            <button class="tab" role="tab" id="t-site" aria-controls="p-site" aria-selected="true">Website</button>
+            <button class="tab" role="tab" id="t-store" aria-controls="p-store" aria-selected="false">Store</button>
+            <button class="tab" role="tab" id="t-cal" aria-controls="p-cal" aria-selected="false">Calendar</button>
+            <button class="tab" role="tab" id="t-min" aria-controls="p-min" aria-selected="false">Minutes</button>
+          </div>
+        </div>
+
+        <!-- WEBSITE -->
+        <div class="panel" role="tabpanel" id="p-site" aria-labelledby="t-site">
+          <div class="panel-grid">
+            <form id="site-form" autocomplete="off">
+              <div class="field"><label for="f-name">Lodge name</label><input id="f-name" value="Cedar Hollow Lodge"></div>
+              <div class="field"><label for="f-num">Lodge number</label><input id="f-num" value="214" inputmode="numeric"></div>
+              <div class="field"><label for="f-jur">Jurisdiction</label>
+                <select id="f-jur">
+                  <option>F.&amp;A.M.</option><option>A.F.&amp;A.M.</option><option>A.F.&amp;A.M. (Prince Hall)</option><option>F.&amp;A.M. (Prince Hall)</option>
+                </select>
+              </div>
+              <div class="field"><label for="f-town">Town</label><input id="f-town" value="Millbrook, Ohio"></div>
+              <div class="field"><label for="f-sched">Stated Communications</label><input id="f-sched" value="2nd Tuesday of each month, 7:30 PM"></div>
+              <div class="field"><label>Lodge color</label>
+                <div class="swatches" id="swatches">
+                  <button type="button" class="swatch" style="background:#1c3a75" data-c="#1c3a75" aria-label="Lodge blue" aria-pressed="true"></button>
+                  <button type="button" class="swatch" style="background:#6b1f2a" data-c="#6b1f2a" aria-label="Royal Arch red" aria-pressed="false"></button>
+                  <button type="button" class="swatch" style="background:#264d3b" data-c="#264d3b" aria-label="Evergreen" aria-pressed="false"></button>
+                  <button type="button" class="swatch" style="background:#3d2f5a" data-c="#3d2f5a" aria-label="Purple" aria-pressed="false"></button>
+                  <button type="button" class="swatch" style="background:#22252c" data-c="#22252c" aria-label="Charcoal" aria-pressed="false"></button>
+                </div>
+              </div>
+              <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+                <button class="btn" type="submit">Publish site</button>
+                <span class="hint" id="site-status">Draft · last saved just now</span>
+              </div>
+            </form>
+            <div class="browser" style="--site:#1c3a75" id="site-preview">
+              <div class="browser-bar"><span class="dots"><i></i><i></i><i></i></span><span id="pv-url">cedarhollow214.lodgenet.org</span></div>
+              <div class="site-hero">
+                <svg class="sc"><use href="#sc"/></svg>
+                <h4 id="pv-title">Cedar Hollow Lodge No. 214, F.&amp;A.M.</h4>
+                <p id="pv-sub">Millbrook, Ohio · Stated Communications 2nd Tuesday of each month, 7:30 PM</p>
+              </div>
+              <div class="site-nav"><span>Home</span><span>Calendar</span><span>Store</span><span>Our History</span><span>Become a Mason</span><span>Members</span></div>
+              <div class="site-body">
+                <div>
+                  <h5>UPCOMING</h5>
+                  <ul id="pv-events"></ul>
+                </div>
+                <div>
+                  <h5>OFFICERS, 2026</h5>
+                  <dl class="site-officers">
+                    <dt>Worshipful Master</dt><dd>Daniel R. Ortega</dd>
+                    <dt>Senior Warden</dt><dd>Marcus Hale</dd>
+                    <dt>Junior Warden</dt><dd>Peter Lindqvist</dd>
+                    <dt>Treasurer</dt><dd>Walter Simms, PM</dd>
+                    <dt>Secretary</dt><dd>James Whitfield, PM</dd>
+                  </dl>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- STORE -->
+        <div class="panel" role="tabpanel" id="p-store" aria-labelledby="t-store" hidden>
+          <div class="store-wrap">
+            <div>
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px">
+                <div class="field" style="margin:0;min-width:220px"><label for="s-charity">Proceeds support</label>
+                  <select id="s-charity">
+                    <option>Pancake Breakfast · Scholarship Fund</option>
+                    <option>Bikes for Books (local schools)</option>
+                    <option>Lodge Building Fund</option>
+                  </select>
+                </div>
+                <span class="hint">Lodge keeps 100% of margin after printing and payment fees.</span>
+              </div>
+              <div class="products" id="products"></div>
+            </div>
+            <aside class="cart" aria-live="polite">
+              <h4>Cart</h4>
+              <div id="cart-lines"><p class="hint">Your cart is empty. Add a shirt or pin to see how proceeds are counted.</p></div>
+              <div class="cart-total">
+                <div class="cart-line"><span>Subtotal</span><b class="num" id="c-sub">$0.00</b></div>
+                <div class="cart-line"><span>To charity</span><b class="num" id="c-char">$0.00</b></div>
+              </div>
+              <button class="btn" id="checkout" type="button">Check out</button>
+              <div id="c-msg" hidden class="toast"></div>
+            </aside>
+          </div>
+        </div>
+
+        <!-- CALENDAR -->
+        <div class="panel" role="tabpanel" id="p-cal" aria-labelledby="t-cal" hidden>
+          <div class="cal-wrap">
+            <div>
+              <div class="cal-head">
+                <button class="btn line sm" id="cal-prev" type="button" aria-label="Previous month">‹</button>
+                <h3 id="cal-title">November 2026</h3>
+                <button class="btn line sm" id="cal-next" type="button" aria-label="Next month">›</button>
+              </div>
+              <div class="cal-scroll"><div class="cal" id="cal"></div></div>
+              <div class="legend" style="margin-top:10px"><span>Lodge meeting</span><span class="f">Public fundraiser</span></div>
+            </div>
+            <div class="side">
+              <div class="card" id="ev-detail"></div>
+              <form class="card" id="ev-form">
+                <h4>Add an event</h4>
+                <div class="field" style="margin:0"><label for="e-title">Title</label><input id="e-title" placeholder="Chili cook-off" required></div>
+                <div class="field" style="margin:0"><label for="e-date">Date</label><input id="e-date" type="date" value="2026-11-21" required></div>
+                <div class="field" style="margin:0"><label for="e-kind">Type</label>
+                  <select id="e-kind"><option value="fund">Public fundraiser</option><option value="lodge">Lodge meeting</option></select></div>
+                <div class="field" style="margin:0"><label for="e-goal">Fundraising goal ($)</label><input id="e-goal" type="number" min="0" step="50" value="1500"></div>
+                <button class="btn" type="submit">Add to calendar</button>
+              </form>
+            </div>
+          </div>
+        </div>
+
+        <!-- MINUTES -->
+        <div class="panel" role="tabpanel" id="p-min" aria-labelledby="t-min" hidden>
+          <div class="min-wrap">
+            <div class="min-list">
+              <button class="btn sm" type="button" id="min-new">New minutes from template</button>
+              <div id="min-list" style="display:grid;gap:8px"></div>
+              <p class="notice">Minutes record lodge business only. LodgeNet never stores ritual or degree work.</p>
+            </div>
+            <div class="doc" id="min-doc"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="band" id="pricing">
+    <div class="wrap">
+      <div class="sec-head">
+        <div class="eyebrow">Pricing (proposed)</div>
+        <h2>Priced for lodge dues, not corporate budgets</h2>
+        <p>Every plan includes the website, calendar and minutes. Store payment fees are passed through at cost.</p>
+      </div>
+      <div class="tiers">
+        <div class="tier"><h3>Lodge Starter</h3><div class="amt num">$0<small> / month</small></div>
+          <ul><li>Lodge website on a lodgenet.org address</li><li>Calendar with public events</li><li>Minutes archive, 2 officer logins</li></ul>
+          <a class="btn line" href="#demo">Start free</a></div>
+        <div class="tier feat-tier"><h3>Lodge</h3><div class="amt num">$19<small> / month</small></div>
+          <ul><li>Your own domain</li><li>Merch store with print-on-demand</li><li>Fundraiser goals, RSVPs and donations</li><li>Unlimited officers and members area</li></ul>
+          <a class="btn" href="#demo">Try the demo</a></div>
+        <div class="tier"><h3>District / Grand Lodge</h3><div class="amt">Let's talk</div>
+          <ul><li>Every constituent lodge on one account</li><li>District calendar and visitation schedule</li><li>Shared store and roll-up reporting</li></ul>
+          <a class="btn line" href="#features">See features</a></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span><b style="font-family:var(--display);color:#fff;letter-spacing:.06em">LodgeNet</b> · Websites, stores, calendars and minutes for Masonic lodges</span>
+    <span>Prototype · all lodges, names and figures are examples</span>
+  </div>
+</footer>
+
+<script>
+(function(){
+  const $=s=>document.querySelector(s);
+  const money=n=>"$"+n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,",");
+  const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+  /* ---------- tabs ---------- */
+  const tabs=[...document.querySelectorAll(".tab")];
+  tabs.forEach(t=>t.addEventListener("click",()=>{
+    tabs.forEach(o=>{o.setAttribute("aria-selected",o===t);document.getElementById(o.getAttribute("aria-controls")).hidden=o!==t});
+    if(t.id==="t-store") drawProducts();
+  }));
+
+  /* ---------- shared events ---------- */
+  const TODAY=new Date(2026,9,27);
+  let events=[
+    {d:"2026-11-10",t:"Stated Communication",k:"lodge",time:"7:30 PM",note:"Dinner at 6:30. Vote on 2027 budget."},
+    {d:"2026-11-14",t:"Pancake Breakfast",k:"fund",time:"7:00–11:00 AM",goal:5000,raised:3180,rsvp:142,note:"Proceeds to the Lodge Scholarship Fund. $10 adults, $5 kids."},
+    {d:"2026-11-19",t:"Fellowcraft Degree",k:"lodge",time:"7:00 PM",note:"Special Communication. Master Masons only."},
+    {d:"2026-11-22",t:"Turkey Drive",k:"fund",time:"9:00 AM",goal:2000,raised:1460,rsvp:38,note:"Collecting for Millbrook Food Pantry."},
+    {d:"2026-12-05",t:"Bikes for Books Raffle",k:"fund",time:"All day",goal:3000,raised:820,rsvp:61,note:"Bikes awarded to students who meet reading goals."},
+    {d:"2026-12-08",t:"Stated Communication",k:"lodge",time:"7:30 PM",note:"Election of officers for 2027."},
+    {d:"2026-12-27",t:"St. John's Day Installation",k:"lodge",time:"2:00 PM",note:"Public installation of 2027 officers. Families welcome."},
+    {d:"2026-10-13",t:"Stated Communication",k:"lodge",time:"7:30 PM",note:"Minutes awaiting approval."},
+    {d:"2026-10-24",t:"Fall Fish Fry",k:"fund",time:"5:00 PM",goal:2500,raised:2740,rsvp:180,note:"Goal met. Thank you, Millbrook!"}
+  ];
+  const parse=s=>{const[y,m,d]=s.split("-").map(Number);return new Date(y,m-1,d)};
+  const fmt=(dt,o)=>dt.toLocaleDateString("en-US",o);
+
+  /* ---------- website builder ---------- */
+  let siteColor="#1c3a75";
+  function renderSite(){
+    const name=$("#f-name").value.trim()||"Your Lodge", num=$("#f-num").value.trim(), jur=$("#f-jur").value;
+    const full=name+(num?" No. "+num:"");
+    $("#pv-title").textContent=full+", "+jur;
+    $("#pv-sub").textContent=[$("#f-town").value.trim(),"Stated Communications "+$("#f-sched").value.trim()].filter(Boolean).join(" · ");
+    $("#pv-url").textContent=(name.toLowerCase().replace(/lodge/g,"").replace(/[^a-z0-9]/g,"")+num)+".lodgenet.org";
+    $("#cb-name").textContent=full;
+    $("#site-preview").style.setProperty("--site",siteColor);
+    const up=events.filter(e=>parse(e.d)>=TODAY).sort((a,b)=>a.d<b.d?-1:1).slice(0,4);
+    $("#pv-events").innerHTML=up.map(e=>`<li><b>${fmt(parse(e.d),{month:"short",day:"numeric"})}</b> · ${esc(e.t)}</li>`).join("");
+  }
+  ["#f-name","#f-num","#f-jur","#f-town","#f-sched"].forEach(s=>$(s).addEventListener("input",()=>{renderSite();$("#site-status").textContent="Draft · unpublished changes"}));
+  $("#swatches").addEventListener("click",e=>{const b=e.target.closest(".swatch");if(!b)return;siteColor=b.dataset.c;document.querySelectorAll(".swatch").forEach(s=>s.setAttribute("aria-pressed",s===b));renderSite();$("#site-status").textContent="Draft · unpublished changes"});
+  $("#site-form").addEventListener("submit",e=>{e.preventDefault();$("#site-status").innerHTML='<span class="pill ok">Published</span> Live at '+esc($("#pv-url").textContent)+" (demo)"});
+
+  /* ---------- store ---------- */
+  const products=[
+    {id:"tee",n:"Lodge No. 214 T-shirt",p:24,margin:9,kind:"tee",tag:"Best seller"},
+    {id:"pin",n:"Square & Compasses lapel pin",p:12,margin:7,kind:"pin"},
+    {id:"cap",n:"Embroidered lodge cap",p:22,margin:8,kind:"cap"},
+    {id:"coin",n:"Centennial challenge coin",p:18,margin:10,kind:"coin",tag:"1926–2026"},
+    {id:"mug",n:"\"Meet on the Level\" mug",p:16,margin:6,kind:"mug"},
+    {id:"apron",n:"Pancake Breakfast apron",p:28,margin:11,kind:"apron",tag:"Fundraiser"}
+  ];
+  const cart={};
+  function drawProducts(){
+    document.querySelectorAll(".product canvas").forEach(c=>paint(c,c.dataset.kind));
+  }
+  function paint(c,kind){
+    const r=c.getBoundingClientRect(),dpr=window.devicePixelRatio||1;
+    if(!r.width)return;
+    c.width=r.width*dpr;c.height=r.height*dpr;
+    const x=c.getContext("2d");x.scale(dpr,dpr);
+    const W=r.width,H=r.height,cs=getComputedStyle(document.documentElement);
+    const navy=cs.getPropertyValue("--blue").trim(),gold=cs.getPropertyValue("--gold").trim(),bg=cs.getPropertyValue("--sunk").trim();
+    x.fillStyle=bg;x.fillRect(0,0,W,H);
+    const cx=W/2,cy=H/2,s=Math.min(W,H);
+    x.fillStyle=navy;x.strokeStyle=gold;x.lineWidth=2;
+    function sc(px,py,size){x.save();x.strokeStyle=gold;x.lineWidth=Math.max(1.5,size/12);x.lineCap="round";x.beginPath();
+      x.moveTo(px-size*.45,py+size*.5);x.lineTo(px,py-size*.5);x.lineTo(px+size*.45,py+size*.5);
+      x.moveTo(px-size*.6,py-size*.05);x.lineTo(px,py+size*.55);x.lineTo(px+size*.6,py-size*.05);x.stroke();x.restore()}
+    if(kind==="tee"){x.beginPath();const w=s*.62,h=s*.6,t=cy-h/2;
+      x.moveTo(cx-w*.2,t);x.lineTo(cx-w/2,t+h*.12);x.lineTo(cx-w*.62,t+h*.32);x.lineTo(cx-w*.38,t+h*.38);x.lineTo(cx-w*.36,t+h);x.lineTo(cx+w*.36,t+h);x.lineTo(cx+w*.38,t+h*.38);x.lineTo(cx+w*.62,t+h*.32);x.lineTo(cx+w/2,t+h*.12);x.lineTo(cx+w*.2,t);x.quadraticCurveTo(cx,t+h*.12,cx-w*.2,t);x.fill();sc(cx,cy+s*.03,s*.18)}
+    else if(kind==="pin"){x.beginPath();x.arc(cx,cy,s*.24,0,7);x.fill();x.beginPath();x.arc(cx,cy,s*.24,0,7);x.stroke();sc(cx,cy,s*.24)}
+    else if(kind==="cap"){x.beginPath();x.ellipse(cx,cy+s*.06,s*.3,s*.24,0,Math.PI,0);x.fill();x.beginPath();x.ellipse(cx+s*.22,cy+s*.07,s*.22,s*.05,0,0,7);x.fill();sc(cx-s*.02,cy-s*.04,s*.14)}
+    else if(kind==="coin"){x.fillStyle=gold;x.beginPath();x.arc(cx,cy,s*.28,0,7);x.fill();x.fillStyle=navy;x.beginPath();x.arc(cx,cy,s*.22,0,7);x.fill();sc(cx,cy-s*.02,s*.2);x.fillStyle=gold;x.font=`600 ${s*.05}px ${cs.getPropertyValue("--mono")}`;x.textAlign="center";x.fillText("100 YEARS",cx,cy+s*.17)}
+    else if(kind==="mug"){x.fillRect(cx-s*.2,cy-s*.22,s*.34,s*.44);x.lineWidth=s*.04;x.strokeStyle=navy;x.beginPath();x.arc(cx+s*.16,cy,s*.1,-1.3,1.3);x.stroke();sc(cx-s*.03,cy,s*.16)}
+    else if(kind==="apron"){x.beginPath();x.moveTo(cx-s*.22,cy-s*.12);x.lineTo(cx-s*.1,cy-s*.3);x.lineTo(cx+s*.1,cy-s*.3);x.lineTo(cx+s*.22,cy-s*.12);x.lineTo(cx+s*.24,cy+s*.3);x.lineTo(cx-s*.24,cy+s*.3);x.closePath();x.fill();sc(cx,cy+s*.04,s*.16)}
+  }
+  $("#products").innerHTML=products.map(p=>`<div class="product"><canvas data-kind="${p.kind}" aria-hidden="true"></canvas>
+    <div class="pbody">${p.tag?`<span class="pill gold" style="justify-self:start">${esc(p.tag)}</span>`:""}<h4>${esc(p.n)}</h4>
+    <span class="hint num">${money(p.margin)} to charity per item</span>
+    <div class="meta"><span class="price num">${money(p.p)}</span><button class="btn sm" type="button" data-add="${p.id}">Add</button></div></div></div>`).join("");
+  $("#products").addEventListener("click",e=>{const b=e.target.closest("[data-add]");if(!b)return;cart[b.dataset.add]=(cart[b.dataset.add]||0)+1;$("#c-msg").hidden=true;renderCart()});
+  $("#cart-lines").addEventListener("click",e=>{const b=e.target.closest("[data-rm]");if(!b)return;cart[b.dataset.rm]--;if(cart[b.dataset.rm]<=0)delete cart[b.dataset.rm];renderCart()});
+  function renderCart(){
+    const ids=Object.keys(cart);let sub=0,ch=0;
+    $("#cart-lines").innerHTML=ids.length?ids.map(id=>{const p=products.find(x=>x.id===id),q=cart[id];sub+=p.p*q;ch+=p.margin*q;
+      return `<div class="cart-line"><span>${q} × ${esc(p.n)}</span><span class="num">${money(p.p*q)} <button class="btn line sm" style="padding:0 6px" data-rm="${id}" aria-label="Remove one ${esc(p.n)}">−</button></span></div>`}).join(""):
+      '<p class="hint">Your cart is empty. Add a shirt or pin to see how proceeds are counted.</p>';
+    $("#c-sub").textContent=money(sub);$("#c-char").textContent=money(ch);
+  }
+  $("#checkout").addEventListener("click",()=>{
+    const m=$("#c-msg");
+    if(!Object.keys(cart).length){m.hidden=false;m.className="notice";m.textContent="Add at least one item before checking out.";return}
+    const ch=$("#c-char").textContent;
+    m.hidden=false;m.className="toast";m.textContent=`Order placed (demo). ${ch} recorded for ${$("#s-charity").value}. No payment was taken.`;
+    for(const k in cart)delete cart[k];renderCart();
+  });
+  window.addEventListener("resize",()=>{if(!$("#p-store").hidden)drawProducts()});
+
+  /* ---------- calendar ---------- */
+  let view=new Date(2026,10,1);
+  let selected=events.find(e=>e.d==="2026-11-14");
+  function renderCal(){
+    $("#cal-title").textContent=fmt(view,{month:"long",year:"numeric"});
+    const first=new Date(view.getFullYear(),view.getMonth(),1);
+    const start=new Date(first);start.setDate(1-first.getDay());
+    let h=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map(d=>`<div class="dow">${d}</div>`).join("");
+    for(let i=0;i<42;i++){
+      const d=new Date(start);d.setDate(start.getDate()+i);
+      if(i>=35&&d.getMonth()!==view.getMonth())break;
+      const key=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+      const evs=events.filter(e=>e.d===key);
+      const cls=["day",d.getMonth()!==view.getMonth()?"out":"",d.getTime()===TODAY.getTime()?"today":""].join(" ");
+      h+=`<div class="${cls}"><span class="d">${d.getDate()}</span>${evs.map(e=>`<button type="button" class="ev ${e.k==="fund"?"fund":""}" data-i="${events.indexOf(e)}">${esc(e.t)}</button>`).join("")}</div>`;
+    }
+    $("#cal").innerHTML=h;
+    renderDetail();renderSite();
+  }
+  function renderDetail(){
+    const e=selected,el=$("#ev-detail");
+    if(!e){el.innerHTML='<h4>Pick an event</h4><p class="hint">Select any event on the calendar to see details, RSVPs and fundraising progress.</p>';return}
+    const date=fmt(parse(e.d),{weekday:"long",month:"long",day:"numeric"});
+    let body=`<span class="pill ${e.k==="fund"?"gold":""}" style="justify-self:start">${e.k==="fund"?"Public fundraiser":"Lodge meeting"}</span>
+      <h4>${esc(e.t)}</h4><div class="hint">${date} · ${esc(e.time||"")}</div><p style="font-size:14px">${esc(e.note||"")}</p>`;
+    if(e.k==="fund"){
+      const pct=Math.min(100,Math.round(e.raised/e.goal*100));
+      body+=`<div style="display:grid;gap:6px"><div class="cart-line"><b class="num">${money(e.raised).replace(".00","")} raised</b><span class="hint num">of ${money(e.goal).replace(".00","")} · ${pct}%</span></div>
+        <div class="bar"><i style="width:${pct}%"></i></div><span class="hint num">${e.rsvp} RSVPs</span></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sm" type="button" id="log-don">Log $100 donation</button><button class="btn line sm" type="button" id="log-rsvp">Add RSVP</button></div>`;
+    }
+    el.innerHTML=body;
+    const d=$("#log-don"),r=$("#log-rsvp");
+    if(d)d.onclick=()=>{e.raised+=100;renderDetail()};
+    if(r)r.onclick=()=>{e.rsvp++;renderDetail()};
+  }
+  $("#cal").addEventListener("click",ev=>{const b=ev.target.closest(".ev");if(!b)return;selected=events[+b.dataset.i];renderDetail()});
+  $("#cal-prev").onclick=()=>{view=new Date(view.getFullYear(),view.getMonth()-1,1);renderCal()};
+  $("#cal-next").onclick=()=>{view=new Date(view.getFullYear(),view.getMonth()+1,1);renderCal()};
+  $("#e-kind").onchange=()=>{$("#e-goal").closest(".field").hidden=$("#e-kind").value!=="fund"};
+  $("#ev-form").addEventListener("submit",ev=>{
+    ev.preventDefault();
+    const k=$("#e-kind").value,d=$("#e-date").value,t=$("#e-title").value.trim();if(!t||!d)return;
+    const e={d,t,k,time:k==="fund"?"Time to be announced":"7:30 PM",note:k==="fund"?"New fundraiser added from the dashboard.":"New lodge meeting."};
+    if(k==="fund"){e.goal=Math.max(50,+$("#e-goal").value||500);e.raised=0;e.rsvp=0}
+    events.push(e);selected=e;view=new Date(parse(d).getFullYear(),parse(d).getMonth(),1);$("#e-title").value="";renderCal();
+  });
+
+  /* ---------- minutes ---------- */
+  const minutes=[
+    {id:1,title:"Stated Communication",date:"2026-10-13",status:"Awaiting approval",body:
+`Cedar Hollow Lodge No. 214 was opened on the Third Degree at 7:31 PM,
+Worshipful Brother Daniel R. Ortega presiding.
+
+Officers present: all stations filled.
+Members present: 34.   Visitors: 3 (from Millbrook Lodge No. 88).
+
+1. Minutes of the September Stated Communication were read and approved.
+2. Treasurer's report: General Fund $18,412.07; Charity Fund $6,955.40.
+3. Petitions: two petitions for the degrees received and referred
+   to investigation committees.
+4. Fall Fish Fry: raised $2,740 against a $2,500 goal. Thanks
+   extended to Bro. Hale and the kitchen crew.
+5. Motion to purchase 200 centennial coins for the lodge store
+   ($1,150). Seconded. Carried.
+
+There being no further business, the lodge was closed in due form
+at 8:52 PM.
+
+James Whitfield, PM, Secretary`},
+    {id:2,title:"Stated Communication",date:"2026-09-08",status:"Approved",body:
+`Cedar Hollow Lodge No. 214 was opened on the Third Degree at 7:30 PM,
+Worshipful Brother Daniel R. Ortega presiding.
+
+Members present: 29.   Visitors: 1.
+
+1. Minutes of the August Stated Communication were read and approved.
+2. Treasurer's report accepted as read.
+3. Fish Fry committee appointed: Bros. Hale, Lindqvist, Carter.
+4. Bikes for Books: 12 bicycles pledged for spring.
+
+The lodge was closed in due form at 8:40 PM.
+
+James Whitfield, PM, Secretary`},
+    {id:3,title:"Special Communication: Entered Apprentice Degree",date:"2026-08-20",status:"Approved",body:
+`A Special Communication of Cedar Hollow Lodge No. 214 was opened
+on the Third Degree at 7:00 PM for the purpose of conferring the
+Entered Apprentice Degree.
+
+The Degree was conferred upon Mr. Thomas Reyes in ample form.
+
+The lodge was closed in due form at 9:05 PM.
+
+James Whitfield, PM, Secretary`}
+  ];
+  let current=minutes[0],editing=false,nextId=4;
+  const TEMPLATE=d=>`Cedar Hollow Lodge No. 214 was opened on the Third Degree at __:__ PM,
+Worshipful Brother __________ presiding.
+
+Officers present:
+Members present: __   Visitors: __
+
+1. Minutes of the previous Stated Communication were read and
+2. Treasurer's report:
+3. Bills and communications:
+4. Petitions:
+5. Committee reports:
+6. New business:
+
+There being no further business, the lodge was closed in due form
+at __:__ PM.
+
+__________, Secretary`;
+  function statusPill(s){return `<span class="pill ${s==="Approved"?"ok":s==="Draft"?"":"warn"}">${s}</span>`}
+  function renderMinutes(){
+    $("#min-list").innerHTML=minutes.map(m=>`<button type="button" class="min-item" data-id="${m.id}" aria-current="${m===current}">
+      <b>${esc(m.title)}</b><span>${fmt(parse(m.date),{month:"long",day:"numeric",year:"numeric"})}</span>${statusPill(m.status)}</button>`).join("");
+    const m=current;
+    const head=`<div class="doc-head"><span class="eyebrow">Minutes · ${m.status==="Approved"?"members only":"officers only until approved"}</span>
+      <h3>${esc(m.title)}</h3><p>${fmt(parse(m.date),{weekday:"long",month:"long",day:"numeric",year:"numeric"})}</p></div>`;
+    const body=editing?`<div class="field"><label for="min-edit">Edit minutes</label><textarea id="min-edit" rows="18">${esc(m.body)}</textarea></div>`:`<pre>${esc(m.body)}</pre>`;
+    let actions="";
+    if(editing) actions=`<span class="hint">Editing a draft</span><span style="display:flex;gap:8px"><button class="btn line sm" type="button" data-act="cancel">Cancel</button><button class="btn sm" type="button" data-act="save">Save draft</button></span>`;
+    else if(m.status==="Approved") actions=`${statusPill(m.status)}<span class="hint">Approved at the following Stated Communication. Locked.</span>`;
+    else actions=`${statusPill(m.status)}<span style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn line sm" type="button" data-act="edit">Edit</button>${m.status==="Draft"?'<button class="btn line sm" type="button" data-act="submit">Send for approval</button>':""}<button class="btn sm" type="button" data-act="approve">Mark approved</button></span>`;
+    $("#min-doc").innerHTML=head+body+`<div class="doc-actions">${actions}</div>`;
+  }
+  $("#min-list").addEventListener("click",e=>{const b=e.target.closest(".min-item");if(!b)return;current=minutes.find(m=>m.id==b.dataset.id);editing=false;renderMinutes()});
+  $("#min-doc").addEventListener("click",e=>{
+    const a=e.target.closest("[data-act]");if(!a)return;const act=a.dataset.act;
+    if(act==="edit")editing=true;
+    if(act==="cancel")editing=false;
+    if(act==="save"){current.body=$("#min-edit").value;editing=false}
+    if(act==="submit")current.status="Awaiting approval";
+    if(act==="approve")current.status="Approved";
+    renderMinutes();
+  });
+  $("#min-new").addEventListener("click",()=>{
+    const m={id:nextId++,title:"Stated Communication",date:"2026-11-10",status:"Draft",body:TEMPLATE()};
+    minutes.unshift(m);current=m;editing=true;renderMinutes();
+  });
+
+  renderCal();renderCart();renderMinutes();
+})();
+</script>
+</body>
+</html>
