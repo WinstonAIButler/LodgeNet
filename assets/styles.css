@@ -270,6 +270,41 @@ section.band{padding-block:72px}
 .paper input.bl{font:inherit;color:var(--ink);background:var(--fill);border:0;border-bottom:1px solid var(--ink);padding:0 2px;text-align:center}
 .paper textarea.bl{display:block;width:100%;font:inherit;color:var(--ink);background:var(--fill);border:1px dashed #999999;padding:4px 6px;margin:4px 0 10px;min-height:44px;resize:vertical}
 .paper .blank{display:inline-block;min-width:3ch;border-bottom:1px solid var(--ink);text-align:center}
+/* minutes short form: the Secretary fills this in, the write-up is generated from it */
+.paper-scroll:has(> .sf){background:none;border:0;padding:0;overflow:visible}
+.sf{display:grid;gap:14px}
+.sf-sec{border:1px solid var(--line);border-radius:8px;background:var(--surface);padding:14px 16px 16px;margin:0;min-width:0}
+.sf-sec legend{font-weight:700;font-size:14px;padding:0 6px}
+.sf-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px}
+.sf-f{display:grid;gap:4px;align-content:start;min-width:0}
+.sf-f > span,.sf-cell > span{font-size:12px;font-weight:600;color:var(--muted)}
+.sf-f em{font-style:normal;font-weight:400}
+.sf-wide{grid-column:1/-1}
+.sf input,.sf select,.sf textarea{width:100%;min-width:0;background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:var(--r);padding:7px 9px;font:inherit;font-size:14px}
+.sf textarea{resize:vertical;min-height:56px}
+.sf :disabled{opacity:.75}
+.sf-list{display:grid;gap:8px;justify-items:start}
+.sf-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr)) auto;gap:8px;align-items:end;width:100%;padding:8px;border:1px dashed var(--line);border-radius:var(--r)}
+.sf-cell{display:grid;gap:2px;min-width:0}
+.sf-del{padding:6px 10px}
+.sf-seats{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px 14px;margin-top:8px}
+.sf-seat{display:grid;grid-template-columns:44px 1fr;gap:8px;align-items:center}
+.sf-seat > span{font-family:var(--mono);font-size:12px;font-weight:600;color:var(--muted)}
+.sf-sections{display:grid;gap:8px;padding:14px 16px}
+.sf-sections h4{margin:0;font-size:14px}
+.sf-toggles{display:flex;flex-wrap:wrap;gap:8px 18px;font-size:14px}
+.sf-toggles input{width:auto;margin-right:4px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.seg button{border:0;background:transparent;color:var(--fg);padding:6px 12px;font:inherit;font-size:13px;font-weight:600;cursor:pointer}
+.seg button + button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"]{background:var(--blue);color:var(--blue-ink)}
+.seg button:disabled{opacity:.5;cursor:default}
+.paper .b{font-weight:700}
+.paper .u{text-decoration:underline}
+.paper .sig2{display:flex;justify-content:space-between;gap:24px;margin-top:36px;line-height:1.25}
+.paper .sig2 p{margin:0}
+.paper .sig2 .line{border-bottom:1px solid var(--ink);width:220px;height:30px;margin-left:auto}
+.paper .attest .line{margin-left:0}
 @media print{
   body *{visibility:hidden}
   .paper,.paper *{visibility:visible}
