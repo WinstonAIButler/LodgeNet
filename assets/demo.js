@@ -323,103 +323,334 @@
     events.push(e);selected=e;view=new Date(parse(d).getFullYear(),parse(d).getMonth(),1);$("#e-title").value="";renderCal();
   });
 
-  /* ---------- minutes (Stated Communication template) ---------- */
-  const BLANK={opened:"",total:"",visitors:"",pms:"",prev:"",corr:"N/A",ballot:"N/A",treas:"",old:"",nb:"",mw:"",edu:"",sick:"",sw:"",jw:"",wm:"",ddgm:"",closed:"",dinner:"",wo:""};
-  const minutes=CFG.minutes?CFG.minutes.map(x=>({...x,seats:{...officers,...(x.seats||{})},f:{...BLANK,...x.f}})):[
-    {id:1,date:"2026-10-13",status:"Awaiting approval",seats:{...officers,STW2:13},f:{...BLANK,opened:"7:31",total:"34",visitors:"3",pms:"6",
-      prev:"Minutes of the September Stated Communication were read and approved.",corr:"Thank-you letter from Millbrook Food Pantry for the summer food drive.",
-      ballot:"N/A",treas:"18,412.07 General Fund; $6,955.40 Charity Fund. Report accepted as read.",
-      old:"Fall Fish Fry raised $2,740 against a $2,500 goal. Thanks to Bro. Hale and the kitchen crew.",
-      nb:"Motion to purchase 200 centennial coins for the lodge store ($1,150). Seconded. Carried.\nTwo petitions for the degrees received and referred to investigation committees.",
-      mw:"",edu:"WB Benson presented on the history of the lodge's 1926 charter.",sick:"Bro. Kline is recovering at home after surgery. Cards welcome.",
-      sw:"Thanked the brethren for the Fish Fry turnout.",jw:"Dinner next month will be roast turkey.",wm:"Reminded all of the Pancake Breakfast on November 14.",ddgm:"N/A",closed:"8:52",dinner:"212",wo:"75"}},
-    {id:2,date:"2026-09-08",status:"Approved",seats:{...officers,TILER:12},f:{...BLANK,opened:"7:30",total:"29",visitors:"1",pms:"5",
-      prev:"Minutes of the August Stated Communication were read and approved.",treas:"17,960.44 General Fund. Accepted as read.",
-      old:"N/A",nb:"Fish Fry committee appointed: Bros. Hale, Lindqvist and Carter.\nBikes for Books: 12 bicycles pledged for spring.",
-      edu:"N/A",sick:"N/A",sw:"N/A",jw:"N/A",wm:"Thanked the brethren for a good summer.",ddgm:"N/A",closed:"8:40",dinner:"180",wo:"60"}}
+  /* ---------- minutes: short form in, Stated Communication write-up out ----------
+     Each section is a plugin: the fields the Secretary fills in, and how they read in the
+     long form. Anything left blank is left out of the write-up and the PDF. */
+  const DEG=["third","second","first"];
+  const FOR=["the degrees","affiliation","reinstatement"];
+  const RESULT=["carried","failed","tabled","referred to committee"];
+  const MS=[
+    {id:"opening",title:"Opening",core:true,fields:[["time","Opened at","time"],["degree","On the","sel",DEG,"degree"]]},
+    {id:"attend",title:"Attendance",core:true,fields:[["total","Brothers present","num"],["visitors","Visitors","num"],["pms","Past Masters","num"],
+      ["vlist","Visiting brethren","list",[["name","Name"],["lodge","Lodge"]]]]},
+    {id:"prev",title:"Previous minutes",core:true,fields:[["action","The minutes were","sel",["","read and approved","approved as corrected","approved as distributed","reading dispensed with"]],["notes","Notes","area"]]},
+    {id:"corr",title:"Correspondence",fields:[["items","Letters read","list",[["from","From"],["about","About"]]],["notes","Notes","area"]]},
+    {id:"pet",title:"Petitions",fields:[["items","Petitions received","list",[["name","Petitioner"],["for","For","sel",FOR],["committee","Investigating committee"]]]]},
+    {id:"ballot",title:"Balloting",fields:[["items","Ballots taken","list",[["name","Candidate"],["for","For","sel",FOR],["result","Result","sel",["elected","rejected"]]]]]},
+    {id:"treas",title:"Treasurer's Report",fields:[["gen","General Fund $","money"],["char","Charity Fund $","money"],["wo","Widows & Orphans Fund $","money"],
+      ["action","The report was","sel",["","accepted as read","received and filed for audit"]],["notes","Notes","area"]]},
+    {id:"bills",title:"Bills",def:false,fields:[["items","Bills presented","list",[["payee","Payee"],["amt","Amount $"]]],["action","The bills were","sel",["","approved and ordered paid","referred to the Finance Committee"]]]},
+    {id:"old",title:"Old Business",fields:[["motions","Motions","motions"],["notes","Notes","area"]]},
+    {id:"new",title:"New Business",fields:[["motions","Motions","motions"],["notes","Notes","area"]]},
+    {id:"degree",title:"Degree Work",def:false,fields:[["deg","Degree","sel",["","Entered Apprentice","Fellowcraft","Master Mason"]],["cands","Candidates"],["by","Conferred by"]]},
+    {id:"mw",title:"Masters & Wardens",fields:[["notes","Notes","area"]]},
+    {id:"edu",title:"Masonic Education",fields:[["by","Presented by","member"],["topic","Topic"],["notes","Notes","area"]]},
+    {id:"sick",title:"Sick & Distressed",fields:[["items","Brethren and families","list",[["name","Name"],["note","Note"]]]]},
+    {id:"ann",title:"Announcements",def:false,fields:[["notes","Announcements","area"]]},
+    {id:"close",title:"Proceeding to close",core:true,fields:[["sw","The SW","area"],["jw","The JW","area"],["wm","The WM","area"],
+      ["go","Grand Lodge officer present","sel",["","District Deputy Grand Master","Grand Lodge Officer"]],["goName","Name"],["goNotes","Remarks","area"]]},
+    {id:"closing",title:"Closing and collections",core:true,fields:[["time","Closed at","time"],["dinner","Dinner $","money"],["wo","W & O $","money"]]}
   ];
-  let current=minutes[0],editing=!SAVED&&CFG.minutes&&minutes[0]?minutes[0].status==="Draft":false,nextMin=Math.max(0,...minutes.map(m=>m.id))+1;
+  let minuteSections=Object.assign({},CFG.minuteSections||{});
+  const secOn=sec=>sec.core||(minuteSections[sec.id]!==undefined?minuteSections[sec.id]:sec.def!==false);
+
+  /* older minutes stored the template's free-text blanks in m.f */
+  function migrate(x){
+    if(x.s)return x;
+    const f=x.f||{},s={};
+    const t24=v=>{const r=/(\d{1,2}):(\d{2})/.exec(v||"");if(!r)return "";let h=+r[1];if(h<12)h+=12;return `${String(h).padStart(2,"0")}:${r[2]}`};
+    const put=(k,v)=>{if(v&&v!=="N/A")s[k]=v};
+    put("opening.time",t24(f.opened));put("attend.total",f.total);put("attend.visitors",f.visitors);put("attend.pms",f.pms);
+    put("prev.notes",f.prev);put("corr.notes",f.corr);put("treas.notes",f.treas);put("old.notes",f.old);put("new.notes",f.nb);
+    put("mw.notes",f.mw);put("edu.notes",f.edu);put("close.sw",f.sw);put("close.jw",f.jw);put("close.wm",f.wm);put("close.goNotes",f.ddgm);
+    put("closing.time",t24(f.closed));put("closing.dinner",f.dinner);put("closing.wo",f.wo);
+    if(f.ballot&&f.ballot!=="N/A")s["new.notes"]=[s["new.notes"],"Balloting: "+f.ballot].filter(Boolean).join("\n");
+    if(f.sick&&f.sick!=="N/A")s["sick.items"]=[{name:f.sick,note:""}];
+    const {f:_,...rest}=x;return {...rest,s};
+  }
+  const minutes=(CFG.minutes?CFG.minutes.map(x=>({...x,seats:{...officers,...(x.seats||{})}})):[
+    {id:1,date:"2026-10-13",status:"Awaiting approval",seats:{...officers,STW2:13},s:{
+      "opening.time":"19:31","attend.total":"34","attend.visitors":"3","attend.pms":"6",
+      "attend.vlist":[{name:"Bro. Carl Mendez",lodge:"Millbrook Lodge No. 88"},{name:"WB Ray Ellis",lodge:"Millbrook Lodge No. 88"}],
+      "prev.action":"read and approved",
+      "corr.items":[{from:"Millbrook Food Pantry",about:"thanks for the summer food drive"}],
+      "pet.items":[{name:"Mr. Aaron Fields",for:"the degrees",committee:"Bros. Hale, Carter and Tran"}],
+      "treas.gen":"18412.07","treas.char":"6955.40","treas.action":"accepted as read",
+      "old.notes":"The Fall Fish Fry raised $2,740 against a $2,500 goal. The Worshipful Master thanked Bro. Hale and the kitchen crew.",
+      "new.motions":[{text:"purchase 200 centennial coins for the lodge store at a cost of $1,150",by:"2",second:"8",result:"carried"}],
+      "edu.by":"10","edu.topic":"the history of the lodge's 1926 charter",
+      "sick.items":[{name:"Bro. Robert Kline",note:"recovering at home after surgery; cards welcome"}],
+      "close.sw":"Thanked the brethren for the Fish Fry turnout.","close.jw":"Dinner next month will be roast turkey.","close.wm":"Reminded all of the Pancake Breakfast on November 14.",
+      "closing.time":"20:52","closing.dinner":"212","closing.wo":"75"}},
+    {id:2,date:"2026-09-08",status:"Approved",seats:{...officers,TILER:12},s:{
+      "opening.time":"19:30","attend.total":"29","attend.visitors":"1","attend.pms":"5","prev.action":"read and approved",
+      "treas.gen":"17960.44","treas.action":"accepted as read",
+      "new.notes":"Fish Fry committee appointed: Bros. Hale, Lindqvist and Carter.\nBikes for Books: 12 bicycles pledged for spring.",
+      "close.wm":"Thanked the brethren for a good summer.","closing.time":"20:40","closing.dinner":"180","closing.wo":"60"}}
+  ]).map(migrate);
+  let current=minutes[0],minView="short",nextMin=Math.max(0,...minutes.map(m=>m.id))+1,showSections=false;
   const lodgeParts=()=>{
     const raw=$("#f-name").value.trim()||"Your Lodge";
     return {base:raw.replace(/\s+lodge$/i,""),num:$("#f-num").value.trim(),abbr:$("#f-jur").value.split(" ")[0],gl:$("#f-gl").value.trim()||"Grand Lodge"};
   };
   function statusPill(s){return `<span class="pill ${s==="Approved"?"ok":s==="Draft"?"":"warn"}">${s}</span>`}
+  const longDate=d=>fmt(parse(d),{month:"long",day:"numeric",year:"numeric"});
+  const timeLC=t=>time12(t).toLowerCase();
+  const money2=v=>{const n=parseFloat(String(v).replace(/[$,]/g,""));return isNaN(n)?String(v):n.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})};
+  const bro=id=>{const m=member(id);return m?(m.pm?"W Bro. ":"Bro. ")+m.name:""};
+  const val=(m,k)=>{const v=m.s[k];return Array.isArray(v)?v.filter(r=>Object.values(r).some(x=>String(x||"").trim())):String(v||"").trim()};
+  const list=(m,k)=>Array.isArray(m.s[k])?val(m,k):[];
+  const listJoin=a=>a.length<2?a.join(""):a.slice(0,-1).join(", ")+" and "+a[a.length-1];
+
+  /* ---------- long form: a list of blocks both the preview and the PDF draw ----------
+     p: {runs:[[text,style]], align, gap}; style "" | "b" | "u" | "bu" */
+  function longForm(m){
+    const B=[],L=lodgeParts(),P=(runs,o)=>B.push({t:"p",runs:typeof runs==="string"?[[runs,""]]:runs,...(o||{})});
+    const H=(title,rest,o)=>P([[title,"bu"],[rest?": "+rest:":",""]],o);
+    const deg=val(m,"opening.degree")||"third";
+    const proTem=k=>m.seats[k]&&officers[k]&&+m.seats[k]!==+officers[k];
+    B.push({t:"lh",L});
+    P(longDate(m.date),{gap:24});
+    P(`At a Stated Communication of ${L.base} Lodge No. ${L.num}${L.abbr?", "+L.abbr:""}, the following brethren filled the chairs:`);
+    const rows=[["WM","SD"],["SW","JD"],["JW","STW1"],["TREAS","STW2"],["SEC","TILER"],[null,"CHAP"]]
+      .map(r=>r.map(k=>k&&m.seats[k]?{name:fullName(m.seats[k])+(proTem(k)?" (pro tem)":""),ab:SEATS.find(x=>x.k===k).ab}:null))
+      .filter(r=>r[0]||r[1]);
+    if(rows.length)B.push({t:"seats",rows});
+    const wm=member(m.seats.WM),t=val(m,"opening.time");
+    P(`The Worshipful Master${wm?`, W Bro. ${wm.name}${proTem("WM")?" (pro tem)":""},`:""} opened the Lodge${t?` at ${timeLC(t)}`:""} in due form on the ${deg} degree of Masonry.`,{align:"justify"});
+    const tot=val(m,"attend.total"),vis=val(m,"attend.visitors"),pms=val(m,"attend.pms"),vl=list(m,"attend.vlist");
+    if(tot||vis||pms||vl.length){
+      let s=vis||pms||vl.length?"The Worshipful Master welcomed visiting brothers and the Past Masters visiting and of the Lodge.":"";
+      const inc=[vis&&`${vis} visitor${vis==="1"?"":"s"}`,pms&&`${pms} Past Master${pms==="1"?"":"s"}`].filter(Boolean);
+      if(tot)s+=`${s?" ":""}There were ${tot} brothers present${inc.length?", including "+listJoin(inc):""}.`;
+      else if(inc.length)s+=`${s?" ":""}Present were ${listJoin(inc)}.`;
+      if(vl.length)s+=" Visiting brethren: "+vl.map(r=>[r.name,r.lodge&&`of ${r.lodge}`].filter(Boolean).join(" ")).join("; ")+".";
+      P(s,{align:"justify"});
+    }
+    const pa=val(m,"prev.action"),pn=val(m,"prev.notes");
+    if(pa||pn){const earlier=minutes.filter(x=>x.date<m.date).sort((a,b)=>a.date<b.date?1:-1)[0];
+      P(pa?`The minutes of the previous Stated Communication${earlier?` of ${longDate(earlier.date)}`:""} were ${pa}.${pn?" "+pn:""}`:`The minutes of the previous communication – ${pn}`,{align:"justify"})}
+    const on=id=>secOn(MS.find(x=>x.id===id));
+    if(on("corr")){const it=list(m,"corr.items"),n=val(m,"corr.notes");
+      if(it.length||n)P("Correspondence was read – "+[it.map(r=>[r.from&&`from ${r.from}`,r.about&&`regarding ${r.about}`].filter(Boolean).join(" ")).join("; ")+(it.length?".":""),n].filter(Boolean).join(" "),{align:"justify"})}
+    if(on("pet")){const it=list(m,"pet.items");
+      if(it.length)H("Petitions",it.map(r=>`A petition for ${r.for||"the degrees"} was received from ${r.name||"a petitioner"}${r.committee?` and referred to an investigating committee of ${r.committee}`:""}.`).join(" "))}
+    if(on("ballot")){const it=list(m,"ballot.items");
+      if(it.length)H("Balloting",it.map(r=>`A ballot was taken on the petition of ${r.name||"the candidate"} for ${r.for||"the degrees"}, and he was declared ${r.result||"elected"}.`).join(" "))}
+    if(on("treas")){const funds=[["gen","General Fund"],["char","Charity Fund"],["wo","Widows & Orphans Fund"]].filter(([k])=>val(m,"treas."+k)).map(([k,n])=>`${n} $${money2(val(m,"treas."+k))}`);
+      const a=val(m,"treas.action"),n=val(m,"treas.notes");
+      if(funds.length||a||n)H("The Treasurer’s Report",[funds.length&&funds.join("; ")+".",a&&`The report was ${a}.`,n].filter(Boolean).join(" "))}
+    if(on("bills")){const it=list(m,"bills.items"),a=val(m,"bills.action");
+      if(it.length||a)H("Bills",[it.map(r=>`${r.payee||"____"}${r.amt?` $${money2(r.amt)}`:""}`).join("; ")+(it.length?".":""),a&&`The bills were ${a}.`].filter(Boolean).join(" "))}
+    const business=(id,title)=>{if(!on(id))return;const mo=Array.isArray(m.s[id+".motions"])?val(m,id+".motions"):[],n=val(m,id+".notes");if(!mo.length&&!n)return;
+      const sent=mo.map(r=>{const by=bro(r.by),se=bro(r.second);
+        return `${by?`Motion by ${by}`:"A motion was made"}${se?`, seconded by ${se},`:""} to ${r.text||"____"}. Motion ${r.result||"carried"}.`});
+      H(title,[...sent,n].filter(Boolean).join(" "))};
+    business("old","Old Business");business("new","New Business");
+    if(on("degree")){const d=val(m,"degree.deg"),c=val(m,"degree.cands"),by=val(m,"degree.by");
+      if(d||c)H("Degree Work",`The ${d||"____"} degree was conferred upon ${c||"____"}${by?`, ${by} presiding`:""}.`)}
+    if(on("mw")){const n=val(m,"mw.notes");if(n)P(`Masters & Wardens – ${n}`,{gap:18})}
+    if(on("edu")){const by=bro(val(m,"edu.by")),tp=val(m,"edu.topic"),n=val(m,"edu.notes");
+      if(by||tp||n)H("Masonic Education",[(by||tp)&&`${by||"A brother"} presented ${tp?`on ${tp}`:"Masonic Education"}.`,n].filter(Boolean).join(" "))}
+    if(on("sick")){const it=list(m,"sick.items");if(it.length)H("Sick & Distressed",it.map(r=>[r.name,r.note].filter(Boolean).join(", ")).join("; ")+".")}
+    if(on("ann")){const n=val(m,"ann.notes");if(n)H("Announcements",n)}
+    const cl=[["sw","The SW"],["jw","The JW"],["wm","The WM"]].filter(([k])=>val(m,"close."+k));
+    const go=val(m,"close.go"),gn=val(m,"close.goName"),gr=val(m,"close.goNotes");
+    if(cl.length||go||gn||gr){
+      P("Proceeding to close:",{gap:18});
+      cl.forEach(([k,lab])=>P(`${lab} – ${val(m,"close."+k)}`,{gap:10,align:"justify"}));
+      if(go||gn||gr)P(`${go||"Grand Lodge Officer"}${gn?`, ${gn}`:""}${gr?` – ${gr}`:""}`,{gap:10,align:"justify"});
+    }
+    const ct=val(m,"closing.time");
+    P(`There being no further business, the Lodge was closed in due form${ct?` at ${timeLC(ct)}`:""} on the ${deg} degree of Masonry.`,{gap:18,align:"justify"});
+    const coll=[["dinner","Dinner"],["wo","W & O"]].filter(([k])=>val(m,"closing."+k)).map(([k,n])=>`${n}: $${money2(val(m,"closing."+k))}`);
+    B.push({t:"sig",sec:fullName(m.seats.SEC),wm:wm?(wm.pm?"WB ":"")+wm.name:"",coll,approved:m.status==="Approved"});
+    return B;
+  }
+
+  /* preview of the long form on screen */
+  function longHTML(m){
+    const runHTML=r=>r.map(([t,st])=>st?`<span class="${st.includes("b")?"b ":""}${st.includes("u")?"u":""}">${esc(t)}</span>`:esc(t)).join("").replace(/\n/g,"<br>");
+    return longForm(m).map(b=>{
+      if(b.t==="lh")return `<div class="lh"><div class="lh-name">${esc(b.L.base)} <span class="scap">Lodge No.</span> ${esc(b.L.num)}</div><div class="lh-rule" aria-hidden="true"><i></i>★<i></i></div><div class="lh-gl">${esc(b.L.gl)}</div></div>`;
+      if(b.t==="seats")return `<table class="seats"><tbody>${b.rows.map(r=>`<tr>${r.map(c=>c?`<td>${esc(c.name)}</td><td class="ab">${c.ab}</td>`:"<td></td><td></td>").join("")}</tr>`).join("")}</tbody></table>`;
+      if(b.t==="sig")return `<div class="sig2"><div class="attest">${b.wm?`<p>Attest:</p><p class="line"></p><p>${esc(b.wm)}, Worshipful Master</p>`:""}</div>
+        <div class="right"><p>Fraternally Submitted,</p><p class="line"></p><p>${b.sec?esc(b.sec)+", ":""}Secretary</p>${b.coll.map(c=>`<p>${esc(c)}</p>`).join("")}</div></div>`;
+      return `<p class="${b.align==="justify"?"just":""}" style="${b.gap?`margin-top:${b.gap}px`:""}">${runHTML(b.runs)}</p>`;
+    }).join("");
+  }
+
+  /* ---------- PDF: the same blocks, laid out on US Letter in Times ---------- */
+  function loadPdfLib(){
+    if(window.jspdf)return Promise.resolve();
+    return new Promise((ok,fail)=>{const s=document.createElement("script");s.src="/assets/vendor/jspdf.umd.min.js";s.onload=ok;s.onerror=()=>fail(new Error("PDF library did not load"));document.head.appendChild(s)});
+  }
+  function buildPdf(m){
+    const doc=new window.jspdf.jsPDF({unit:"pt",format:"letter"});
+    const PW=612,PH=792,ML=72,MR=72,MT=72,MB=72,W=PW-ML-MR;let y=MT;
+    const font=(st,size)=>{doc.setFont("times",st&&st.includes("b")?"bold":"normal");doc.setFontSize(size)};
+    const room=h=>{if(y+h>PH-MB){doc.addPage();y=MT}};
+    /* small caps: capitals at full size, the rest as smaller capitals */
+    const scSegs=(text,big,small)=>{const out=[];for(const ch of text){const up=ch.toUpperCase();const isCap=ch===up&&/[A-Z0-9&.]/.test(ch);out.push([isCap?ch:up,isCap?big:small])}return out};
+    const segWidth=segs=>segs.reduce((w,[c,sz])=>{font("",sz);return w+doc.getTextWidth(c)},0);
+    const drawSegs=(segs,x,base)=>{for(const [c,sz] of segs){font("",sz);doc.text(c,x,base);x+=doc.getTextWidth(c)}};
+    const blocks=longForm(m);
+    for(const b of blocks){
+      if(b.t==="lh"){
+        const head=[...[...(b.L.base+" ")].map(c=>[c,26]),...scSegs("Lodge No.",26,20),...[...(" "+b.L.num)].map(c=>[c,26])];
+        let w=segWidth(head);drawSegs(head,(PW-w)/2,y+20);y+=34;
+        const cx=PW/2;doc.setLineWidth(1);doc.line(cx-170,y,cx-14,y);doc.line(cx+14,y,cx+170,y);
+        const R=7,r=2.9,pts=[];for(let i=0;i<10;i++){const a=-Math.PI/2+i*Math.PI/5,rad=i%2?r:R;pts.push([cx+rad*Math.cos(a),y-1+rad*Math.sin(a)])}
+        doc.setFillColor(0,0,0);doc.lines(pts.slice(1).map((p,i)=>[p[0]-pts[i][0],p[1]-pts[i][1]]),pts[0][0],pts[0][1],[1,1],"F",true);
+        y+=20;const gl=scSegs(b.L.gl,14,11);w=segWidth(gl);drawSegs(gl,(PW-w)/2,y);y+=30;continue;
+      }
+      if(b.t==="seats"){
+        const cw=[192,44,188,44],rh=17;room(rh*b.rows.length+10);doc.setLineWidth(.6);
+        for(const r of b.rows){let x=ML;
+          [r[0]&&r[0].name,r[0]&&r[0].ab,r[1]&&r[1].name,r[1]&&r[1].ab].forEach((t,i)=>{doc.rect(x,y,cw[i],rh);if(t){font("",11.5);doc.text(String(t),x+4,y+12.5)}x+=cw[i]});
+          y+=rh}
+        y+=14;continue;
+      }
+      if(b.t==="sig"){
+        room(120);y+=16;const right=PW-MR,colX=PW/2+20;font("",12);
+        doc.text("Fraternally Submitted,",right,y,{align:"right"});
+        if(b.wm)doc.text("Attest:",ML,y);
+        y+=34;doc.setLineWidth(.6);doc.line(colX+40,y,right,y);if(b.wm)doc.line(ML,y,ML+200,y);y+=14;
+        doc.text(`${b.sec?b.sec+", ":""}Secretary`,right,y,{align:"right"});if(b.wm)doc.text(`${b.wm}, Worshipful Master`,ML,y);
+        y+=22;for(const c of b.coll){doc.text(c,right,y,{align:"right"});y+=15}
+        continue;
+      }
+      /* paragraph: lay out word by word so bold and underlined headings sit inline */
+      /* a run that doesn't start with a space (": " after a heading) sticks to the word before it */
+      const words=[];b.runs.forEach(([t,st],ri)=>String(t).split(/(\n| )/).forEach((w,wi)=>{if(w===" "||w==="")return;words.push({w,st,glue:ri>0&&wi===0})}));
+      const lh=15,size=12;y+=b.gap!==undefined?b.gap-6:4;
+      let line=[],lw=0;font("",size);const sp=doc.getTextWidth(" ");
+      const flush=last=>{room(lh);let x=ML;const gaps=line.filter((o,i)=>i&&!o.glue).length;
+        const extra=b.align==="justify"&&!last&&gaps>0?(W-lw)/gaps:0;
+        line.forEach((o,i)=>{font(o.st,size);doc.text(o.w,x,y+11);const ww=doc.getTextWidth(o.w);
+          const next=line[i+1],gap=next&&next.glue?0:sp+extra;
+          if(o.st.includes("u")){const ul=ww+(next&&next.st.includes("u")?gap:0);doc.setLineWidth(.6);doc.line(x,y+12.6,x+ul,y+12.6)}
+          x+=ww+gap});
+        y+=lh;line=[];lw=0};
+      for(const o of words){
+        if(o.w==="\n"){flush(true);continue}
+        font(o.st,size);const ww=doc.getTextWidth(o.w);
+        if(line.length&&lw+sp+ww>W)flush(false);
+        lw+=(line.length&&!o.glue?sp:0)+ww;line.push(o);
+      }
+      if(line.length)flush(true);
+    }
+    const n=doc.getNumberOfPages();
+    for(let i=1;i<=n;i++){doc.setPage(i);font("",9);doc.text(`Page ${i} of ${n}`,PW/2,PH-36,{align:"center"})}
+    return doc;
+  }
+  async function downloadPdf(){
+    const btn=$('[data-act="pdf"]');if(btn){btn.disabled=true;btn.textContent="Making PDF…"}
+    try{await loadPdfLib();const L=lodgeParts();
+      buildPdf(current).save(`${(L.base+" Lodge "+L.num).trim().replace(/[^A-Za-z0-9]+/g,"-")}-Minutes-${current.date}.pdf`);
+    }catch(e){alert("The PDF couldn't be made: "+e.message)}
+    finally{renderMinutes()}
+  }
+
+  /* ---------- short form ---------- */
+  function memberOptions(cur){
+    const opts=members.filter(x=>x.active).sort((a,b)=>a.name.split(" ").pop().localeCompare(b.name.split(" ").pop()));
+    return `<option value=""></option>`+opts.map(x=>`<option value="${x.id}"${+cur===x.id?" selected":""}>${esc((x.pm?"WB ":"")+x.name)}</option>`).join("");
+  }
+  function input(type,k,v,label,opts,attrs){
+    const a=`aria-label="${esc(label)}" ${attrs||""}`;
+    if(type==="sel")return `<select ${a}>${opts.map(o=>`<option value="${esc(o)}"${o===(v||"")||(!v&&o===opts[0])?" selected":""}>${esc(o||"Choose")}</option>`).join("")}</select>`;
+    if(type==="member")return `<select ${a}>${memberOptions(v)}</select>`;
+    if(type==="area")return `<textarea rows="2" ${a}>${esc(v||"")}</textarea>`;
+    if(type==="time")return `<input type="time" value="${esc(v||"")}" ${a}>`;
+    if(type==="num")return `<input type="number" min="0" inputmode="numeric" value="${esc(v||"")}" ${a}>`;
+    if(type==="money")return `<input inputmode="decimal" value="${esc(v||"")}" placeholder="0.00" ${a}>`;
+    return `<input value="${esc(v||"")}" ${a}>`;
+  }
+  function shortForm(m,locked){
+    const dis=locked?"disabled":"";
+    const seatRows=SEATS.map(x=>`<label class="sf-seat"><span title="${x.t}">${x.ab}</span>${seatSelect("data-seat",x,m.seats[x.k]).replace("<select ",`<select ${dis} `)}</label>`).join("");
+    let h=`<fieldset class="sf-sec"><legend>Meeting</legend><div class="sf-grid">
+      <label class="sf-f"><span>Date of the Stated Communication</span><input type="date" data-date value="${m.date}" ${dis}></label></div>
+      <p class="hint" style="margin-top:10px">Officers in the chairs. Anyone filling in for the regular officer is marked "pro tem".</p>
+      <div class="sf-seats">${seatRows}</div></fieldset>`;
+    for(const sec of MS){
+      if(!secOn(sec))continue;
+      h+=`<fieldset class="sf-sec"><legend>${esc(sec.title)}</legend><div class="sf-grid">`;
+      for(const [f,label,type,opts,suffix] of sec.fields){
+        const k=`${sec.id}.${f}`,v=m.s[k];
+        if(type==="list"||type==="motions"){
+          const sub=type==="motions"?[["text","Motion to…"],["by","Moved by","member"],["second","Seconded by","member"],["result","Result","sel",RESULT]]:opts;
+          const rows=Array.isArray(v)?v:[];
+          h+=`<div class="sf-f sf-wide"><span>${esc(label)}</span><div class="sf-list">${rows.map((r,i)=>`<div class="sf-row">${sub.map(([sk,sl,st,so])=>`<label class="sf-cell"><span>${esc(sl)}</span>${input(st||"text",k,r[sk],sl,so,`data-list="${k}" data-row="${i}" data-sub="${sk}" ${dis}`)}</label>`).join("")}${locked?"":`<button type="button" class="btn line sm sf-del" data-del="${k}" data-row="${i}" aria-label="Remove">✕</button>`}</div>`).join("")}
+            ${locked?"":`<button type="button" class="btn line sm" data-add="${k}">+ Add ${type==="motions"?"motion":esc(label.toLowerCase().replace(/s$/,""))}</button>`}</div></div>`;
+          continue;
+        }
+        h+=`<label class="sf-f${type==="area"?" sf-wide":""}"><span>${esc(label)}${suffix?` <em>${esc(suffix)}</em>`:""}</span>${input(type||"text",k,v,label,opts,`data-k="${k}" ${dis}`)}</label>`;
+      }
+      h+=`</div></fieldset>`;
+    }
+    return h;
+  }
+  function sectionsPanel(){
+    return `<div class="card sf-sections"><h4>Sections in your minutes</h4><p class="hint">Turn on the parts your lodge uses. Opening, attendance, previous minutes and closing are always included.</p>
+      <div class="sf-toggles">${MS.filter(s=>!s.core).map(s=>`<label><input type="checkbox" data-sec="${s.id}"${secOn(s)?" checked":""}> ${esc(s.title)}</label>`).join("")}</div></div>`;
+  }
+
   function renderMinutes(){
     if(!current){
       $("#min-list").innerHTML='<p class="hint">No minutes yet.</p>';
       $("#min-toolbar").innerHTML="";
-      $("#min-doc").innerHTML='<p style="text-align:center;margin:2in 0">Click "New minutes from template" to start the minutes for your next Stated Communication.</p>';
+      $("#min-doc").innerHTML='<p style="text-align:center;margin:2in 0">Click "New minutes" to start the minutes for your next Stated Communication.</p>';
       return;
     }
-    const L=lodgeParts(),m=current,f=m.f,ed=editing;
+    const m=current,locked=m.status==="Approved";
+    if(locked)minView="long";
     $("#min-list").innerHTML=minutes.map(x=>`<button type="button" class="min-item" data-id="${x.id}" aria-current="${x===current}">
-      <b>Stated Communication</b><span>${fmt(parse(x.date),{month:"long",day:"numeric",year:"numeric"})}</span>${statusPill(x.status)}</button>`).join("");
-    const inl=(k,w)=>ed?`<input class="bl" data-f="${k}" value="${esc(f[k])}" style="width:${w||5}ch" aria-label="${k}">`:(f[k]?`<span class="val">${esc(f[k])}</span>`:`<span class="blank">&nbsp;</span>`);
-    const area=k=>ed?`<textarea class="bl" data-f="${k}" rows="2" aria-label="${k}">${esc(f[k])}</textarea>`:(f[k]?` <span class="val">${esc(f[k])}</span>`:"");
-    const seatCell=k=>{if(!k)return "<td></td><td></td>";const x=SEATS.find(s=>s.k===k);
-      return `<td>${ed?seatSelect("data-seat",x,m.seats[k],"bl"):esc(fullName(m.seats[k]))}</td><td class="ab">${x.ab}</td>`};
-    const rows=[["WM","SD"],["SW","JD"],["JW","STW1"],["TREAS","STW2"],["SEC","TILER"],[null,"CHAP"]];
-    const wmName=(member(m.seats.WM)||{}).name||"__________";
-    const date=ed?`<input class="bl" type="date" data-date value="${m.date}" style="width:auto;text-align:left">`:fmt(parse(m.date),{month:"long",day:"numeric",year:"numeric"});
-    $("#min-doc").innerHTML=`
-      <div class="lh">
-        <div class="lh-name">${esc(L.base)} <span class="scap">Lodge No.</span> ${esc(L.num)}</div>
-        <div class="lh-rule" aria-hidden="true"><i></i>★<i></i></div>
-        <div class="lh-gl">${esc(L.gl)}</div>
-      </div>
-      <p class="dt">${date}</p>
-      <p>At a regular Communication of ${esc(L.base)} Lodge No. ${esc(L.num)}, ${esc(L.abbr)},</p>
-      <table class="seats"><tbody>${rows.map(([a,b])=>`<tr>${seatCell(a)}${seatCell(b)}</tr>`).join("")}</tbody></table>
-      <p class="just">The Worshipful Master, W Bro. ${esc(wmName)}, opened the Lodge at ${inl("opened")} pm in due form on the third degree of Masonry.</p>
-      <p class="just">The Worshipful Master welcomed visiting brothers and the Past Masters visiting and of the Lodge. We had a total of ${inl("total",4)} brothers present, including ${inl("visitors",4)} visitors and ${inl("pms",4)} past masters.</p>
-      <p>The minutes of the previous communications –${area("prev")}</p>
-      <p>Correspondence was read –${area("corr")}</p>
-      <p><span class="hd">Balloting</span>:${area("ballot")}</p>
-      <p><span class="hd">The Treasurer’s Report</span> $${area("treas")}</p>
-      <p><span class="hd">Old Business</span>:${area("old")}</p>
-      <p><span class="hd">New Business:</span>${area("nb")}</p>
-      <p class="gap">Masters &amp; Wardens${area("mw")}</p>
-      <p><span class="hd">Masonic Education</span>:${area("edu")}</p>
-      <p><span class="hd">Sick &amp; Distressed</span>:${area("sick")}</p>
-      <p class="gap">Proceeding to close:</p>
-      <p class="gap">The SW –${area("sw")}</p>
-      <p class="gap">The JW –${area("jw")}</p>
-      <p class="gap">The WM -${area("wm")}</p>
-      <p class="gap">DDGM (or Grand Officer)${area("ddgm")}</p>
-      <p class="just">There being no further business, the Lodge was closed in due form at ${inl("closed")}pm on the third degree of Masonry.</p>
-      <div class="sig">
-        <p>Fraternally Submitted,</p>
-        <p style="margin-top:22px">${esc(fullName(m.seats.SEC))}</p>
-        <p>Secretary</p>
-        <p style="margin-top:12px">Dinner: $${inl("dinner")}</p>
-        <p>W &amp; O: $${inl("wo")}</p>
-      </div>`;
-    let acts;
-    if(ed)acts=`<span class="hint">Editing. Changes save as you type.</span><span class="acts"><button class="btn sm" type="button" data-act="done">Done editing</button></span>`;
-    else if(m.status==="Approved")acts=`<span>${statusPill(m.status)} <span class="hint">Approved at the following Stated. Locked.</span></span><span class="acts"><button class="btn line sm" type="button" data-act="print">Print or save PDF</button></span>`;
-    else acts=`${statusPill(m.status)}<span class="acts"><button class="btn line sm" type="button" data-act="edit">Edit</button>${m.status==="Draft"?'<button class="btn line sm" type="button" data-act="submit">Send for approval</button>':""}<button class="btn line sm" type="button" data-act="print">Print or save PDF</button><button class="btn sm" type="button" data-act="approve">Mark approved</button></span>`;
-    $("#min-toolbar").innerHTML=acts;
+      <b>Stated Communication</b><span>${longDate(x.date)}</span>${statusPill(x.status)}</button>`).join("");
+    const seg=`<span class="seg" role="group" aria-label="View"><button type="button" data-view="short" aria-pressed="${minView==="short"}"${locked?" disabled":""}>Short form</button><button type="button" data-view="long" aria-pressed="${minView==="long"}">Full write-up</button></span>`;
+    const acts=[`<button class="btn sm" type="button" data-act="pdf">Save as PDF</button>`];
+    if(!locked){acts.unshift(`<button class="btn line sm" type="button" data-act="sections" aria-expanded="${showSections}">Sections</button>`);
+      if(m.status==="Draft")acts.push('<button class="btn line sm" type="button" data-act="submit">Send for approval</button>');
+      acts.push('<button class="btn line sm" type="button" data-act="approve">Mark approved</button>')}
+    $("#min-toolbar").innerHTML=`<span class="min-state">${statusPill(m.status)}${locked?' <span class="hint">Approved. Locked.</span>':""}</span>${seg}<span class="acts">${acts.join("")}</span>`;
+    const wrap=$("#min-doc");
+    if(minView==="short"){wrap.className="sf";wrap.innerHTML=(showSections?sectionsPanel():"")+shortForm(m,locked)}
+    else{wrap.className="paper";wrap.innerHTML=longHTML(m)}
   }
-  $("#min-list").addEventListener("click",e=>{const b=e.target.closest(".min-item");if(!b)return;current=minutes.find(m=>m.id==b.dataset.id);editing=false;renderMinutes()});
+  $("#min-list").addEventListener("click",e=>{const b=e.target.closest(".min-item");if(!b)return;current=minutes.find(m=>m.id==b.dataset.id);minView=current.status==="Approved"?"long":"short";renderMinutes()});
   $("#min-toolbar").addEventListener("click",e=>{
+    const v=e.target.closest("[data-view]");if(v&&!v.disabled){minView=v.dataset.view;renderMinutes();return}
     const a=e.target.closest("[data-act]");if(!a)return;const act=a.dataset.act;
-    if(act==="print"){window.print();return}
-    if(act==="edit")editing=true;
-    if(act==="done")editing=false;
+    if(act==="pdf"){downloadPdf();return}
+    if(act==="sections"){showSections=!showSections;minView="short"}
     if(act==="submit")current.status="Awaiting approval";
-    if(act==="approve"){current.status="Approved";editing=false}
+    if(act==="approve"){current.status="Approved";minView="long"}
     renderMinutes();
   });
-  $("#min-doc").addEventListener("input",e=>{const t=e.target;if(t.dataset.f!==undefined)current.f[t.dataset.f]=t.value});
-  $("#min-doc").addEventListener("change",e=>{
-    const t=e.target;
-    if(t.dataset.seat){current.seats[t.dataset.seat]=t.value;renderMinutes()}
+  const doc$=$("#min-doc");
+  doc$.addEventListener("input",e=>{const t=e.target;
+    if(t.dataset.k)current.s[t.dataset.k]=t.value;
+    if(t.dataset.list){const rows=current.s[t.dataset.list];if(rows&&rows[+t.dataset.row])rows[+t.dataset.row][t.dataset.sub]=t.value}
+  });
+  doc$.addEventListener("change",e=>{const t=e.target;
+    if(t.dataset.seat){current.seats[t.dataset.seat]=t.value}
     if(t.hasAttribute("data-date")&&t.value){current.date=t.value;renderMinutes()}
+    if(t.dataset.sec){minuteSections[t.dataset.sec]=t.checked;renderMinutes()}
+    if(t.dataset.k&&t.tagName==="SELECT")current.s[t.dataset.k]=t.value;
+    if(t.dataset.list&&t.tagName==="SELECT"){const rows=current.s[t.dataset.list];if(rows&&rows[+t.dataset.row])rows[+t.dataset.row][t.dataset.sub]=t.value}
+  });
+  doc$.addEventListener("click",e=>{
+    const add=e.target.closest("[data-add]"),del=e.target.closest("[data-del]");
+    if(add){const k=add.dataset.add;(current.s[k]=Array.isArray(current.s[k])?current.s[k]:[]).push({});renderMinutes();
+      const last=doc$.querySelector(`[data-add="${k}"]`).closest(".sf-list").querySelector(".sf-row:last-of-type [data-list]");if(last)last.focus()}
+    if(del){current.s[del.dataset.del].splice(+del.dataset.row,1);renderMinutes()}
   });
   $("#min-new").addEventListener("click",()=>{
-    const m={id:nextMin++,date:nextStated||"2026-11-10",status:"Draft",seats:{...officers},f:{...BLANK}};
-    minutes.unshift(m);current=m;editing=true;renderMinutes();
+    const m={id:nextMin++,date:nextStated||"2026-11-10",status:"Draft",seats:{...officers},s:{"prev.action":"read and approved"}};
+    minutes.unshift(m);current=m;minView="short";renderMinutes();
   });
+
 
   /* ---------- plan (new lodges from /start) ---------- */
   const PLANS={starter:{name:"Lodge Starter",price:"$0 / month"},lodge:{name:"Lodge",price:"$19 / month"},district:{name:"District / Grand Lodge",price:"custom pricing"}};
@@ -439,7 +670,7 @@
   function snapshot(){
     const form={};document.querySelectorAll("#site-form input[id],#site-form select[id]").forEach(el=>form[el.id]=el.value);
     return {app:"LodgeNet",version:1,page:STORE_KEY,savedAt:new Date().toISOString(),form,color:siteColor,
-      membersFull:members,officers,events,minutes,gmail,nextStated,...(plan?{plan}:{})};
+      membersFull:members,officers,events,minutes,minuteSections,gmail,nextStated,...(plan?{plan}:{})};
   }
   const stamp=d=>new Date(d).toLocaleString("en-US",{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"});
   function setState(t){const el=$("#save-state");if(el)el.textContent=t}
