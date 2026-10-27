@@ -359,6 +359,22 @@ footer .wrap{padding-block:28px;display:flex;flex-wrap:wrap;justify-content:spac
 .invite{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:8px;align-items:end}
 .invite .field{margin:0}
 
+/* owner's hub */
+.hub{display:grid;gap:40px}
+.hub > .hint{margin-bottom:-28px}
+.hub > *{min-width:0}
+.hub-form.hub-key{grid-template-columns:minmax(0,1fr) auto auto}
+@media (max-width:520px){.hub-form.hub-key{grid-template-columns:1fr}}
+.hub-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+.hub-stat{background:var(--surface);gap:4px}
+.hub-stat b{font-size:28px;line-height:1.2}
+.hub-sec .roster a{color:var(--fg)}
+.hub-sec .roster input[type=checkbox]{width:18px;height:18px}
+.hub-add{margin-top:12px;background:var(--surface)}
+.hub-add summary{cursor:pointer}
+.hub-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:0 12px;align-items:end;margin-top:6px}
+.hub-form .btn{justify-self:start;margin-bottom:14px}
+
 @media (max-width:900px){
   .hero,.panel-grid,.store-wrap,.cal-wrap,.min-wrap,.mem-wrap{grid-template-columns:1fr}
   .features{grid-template-columns:repeat(2,1fr)}

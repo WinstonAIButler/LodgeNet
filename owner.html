@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>LodgeNet Owner's Hub</title>
+<meta name="description" content="Private: the LodgeNet owner's view of every lodge, account and plan code.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="/assets/styles.css">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="sc" viewBox="0 0 64 64">
+    <g fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="32" cy="9" r="4"/>
+      <path d="M30 12 L12 50 M34 12 L52 50"/>
+      <path d="M10 30 L32 54 L54 30"/>
+    </g>
+  </symbol>
+</svg>
+<header class="top">
+  <div class="wrap">
+    <nav class="nav" aria-label="Main">
+      <a class="brand" href="/"><svg><use href="#sc"/></svg>LodgeNet</a>
+      <button class="btn ghost sm" type="button" id="sign-out" hidden>Sign out</button>
+    </nav>
+    <div class="page-head">
+      <div class="eyebrow">Private</div>
+      <h1>Owner's hub</h1>
+      <p id="head-text">Every lodge, account and plan code on LodgeNet. Only the LodgeNet owner's account can open this page.</p>
+    </div>
+  </div>
+  <div class="pavement" aria-hidden="true"></div>
+</header>
+
+<main>
+  <section class="band">
+    <div class="wrap">
+      <p class="hint" id="loading">Checking your sign-in…</p>
+
+      <div class="card auth-gate" id="v-off" hidden>
+        <h3>Sign-in isn't switched on here yet</h3>
+        <p class="hint">This copy of LodgeNet isn't connected to its accounts database, so the owner's hub can't open. Add Supabase to the Vercel project and run supabase/owner-hub.sql.</p>
+      </div>
+
+      <div class="card auth-card" id="v-out" hidden style="max-width:420px">
+        <h3>Owner sign-in</h3>
+        <form id="f-auth" novalidate>
+          <div class="field"><label for="a-email">Email</label><input id="a-email" type="email" autocomplete="email" required></div>
+          <div class="field"><label for="a-pass">Password</label><input id="a-pass" type="password" autocomplete="current-password" required></div>
+          <button class="btn" type="submit" id="a-go">Sign in</button>
+        </form>
+        <button class="link-btn" type="button" id="a-forgot">Forgot your password?</button>
+        <p class="auth-msg" id="a-msg" role="status" aria-live="polite"></p>
+      </div>
+
+      <div class="card auth-gate" id="v-no" hidden>
+        <h3>This page is private</h3>
+        <p class="hint" id="no-text">This account can't open the owner's hub.</p>
+        <a class="btn line sm" href="/login">Go to My lodges</a>
+      </div>
+
+      <div id="v-in" class="hub" hidden>
+        <p class="hint" id="who"></p>
+
+        <div class="hub-stats" id="stats"></div>
+
+        <div class="hub-sec">
+          <div class="mem-head"><h2 class="panel-title">Revenue</h2></div>
+          <div class="card"><p class="hint">Subscription revenue shows here once Stripe billing is switched on. Lodges on a plan code are listed as no charge below.</p></div>
+        </div>
+
+        <div class="hub-sec">
+          <div class="mem-head"><h2 class="panel-title">Stripe</h2><span class="hint">Your Stripe account's API key, for LodgeNet's billing.</span></div>
+          <div class="card hub-add" style="margin-top:0">
+            <p id="stripe-status"><span class="hint">Checking…</span></p>
+            <form id="f-stripe" class="hub-form hub-key" novalidate>
+              <div class="field"><label for="s-key">Secret or restricted key</label><input id="s-key" type="password" autocomplete="off" spellcheck="false" placeholder="rk_live_… or sk_live_…"></div>
+              <button class="btn sm" type="submit" id="s-go">Save key</button>
+              <button class="btn line sm" type="button" id="s-clear" hidden>Remove key</button>
+            </form>
+            <p class="hint">Find it in the Stripe Dashboard under Developers → API keys. A restricted key (rk_) limited to what LodgeNet needs is safest. Once saved, the key is never shown again, here or anywhere on the site; only LodgeNet's server can use it. If Stripe is connected to the site through Vercel, that key is used first and this box is a backup.</p>
+            <p class="auth-msg" id="s-msg" role="status" aria-live="polite"></p>
+          </div>
+        </div>
+
+        <div class="hub-sec">
+          <div class="mem-head"><h2 class="panel-title">Lodges</h2><span class="hint">Change a plan or mark it no charge; it saves at once.</span></div>
+          <div class="table-scroll"><table class="roster"><thead><tr><th>Lodge</th><th>Plan</th><th>No charge</th><th>Brethren</th><th>Account owner</th><th>Updated</th></tr></thead><tbody id="lodges"></tbody></table></div>
+          <p class="auth-msg" id="lodge-msg" role="status" aria-live="polite"></p>
+          <details class="card hub-add">
+            <summary><b>Add a lodge</b></summary>
+            <form id="f-lodge" class="hub-form" novalidate>
+              <div class="field"><label for="l-name">Lodge name</label><input id="l-name" required placeholder="Murrells Inlet Lodge"></div>
+              <div class="field"><label for="l-num">No.</label><input id="l-num" inputmode="numeric" placeholder="368"></div>
+              <div class="field"><label for="l-city">City</label><input id="l-city"></div>
+              <div class="field"><label for="l-state">State</label><input id="l-state" maxlength="2" placeholder="SC"></div>
+              <div class="field"><label for="l-gl">Grand Lodge</label><input id="l-gl"></div>
+              <div class="field"><label for="l-slug">Page address</label><input id="l-slug" required placeholder="murrells-inlet-368" spellcheck="false"></div>
+              <div class="field"><label for="l-plan">Plan</label><select id="l-plan"></select></div>
+              <div class="field"><label for="l-owner">Account owner's email</label><input id="l-owner" type="email" placeholder="secretary@example.com"></div>
+              <button class="btn sm" type="submit">Add lodge</button>
+            </form>
+            <p class="hint">The owner gets an invite: they choose Create account at /login with that email. The lodge's dashboard page (lodges/&lt;address&gt;.html) still needs adding to the site.</p>
+            <p class="auth-msg" id="l-msg" role="status" aria-live="polite"></p>
+          </details>
+        </div>
+
+        <div class="hub-sec">
+          <div class="mem-head"><h2 class="panel-title">Plan codes</h2><span class="hint">A code puts a lodge on its plan at no charge.</span></div>
+          <div class="table-scroll"><table class="roster"><thead><tr><th>Code</th><th>Plan</th><th>Used</th><th>Expires</th><th>Note</th><th></th></tr></thead><tbody id="codes"></tbody></table></div>
+          <details class="card hub-add">
+            <summary><b>New code</b></summary>
+            <form id="f-code" class="hub-form" novalidate>
+              <div class="field"><label for="c-code">Code</label><input id="c-code" required spellcheck="false" autocapitalize="characters"></div>
+              <div class="field"><label for="c-plan">Plan</label><select id="c-plan"></select></div>
+              <div class="field"><label for="c-max">Uses</label><input id="c-max" type="number" min="1" value="1" placeholder="Unlimited"></div>
+              <div class="field"><label for="c-exp">Expires</label><input id="c-exp" type="date"></div>
+              <div class="field"><label for="c-note">Note</label><input id="c-note" placeholder="Who it's for"></div>
+              <button class="btn sm" type="submit">Create code</button>
+            </form>
+            <p class="auth-msg" id="c-msg" role="status" aria-live="polite"></p>
+          </details>
+        </div>
+
+        <div class="hub-sec">
+          <div class="mem-head"><h2 class="panel-title">Accounts</h2><span class="hint" id="acct-count"></span></div>
+          <div class="table-scroll"><table class="roster"><thead><tr><th>Email</th><th>Lodges</th><th>Joined</th><th>Last sign-in</th></tr></thead><tbody id="users"></tbody></table></div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+<footer>
+  <div class="wrap">
+    <span><b style="font-family:var(--display);color:#fff;letter-spacing:.06em">LodgeNet</b> · Owner's hub</span>
+    <span>Private</span>
+  </div>
+</footer>
+<script src="/assets/auth.js"></script>
+<script src="/assets/owner.js"></script>
+</body>
+</html>

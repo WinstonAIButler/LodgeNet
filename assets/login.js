@@ -31,6 +31,8 @@
     $("#who").textContent="Signed in as "+session.user.email;
     show("v-in");
     renderLodges(session);
+    /* the platform owner gets a way into /owner; the hub itself checks again on the server */
+    sb.rpc("is_platform_admin").then(({data})=>{if(data===true)$("#owner-link").hidden=false},()=>{});
   }
 
   async function renderLodges(session){
