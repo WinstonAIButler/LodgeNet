@@ -100,3 +100,36 @@ revoke insert on public.lodge_members from anon, authenticated;
 drop policy if exists "owner manages invites" on public.lodge_invites;
 create policy "owner manages invites" on public.lodge_invites for all to authenticated
   using (public.lodge_role(lodge_id)='owner') with check (public.lodge_role(lodge_id)='owner');
+
+-- plan codes: redeeming one puts a lodge on that plan at no charge (lodges.comped).
+-- Codes are added in the SQL editor and can't be read from the site; only redeem_plan_code() checks them.
+alter table public.lodges add column if not exists comped boolean not null default false;
+create table if not exists public.plan_codes(
+  code text primary key,                      -- upper case
+  plan text not null check (plan in ('starter','lodge','district')),
+  max_uses integer,                           -- null for unlimited
+  uses integer not null default 0,
+  expires_at timestamptz,
+  note text,
+  created_at timestamptz not null default now()
+);
+alter table public.plan_codes enable row level security;
+revoke all on public.plan_codes from anon, authenticated;
+
+create or replace function public.redeem_plan_code(lid uuid, c text) returns text
+language plpgsql security definer set search_path=public as $$
+declare p public.plan_codes;
+begin
+  if public.lodge_role(lid) is distinct from 'owner' then
+    raise exception 'Only the lodge''s account owner can redeem a code.';
+  end if;
+  select * into p from public.plan_codes where code=upper(trim(c)) for update;
+  if not found or (p.expires_at is not null and p.expires_at<now()) or (p.max_uses is not null and p.uses>=p.max_uses) then
+    raise exception 'That code isn''t valid or has been used up.';
+  end if;
+  update public.plan_codes set uses=uses+1 where code=p.code;
+  update public.lodges set plan=p.plan, comped=true where id=lid;
+  return p.plan;
+end $$;
+revoke execute on function public.redeem_plan_code(uuid,text) from public, anon;
+grant execute on function public.redeem_plan_code(uuid,text) to authenticated;
