@@ -6,8 +6,9 @@ This repo currently holds the static prototype site:
 
 - `index.html`: home page
 - `features.html`: detail on the website, store, calendar and minutes tools
-- `demo.html`: interactive demo with a sample lodge (`/demo#store`, `#calendar`, `#minutes` open a tab directly)
+- `demo.html`: interactive demo with a sample lodge (`/demo#store`, `#calendar`, `#members`, `#minutes` open a tab directly)
 - `pricing.html`: proposed plans and FAQ
+- `lodges/murrells-inlet-368.html`: dashboard for Murrells Inlet Lodge No. 368 (served at `/lodges/murrells-inlet-368`). Each lodge page sets `window.LODGE` (name, Grand Lodge, members, officer seats, events, store items) before loading `assets/demo.js`
 - `assets/styles.css` and `assets/demo.js`: shared styles and demo logic
 
 Demo changes are kept in the browser only, and checkout takes no payment.
