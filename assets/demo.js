@@ -4,9 +4,14 @@
   const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
   /* a lodge page can set window.LODGE before this script to load its own data */
   /* edits are kept in this browser under a key per page; Export/Import moves them between browsers */
+  /* when a signed-in member opens their lodge, assets/auth.js sets LODGENET_CLOUD and edits save to the lodge account instead */
   const STORE_KEY="lodgenet:"+(location.pathname.replace(/\.html$/,"").replace(/\/$/,"")||"/");
-  let SAVED=null;try{SAVED=JSON.parse(localStorage.getItem(STORE_KEY)||"null")}catch(e){SAVED=null}
-  const CFG=Object.assign({},window.LODGE||{},SAVED||{});
+  const CLOUD=window.LODGENET_CLOUD||null;
+  let LOCAL=null;try{LOCAL=JSON.parse(localStorage.getItem(STORE_KEY)||"null")}catch(e){LOCAL=null}
+  /* the first officer to sign in carries this browser's saved edits up to the account */
+  const MOVE_LOCAL=!!(CLOUD&&CLOUD.canEdit&&!CLOUD.data&&LOCAL);
+  const SAVED=CLOUD?(CLOUD.data||(MOVE_LOCAL?LOCAL:null)):LOCAL;
+  const CFG=Object.assign({},window.LODGE||{},SAVED||{},CLOUD?{plan:CLOUD.plan}:{});
   /* ---------- states and their Grand Lodges ----------
      style: F = Free and Accepted Masons (F.&A.M.), A = Ancient Free and Accepted Masons (A.F.&A.M.) */
   const STATES=[["AL","Alabama","F"],["AK","Alaska","F"],["AZ","Arizona","F"],["AR","Arkansas","F"],["CA","California","F"],
@@ -654,11 +659,11 @@
 
   /* ---------- plan (new lodges from /start) ---------- */
   const PLANS={starter:{name:"Lodge Starter",price:"$0 / month"},lodge:{name:"Lodge",price:"$19 / month"},district:{name:"District / Grand Lodge",price:"custom pricing"}};
-  let plan=CFG.plan!==undefined?(new URLSearchParams(location.search).get("plan")||CFG.plan):"";
+  let plan=CLOUD?CFG.plan:CFG.plan!==undefined?(new URLSearchParams(location.search).get("plan")||CFG.plan):"";
   if(plan&&!PLANS[plan])plan="lodge";
   if(plan){
     const P=PLANS[plan];
-    $("#plan-line").innerHTML=`${P.name} plan · ${P.price} · <a href="/pricing">Change plan</a>`;
+    const pl=$("#plan-line");if(pl)pl.innerHTML=`${P.name} plan · ${P.price} · <a href="/pricing">Change plan</a>`;
     const eb=$("#plan-eyebrow");if(eb)eb.textContent=`Step 2 · Set up your lodge · ${P.name} plan`;
     if(plan==="starter"){
       $("#p-store .store-wrap").hidden=true;
@@ -675,14 +680,23 @@
   const stamp=d=>new Date(d).toLocaleString("en-US",{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"});
   function setState(t){const el=$("#save-state");if(el)el.textContent=t}
   let saveTimer=null;
-  function save(){
-    try{const snap=snapshot();localStorage.setItem(STORE_KEY,JSON.stringify(snap));setState("Saved in this browser · "+stamp(snap.savedAt))}
+  const VIEW_ONLY="View only. Your membership can read this lodge; officers make the changes, so edits here aren't saved.";
+  async function save(){
+    const snap=snapshot();
+    if(CLOUD){
+      if(!CLOUD.canEdit)return setState(VIEW_ONLY);
+      setState("Saving to the lodge account…");
+      try{const at=await CLOUD.save(snap);setState("Saved to the lodge account · "+stamp(at||snap.savedAt));return true}
+      catch(e){setState("Couldn't save to the lodge account ("+e.message+"). Your changes are still on screen; keep editing to retry, or Export a copy.");return false}
+    }
+    try{localStorage.setItem(STORE_KEY,JSON.stringify(snap));setState("Saved in this browser · "+stamp(snap.savedAt))}
     catch(e){setState("Couldn't save in this browser. Use Export to keep a copy.")}
   }
   const queueSave=()=>{clearTimeout(saveTimer);saveTimer=setTimeout(save,400)};
   ["input","change"].forEach(t=>$(".console").addEventListener(t,queueSave));
   $(".console").addEventListener("click",e=>{if(e.target.closest("button"))queueSave()});
-  setState(SAVED?"Saved in this browser · "+stamp(SAVED.savedAt):"Not saved yet. Changes save automatically.");
+  if(CLOUD)setState(!CLOUD.canEdit?VIEW_ONLY:CLOUD.data?"Saved to the lodge account · "+stamp(CLOUD.updatedAt):"Signed in as "+CLOUD.email+". Changes save to the lodge account automatically.");
+  else setState(SAVED?"Saved in this browser · "+stamp(SAVED.savedAt):"Not saved yet. Changes save automatically.");
   $("#data-export").addEventListener("click",()=>{
     const snap=snapshot(),slug=STORE_KEY.split("/").pop()||"lodge";
     const url=URL.createObjectURL(new Blob([JSON.stringify(snap,null,2)],{type:"application/json"}));
@@ -694,11 +708,20 @@
     const f=e.target.files[0];if(!f)return;
     try{const d=JSON.parse(await f.text());
       if(d.app!=="LodgeNet"||!d.form||!Array.isArray(d.membersFull))throw new Error("not a LodgeNet export");
-      localStorage.setItem(STORE_KEY,JSON.stringify(d));location.reload();
-    }catch(err){setState("That file isn't a LodgeNet export, so nothing was changed.")}
+      if(CLOUD){if(!CLOUD.canEdit)return setState(VIEW_ONLY);await CLOUD.save(d)}
+      else localStorage.setItem(STORE_KEY,JSON.stringify(d));
+      location.reload();
+    }catch(err){setState(err instanceof SyntaxError||err.message==="not a LodgeNet export"?"That file isn't a LodgeNet export, so nothing was changed.":"Couldn't save the import to the lodge account ("+err.message+").")}
     e.target.value="";
   });
   $("#data-reset").addEventListener("click",()=>{
+    if(CLOUD){
+      if(!CLOUD.canEdit)return setState(VIEW_ONLY);
+      if(!confirm("Discard everything saved in the lodge account and go back to the starting data? This changes it for every brother who signs in."))return;
+      clearTimeout(saveTimer);
+      CLOUD.save(null).then(()=>{try{localStorage.removeItem(STORE_KEY)}catch(e){}location.reload()},e=>setState("Couldn't start over ("+e.message+")."));
+      return;
+    }
     if(!confirm("Discard everything saved in this browser for this lodge and start over?"))return;
     clearTimeout(saveTimer);try{localStorage.removeItem(STORE_KEY)}catch(e){}
     location.reload();
@@ -706,6 +729,7 @@
 
   renderMembers();renderGmail();regenStated();
   renderCal();renderCart();renderMinutes();
+  if(MOVE_LOCAL)save().then(ok=>{if(ok)try{localStorage.removeItem(STORE_KEY)}catch(e){}});
 })();
 
 /* open a tab from the address, e.g. /demo#store */

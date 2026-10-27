@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>LodgeNet Login</title>
+<meta name="description" content="Sign in to your lodge's LodgeNet account.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="/assets/styles.css">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="sc" viewBox="0 0 64 64">
+    <g fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="32" cy="9" r="4"/>
+      <path d="M30 12 L12 50 M34 12 L52 50"/>
+      <path d="M10 30 L32 54 L54 30"/>
+    </g>
+  </symbol>
+</svg>
+<header class="top">
+  <div class="wrap">
+    <nav class="nav" aria-label="Main">
+      <a class="brand" href="/"><svg><use href="#sc"/></svg>LodgeNet</a>
+      <ul>
+        <li><a href="/features">Features</a></li>
+        <li><a href="/demo">Live demo</a></li>
+        <li><a href="/pricing">Pricing</a></li>
+        <li><a href="/login" aria-current="page">Login</a></li>
+      </ul>
+      <a class="btn gold sm" href="/pricing">Start now</a>
+    </nav>
+    <div class="page-head">
+      <div class="eyebrow">Lodge accounts</div>
+      <h1 id="head-title">Sign in to your lodge</h1>
+      <p id="head-text">Officers and brethren sign in with the email their lodge invited. Your lodge's website, calendar, members and minutes are the same on every device.</p>
+    </div>
+  </div>
+  <div class="pavement" aria-hidden="true"></div>
+</header>
+
+<main>
+  <section class="band">
+    <div class="wrap">
+      <p class="hint" id="loading">Checking your sign-in…</p>
+
+      <!-- sign-in isn't set up on this deployment -->
+      <div class="card auth-gate" id="v-off" hidden>
+        <h3>Sign-in isn't switched on here yet</h3>
+        <p class="hint">This copy of LodgeNet isn't connected to its accounts database. Lodge dashboards still work and save in your browser until it is.</p>
+        <a class="btn" href="/demo">Open the live demo</a>
+      </div>
+
+      <!-- signed out -->
+      <div class="auth-wrap" id="v-out" hidden>
+        <div class="card auth-card">
+          <div class="auth-switch" role="tablist" aria-label="Sign in or create an account">
+            <button class="tab" role="tab" type="button" id="m-in" aria-selected="true">Sign in</button>
+            <button class="tab" role="tab" type="button" id="m-up" aria-selected="false">Create account</button>
+          </div>
+          <form id="f-auth" novalidate>
+            <div class="field"><label for="a-email">Email</label><input id="a-email" type="email" autocomplete="email" required></div>
+            <div class="field"><label for="a-pass">Password</label><input id="a-pass" type="password" autocomplete="current-password" minlength="8" required></div>
+            <p class="hint" id="a-pass-hint" hidden>At least 8 characters. Use the email your lodge invited, and you'll join your lodge as soon as you confirm it.</p>
+            <button class="btn" type="submit" id="a-go">Sign in</button>
+          </form>
+          <button class="link-btn" type="button" id="a-forgot">Forgot your password?</button>
+          <p class="auth-msg" id="a-msg" role="status" aria-live="polite"></p>
+        </div>
+        <div class="card">
+          <h4>New to LodgeNet?</h4>
+          <p class="hint">Your lodge's account owner, usually the Secretary, invites each brother by email. Choose Create account with that email and set your own password. If your lodge isn't on LodgeNet yet, pick a plan to get started.</p>
+          <a class="btn line sm" href="/pricing" style="justify-self:start">See plans</a>
+        </div>
+      </div>
+
+      <!-- arriving from a password reset email -->
+      <div class="card auth-card" id="v-reset" hidden style="max-width:420px">
+        <h3>Choose a new password</h3>
+        <form id="f-reset" novalidate>
+          <div class="field"><label for="r-pass">New password</label><input id="r-pass" type="password" autocomplete="new-password" minlength="8" required></div>
+          <button class="btn" type="submit">Save password</button>
+        </form>
+        <p class="auth-msg" id="r-msg" role="status" aria-live="polite"></p>
+      </div>
+
+      <!-- signed in -->
+      <div id="v-in" hidden>
+        <div class="lodge-row" style="margin-bottom:20px">
+          <span class="hint" id="who"></span>
+          <button class="btn line sm" type="button" id="sign-out">Sign out</button>
+        </div>
+        <div class="lodge-list" id="lodges"></div>
+      </div>
+    </div>
+  </section>
+</main>
+<footer>
+  <div class="wrap">
+    <span><b style="font-family:var(--display);color:#fff;letter-spacing:.06em">LodgeNet</b> · Websites, stores, calendars and minutes for Masonic lodges</span>
+    <span>Prototype · store checkout takes no payment</span>
+  </div>
+</footer>
+<script src="/assets/auth.js"></script>
+<script src="/assets/login.js"></script>
+</body>
+</html>

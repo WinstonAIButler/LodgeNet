@@ -335,12 +335,37 @@ section.band{padding-block:72px}
 footer{background:#13264f;color:#c9d3ea;font-size:13px}
 footer .wrap{padding-block:28px;display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px}
 
+/* sign-in */
+.auth-wait main{visibility:hidden}
+.auth-gate{max-width:560px}
+.auth-gate .btn{justify-self:start}
+.auth-wrap{display:grid;grid-template-columns:minmax(0,420px) minmax(0,1fr);gap:32px;align-items:start}
+.auth-card{background:var(--surface);padding:24px}
+.auth-card h3{font-family:var(--display);font-size:20px}
+.auth-card form{display:grid}
+.auth-card .field{margin-bottom:12px}
+.auth-switch{display:flex;gap:4px;background:var(--sunk);border-radius:8px;padding:4px;justify-self:start}
+.auth-switch .tab[aria-selected="true"]{background:var(--surface);color:var(--fg)}
+.auth-msg{font-size:14px;min-height:1.2em}
+.auth-msg.err{color:#b4372f}
+.link-btn{border:0;background:none;padding:0;color:var(--blue);font:inherit;font-size:13px;cursor:pointer;text-decoration:underline;justify-self:start}
+.lodge-list{display:grid;gap:12px}
+.lodge-row{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:12px}
+.lodge-row b{font-family:var(--display);font-size:17px}
+.roll{width:100%;border-collapse:collapse;font-size:14px}
+.roll td{padding:8px 0;border-top:1px solid var(--line);vertical-align:middle}
+.roll td:last-child{text-align:right}
+.roll td.who{word-break:break-all;padding-right:12px}
+.invite{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:8px;align-items:end}
+.invite .field{margin:0}
+
 @media (max-width:900px){
   .hero,.panel-grid,.store-wrap,.cal-wrap,.min-wrap,.mem-wrap{grid-template-columns:1fr}
   .features{grid-template-columns:repeat(2,1fr)}
   .products{grid-template-columns:repeat(2,1fr)}
   .tiers{grid-template-columns:1fr}
   .detail{grid-template-columns:1fr;gap:12px}
+  .auth-wrap{grid-template-columns:1fr}
 }
 @media (max-width:620px){
   .nav{flex-wrap:wrap}
@@ -351,6 +376,7 @@ footer .wrap{padding-block:28px;display:flex;flex-wrap:wrap;justify-content:spac
   .features,.products,.site-body,.site-foot{grid-template-columns:1fr}
   .panel{padding:16px}
   .paper-scroll{padding:10px}
+  .invite{grid-template-columns:1fr}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 @media (min-width:901px){.panel-grid > .browser{align-self:start;position:sticky;top:16px}}
