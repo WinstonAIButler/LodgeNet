@@ -2,6 +2,16 @@
   const $=s=>document.querySelector(s);
   const money=n=>"$"+n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,",");
   const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+  const handle=id=>$(id).value.trim().replace(/^[@$]/,"").replace(/^https?:\/\/\S+\//,"");
+
+  /* ---------- payment links ---------- */
+  const PAY=[
+    {k:"paypal",label:"PayPal",field:"#f-pp",url:(u,a,n)=>`https://paypal.me/${encodeURIComponent(u)}/${a.toFixed(2)}USD`},
+    {k:"venmo",label:"Venmo",field:"#f-venmo",url:(u,a,n)=>`https://venmo.com/?txn=pay&recipients=${encodeURIComponent(u)}&amount=${a.toFixed(2)}&note=${encodeURIComponent(n)}`},
+    {k:"cashapp",label:"Cash App",field:"#f-cash",url:(u,a,n)=>`https://cash.app/$${encodeURIComponent(u)}/${a.toFixed(2)}`}
+  ];
+  const payButtons=(attr)=>PAY.map(p=>`<button type="button" class="paybtn ${p.k}" ${attr}="${p.k}" ${handle(p.field)?"":"disabled title=\"Add this account on the Website tab\""}>${p.label}</button>`).join("");
+  const payLink=(k,amt,note)=>{const p=PAY.find(x=>x.k===k);return p.url(handle(p.field),amt,note)};
 
   /* ---------- tabs ---------- */
   const tabs=[...document.querySelectorAll(".tab")];
@@ -37,10 +47,30 @@
     $("#cb-name").textContent=full;
     $("#site-preview").style.setProperty("--site",siteColor);
     const up=events.filter(e=>parse(e.d)>=TODAY).sort((a,b)=>a.d<b.d?-1:1).slice(0,4);
+    const email=$("#f-email").value.trim();
+    $("#pv-email").textContent=email||"Add the lodge email on the left";
+    const socials=[["Facebook","#f-fb","https://facebook.com/"],["Instagram","#f-ig","https://instagram.com/"],["X","#f-x","https://x.com/"],["YouTube","#f-yt","https://youtube.com/@"],["TikTok","#f-tt","https://tiktok.com/@"]]
+      .filter(([,f])=>handle(f)).map(([n,f,base])=>`<a href="${esc(base+handle(f))}" target="_blank" rel="noopener">${n}</a>`).join("");
+    $("#pv-social").innerHTML=socials||'<span style="color:#5a6276">No social accounts linked</span>';
+    $("#pv-pay").innerHTML=PAY.some(p=>handle(p.field))?PAY.filter(p=>handle(p.field)).map(p=>`<span class="paybtn ${p.k}">${p.label}</span>`).join(""):'<span style="color:#5a6276">No payment accounts linked</span>';
+    $("#checkout").innerHTML=payButtons("data-pay");
+    if(selected&&selected.k==="fund")renderDetail();
     $("#pv-events").innerHTML=up.map(e=>`<li><b>${fmt(parse(e.d),{month:"short",day:"numeric"})}</b> · ${esc(e.t)}</li>`).join("");
   }
-  ["#f-name","#f-num","#f-jur","#f-town","#f-sched"].forEach(s=>$(s).addEventListener("input",()=>{renderSite();$("#site-status").textContent="Draft · unpublished changes"}));
+  ["#f-name","#f-num","#f-jur","#f-town","#f-sched","#f-email","#f-fb","#f-ig","#f-x","#f-yt","#f-tt","#f-pp","#f-venmo","#f-cash"].forEach(s=>$(s).addEventListener("input",()=>{renderSite();$("#site-status").textContent="Draft · unpublished changes"}));
   $("#swatches").addEventListener("click",e=>{const b=e.target.closest(".swatch");if(!b)return;siteColor=b.dataset.c;document.querySelectorAll(".swatch").forEach(s=>s.setAttribute("aria-pressed",s===b));renderSite();$("#site-status").textContent="Draft · unpublished changes"});
+  let gmail=false;
+  function renderGmail(){
+    const st=$("#gmail-state");st.textContent=gmail?"Connected":"Not connected";st.className="pill"+(gmail?" ok":"");
+    $("#gmail-btn").textContent=gmail?"Disconnect":"Connect Gmail";
+    $("#gmail-hint").textContent=gmail?`Inquiries, RSVPs and store receipts now send from ${$("#f-email").value.trim()} (demo, no account was contacted).`:'Connect to send "Become a Mason" inquiries, RSVPs and store receipts from the lodge\'s own address.';
+  }
+  $("#gmail-btn").addEventListener("click",()=>{
+    const v=$("#f-email").value.trim();
+    if(!gmail&&!/^[^@\s]+@(gmail\.com|googlemail\.com|[^@\s]+\.[a-z]{2,})$/i.test(v)){$("#gmail-hint").textContent="Enter the lodge's full email address first, for example cedarhollow214@gmail.com.";return}
+    gmail=!gmail;renderGmail();
+  });
+  $("#f-email").addEventListener("input",()=>{if(gmail)renderGmail()});
   $("#site-form").addEventListener("submit",e=>{e.preventDefault();$("#site-status").innerHTML='<span class="pill ok">Published</span> Live at '+esc($("#pv-url").textContent)+" (demo)"});
 
   /* ---------- store ---------- */
@@ -90,11 +120,15 @@
       '<p class="hint">Your cart is empty. Add a shirt or pin to see how proceeds are counted.</p>';
     $("#c-sub").textContent=money(sub);$("#c-char").textContent=money(ch);
   }
-  $("#checkout").addEventListener("click",()=>{
+  $("#checkout").addEventListener("click",e=>{
+    const b=e.target.closest("[data-pay]");if(!b||b.disabled)return;
     const m=$("#c-msg");
-    if(!Object.keys(cart).length){m.hidden=false;m.className="notice";m.textContent="Add at least one item before checking out.";return}
-    const ch=$("#c-char").textContent;
-    m.hidden=false;m.className="toast";m.textContent=`Order placed (demo). ${ch} recorded for ${$("#s-charity").value}. No payment was taken.`;
+    if(!Object.keys(cart).length){m.hidden=false;m.className="notice";m.textContent="Add at least one item before paying.";return}
+    const total=Object.keys(cart).reduce((t,id)=>t+products.find(x=>x.id===id).p*cart[id],0);
+    const ch=$("#c-char").textContent,label=b.textContent;
+    const url=payLink(b.dataset.pay,total,"LodgeNet store order");
+    m.hidden=false;m.className="toast";
+    m.innerHTML=`Order placed (demo). ${esc(ch)} recorded for ${esc($("#s-charity").value)}. On the live site, ${esc(label)} opens:<br><span class="paylink">${esc(url)}</span>`;
     for(const k in cart)delete cart[k];renderCart();
   });
   window.addEventListener("resize",()=>{if(!$("#p-store").hidden)drawProducts()});
@@ -128,12 +162,17 @@
       const pct=Math.min(100,Math.round(e.raised/e.goal*100));
       body+=`<div style="display:grid;gap:6px"><div class="cart-line"><b class="num">${money(e.raised).replace(".00","")} raised</b><span class="hint num">of ${money(e.goal).replace(".00","")} · ${pct}%</span></div>
         <div class="bar"><i style="width:${pct}%"></i></div><span class="hint num">${e.rsvp} RSVPs</span></div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sm" type="button" id="log-don">Log $100 donation</button><button class="btn line sm" type="button" id="log-rsvp">Add RSVP</button></div>`;
+        <div style="display:grid;gap:6px"><b style="font-size:13px">Donate $25 online</b><div class="paybtns" id="don-pay">${payButtons("data-don")}</div><div id="don-msg" class="hint" hidden></div></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn line sm" type="button" id="log-don">Log $100 cash donation</button><button class="btn line sm" type="button" id="log-rsvp">Add RSVP</button></div>`;
     }
     el.innerHTML=body;
     const d=$("#log-don"),r=$("#log-rsvp");
     if(d)d.onclick=()=>{e.raised+=100;renderDetail()};
     if(r)r.onclick=()=>{e.rsvp++;renderDetail()};
+    const dp=$("#don-pay");
+    if(dp)dp.onclick=ev=>{const b=ev.target.closest("[data-don]");if(!b||b.disabled)return;
+      const url=payLink(b.dataset.don,25,e.t);e.raised+=25;renderDetail();
+      const dm=$("#don-msg");dm.hidden=false;dm.innerHTML=`$25 recorded (demo). On the live site, ${esc(b.textContent)} opens:<br><span class="paylink">${esc(url)}</span>`};
   }
   $("#cal").addEventListener("click",ev=>{const b=ev.target.closest(".ev");if(!b)return;selected=events[+b.dataset.i];renderDetail()});
   $("#cal-prev").onclick=()=>{view=new Date(view.getFullYear(),view.getMonth()-1,1);renderCal()};

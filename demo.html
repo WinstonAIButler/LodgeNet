@@ -34,7 +34,7 @@
     <div class="page-head">
       <div class="eyebrow">Live demo · sample data</div>
       <h1>Run a lodge for a few minutes</h1>
-      <p>This is the dashboard a lodge officer sees. Everything below is an example lodge, and your changes stay in this browser tab only.</p>
+      <p>This is the dashboard a lodge officer sees. Everything below is an example lodge, and your changes stay in this browser tab only. No real accounts are contacted and no money moves.</p>
     </div>
   </div>
   <div class="pavement" aria-hidden="true"></div>
@@ -76,6 +76,30 @@
                   <button type="button" class="swatch" style="background:#22252c" data-c="#22252c" aria-label="Charcoal" aria-pressed="false"></button>
                 </div>
               </div>
+              <details class="group" open>
+                <summary>Lodge email</summary>
+                <div class="gmail" id="gmail-box">
+                  <div class="field" style="margin:0"><label for="f-email">Lodge Gmail address</label><input id="f-email" type="email" value="cedarhollow214@gmail.com"></div>
+                  <div class="gmail-row"><span id="gmail-state" class="pill">Not connected</span><button type="button" class="btn line sm" id="gmail-btn">Connect Gmail</button></div>
+                  <p class="hint" id="gmail-hint">Connect to send "Become a Mason" inquiries, RSVPs and store receipts from the lodge's own address.</p>
+                </div>
+              </details>
+              <details class="group" open>
+                <summary>Social media</summary>
+                <p class="hint">Enter the lodge's username on each site. Leave a box empty to hide it.</p>
+                <div class="field"><label for="f-fb">Facebook</label><div class="pre"><span>facebook.com/</span><input id="f-fb" value="CedarHollow214"></div></div>
+                <div class="field"><label for="f-ig">Instagram</label><div class="pre"><span>instagram.com/</span><input id="f-ig" value="cedarhollow214"></div></div>
+                <div class="field"><label for="f-x">X</label><div class="pre"><span>x.com/</span><input id="f-x" value=""></div></div>
+                <div class="field"><label for="f-yt">YouTube</label><div class="pre"><span>youtube.com/@</span><input id="f-yt" value="CedarHollowLodge"></div></div>
+                <div class="field"><label for="f-tt">TikTok</label><div class="pre"><span>tiktok.com/@</span><input id="f-tt" value=""></div></div>
+              </details>
+              <details class="group" open>
+                <summary>Payments</summary>
+                <p class="hint">Store sales, dues and fundraiser donations are paid straight to these lodge accounts.</p>
+                <div class="field"><label for="f-pp">PayPal</label><div class="pre"><span>paypal.me/</span><input id="f-pp" value="CedarHollow214"></div></div>
+                <div class="field"><label for="f-venmo">Venmo</label><div class="pre"><span>@</span><input id="f-venmo" value="CedarHollow-214"></div></div>
+                <div class="field"><label for="f-cash">Cash App</label><div class="pre"><span>$</span><input id="f-cash" value="CedarHollow214"></div></div>
+              </details>
               <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
                 <button class="btn" type="submit">Publish site</button>
                 <span class="hint" id="site-status">Draft · last saved just now</span>
@@ -105,6 +129,10 @@
                   </dl>
                 </div>
               </div>
+              <div class="site-foot">
+                <div><h5>CONTACT</h5><span id="pv-email"></span><div class="socials" id="pv-social"></div></div>
+                <div><h5>GIVE TO THE LODGE</h5><div class="paybtns" id="pv-pay"></div></div>
+              </div>
             </div>
           </div>
         </div>
@@ -132,7 +160,7 @@
                 <div class="cart-line"><span>Subtotal</span><b class="num" id="c-sub">$0.00</b></div>
                 <div class="cart-line"><span>To charity</span><b class="num" id="c-char">$0.00</b></div>
               </div>
-              <button class="btn" id="checkout" type="button">Check out</button>
+              <div class="paybtns" id="checkout" role="group" aria-label="Pay with"></div>
               <div id="c-msg" hidden class="toast"></div>
             </aside>
           </div>

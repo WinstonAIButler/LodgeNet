@@ -139,6 +139,25 @@ section.band{padding-block:72px}
 .site-officers{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:13px}
 .site-officers dt{color:#5a6276}.site-officers dd{margin:0;font-weight:600}
 
+/* connections */
+.group{border-top:1px solid var(--line);padding-block:12px}
+.group summary{font-weight:700;font-size:14px;cursor:pointer;margin-bottom:10px}
+.group > .hint{margin-bottom:10px}
+.pre{display:flex;align-items:stretch;border:1px solid var(--line);border-radius:var(--r);background:var(--bg);overflow:hidden}
+.pre span{display:flex;align-items:center;padding-inline:9px;font-family:var(--mono);font-size:12px;color:var(--muted);background:var(--sunk);border-right:1px solid var(--line);white-space:nowrap}
+.field .pre input{border:0;border-radius:0;min-width:0}
+.gmail{display:grid;gap:10px}
+.gmail-row{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.site-foot{display:grid;grid-template-columns:1fr 1fr;gap:20px;padding:16px 24px 20px;background:#f2f4f8;border-top:1px solid #e3e6ee;font-size:13px}
+.site-foot h5{font-family:var(--display);font-size:13px;margin:0 0 8px;color:var(--site);letter-spacing:.04em}
+.socials{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.socials a{font-size:12px;font-weight:600;padding:3px 9px;border-radius:999px;border:1px solid #cfd5e2;color:var(--site);text-decoration:none;background:#fff}
+.paybtns{display:flex;flex-wrap:wrap;gap:6px}
+.paybtn{border:0;border-radius:var(--r);padding:7px 12px;font-size:13px;font-weight:700;cursor:pointer;color:#fff}
+.paybtn.paypal{background:#003087}.paybtn.venmo{background:#008cff}.paybtn.cashapp{background:#00b33c;color:#06240f}
+.paybtn:disabled{opacity:.4;cursor:not-allowed}
+.paylink{font-family:var(--mono);font-size:12px;word-break:break-all}
+
 /* store */
 .store-wrap{display:grid;grid-template-columns:1fr 300px;gap:24px}
 .store-wrap > *{min-width:0}
@@ -220,8 +239,9 @@ footer .wrap{padding-block:28px;display:flex;flex-wrap:wrap;justify-content:spac
   .nav ul{width:100%;gap:18px;overflow-x:auto}
 }
 @media (max-width:520px){
-  .features,.products,.site-body{grid-template-columns:1fr}
+  .features,.products,.site-body,.site-foot{grid-template-columns:1fr}
   .panel{padding:16px}
   .doc{padding:18px}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+@media (min-width:901px){.panel-grid > .browser{align-self:start;position:sticky;top:16px}}
