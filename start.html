@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Set Up Your Lodge · LodgeNet</title>
+<meta name="description" content="Set up your lodge on LodgeNet: website, members, calendar, store and minutes.">
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="/assets/styles.css">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="sc" viewBox="0 0 64 64">
+    <g fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="32" cy="9" r="4"/>
+      <path d="M30 12 L12 50 M34 12 L52 50"/>
+      <path d="M10 30 L32 54 L54 30"/>
+    </g>
+  </symbol>
+</svg>
+<header class="top">
+  <div class="wrap">
+    <nav class="nav" aria-label="Main">
+      <a class="brand" href="/"><svg><use href="#sc"/></svg>LodgeNet</a>
+      <ul>
+        <li><a href="/features">Features</a></li>
+        <li><a href="/demo">Live demo</a></li>
+        <li><a href="/pricing">Pricing</a></li>
+      </ul>
+      <a class="btn gold sm" href="/pricing">Start now</a>
+    </nav>
+    <div class="page-head">
+      <div class="eyebrow" id="plan-eyebrow">Step 2 · Set up your lodge</div>
+      <h1>Welcome. Let's build your lodge.</h1>
+      <p>Start on the Website tab with your lodge name, number and state. Then add your brethren on Members and fill each officer chair. Everything saves in this browser as you go.</p>
+    </div>
+  </div>
+  <div class="pavement" aria-hidden="true"></div>
+</header>
+
+<main>
+  <section class="band" id="demo" style="border-top:0">
+    <div class="wrap">
+      <div class="console">
+        <div class="console-bar">
+          <div class="lodge-id"><b id="cb-name">Your Lodge</b><span id="plan-line"></span></div>
+          <div class="tabs" role="tablist" aria-label="Lodge tools">
+            <button class="tab" role="tab" id="t-site" aria-controls="p-site" aria-selected="true">Website</button>
+            <button class="tab" role="tab" id="t-store" aria-controls="p-store" aria-selected="false">Store</button>
+            <button class="tab" role="tab" id="t-cal" aria-controls="p-cal" aria-selected="false">Calendar</button>
+            <button class="tab" role="tab" id="t-mem" aria-controls="p-mem" aria-selected="false">Members</button>
+            <button class="tab" role="tab" id="t-min" aria-controls="p-min" aria-selected="false">Minutes</button>
+          </div>
+        </div>
+        <div class="data-bar">
+          <span class="hint" id="save-state" aria-live="polite"></span>
+          <span class="data-acts">
+            <button type="button" class="btn line sm" id="data-export">Export</button>
+            <button type="button" class="btn line sm" id="data-import">Import</button>
+            <button type="button" class="btn line sm" id="data-reset">Start over</button>
+            <input type="file" id="data-file" accept="application/json,.json" hidden>
+          </span>
+        </div>
+
+        <!-- WEBSITE -->
+        <div class="panel" role="tabpanel" id="p-site" aria-labelledby="t-site">
+          <div class="panel-grid">
+            <form id="site-form" autocomplete="off">
+              <div class="field"><label for="f-name">Lodge name</label><input id="f-name" value="" placeholder="e.g. Murrells Inlet Lodge"></div>
+              <div class="field"><label for="f-num">Lodge number</label><input id="f-num" value="" inputmode="numeric" placeholder="e.g. 368"></div>
+              <div class="field"><label for="f-state">State</label>
+                <select id="f-state" data-default=""></select>
+              </div>
+              <div class="field"><label for="f-family">Grand Lodge</label>
+                <select id="f-family"><option value="main">State Grand Lodge</option><option value="pha">Prince Hall Grand Lodge</option></select>
+              </div>
+              <div class="auto-gl">
+                <div class="field"><label for="f-gl">Grand Lodge name</label><input id="f-gl" value=""></div>
+                <div class="field"><label for="f-jur">Jurisdiction</label><input id="f-jur" value="" style="max-width:12em"></div>
+                <p class="hint">Filled in from the state. Edit them if your lodge's charter reads differently.</p>
+              </div>
+              <div class="field"><label for="f-city">City</label><input id="f-city" value=""></div>
+              <fieldset class="field sched">
+                <legend>Stated Communications</legend>
+                <div class="sched-row">
+                  <select id="f-week" aria-label="Week of the month"><option value="1">1st</option><option value="2">2nd</option><option value="3">3rd</option><option value="4">4th</option></select>
+                  <select id="f-day" aria-label="Day of the week"><option>Monday</option><option>Tuesday</option><option>Wednesday</option><option>Thursday</option><option>Friday</option><option>Saturday</option><option>Sunday</option></select>
+                  <input id="f-time" type="time" value="" aria-label="Meeting time">
+                </div>
+                <span class="hint" id="sched-text">of each month</span>
+                <input id="f-sched" type="hidden" value="2nd Tuesday of each month, 7:30 PM">
+              </fieldset>
+              <div class="field"><label>Lodge color</label>
+                <div class="swatches" id="swatches">
+                  <button type="button" class="swatch" style="background:#1c3a75" data-c="#1c3a75" aria-label="Lodge blue" aria-pressed="true"></button>
+                  <button type="button" class="swatch" style="background:#6b1f2a" data-c="#6b1f2a" aria-label="Royal Arch red" aria-pressed="false"></button>
+                  <button type="button" class="swatch" style="background:#264d3b" data-c="#264d3b" aria-label="Evergreen" aria-pressed="false"></button>
+                  <button type="button" class="swatch" style="background:#3d2f5a" data-c="#3d2f5a" aria-label="Purple" aria-pressed="false"></button>
+                  <button type="button" class="swatch" style="background:#22252c" data-c="#22252c" aria-label="Charcoal" aria-pressed="false"></button>
+                </div>
+              </div>
+              <details class="group" open>
+                <summary>Lodge email</summary>
+                <div class="gmail" id="gmail-box">
+                  <div class="field" style="margin:0"><label for="f-email">Lodge Gmail address</label><input id="f-email" type="email" value=""></div>
+                  <div class="gmail-row"><span id="gmail-state" class="pill">Not connected</span><button type="button" class="btn line sm" id="gmail-btn">Connect Gmail</button></div>
+                  <p class="hint" id="gmail-hint">Connect to send "Become a Mason" inquiries, RSVPs and store receipts from the lodge's own address.</p>
+                </div>
+              </details>
+              <details class="group" open>
+                <summary>Social media</summary>
+                <p class="hint">Enter the lodge's username on each site. Leave a box empty to hide it.</p>
+                <div class="field"><label for="f-fb">Facebook</label><div class="pre"><span>facebook.com/</span><input id="f-fb" value=""></div></div>
+                <div class="field"><label for="f-ig">Instagram</label><div class="pre"><span>instagram.com/</span><input id="f-ig" value=""></div></div>
+                <div class="field"><label for="f-x">X</label><div class="pre"><span>x.com/</span><input id="f-x" value=""></div></div>
+                <div class="field"><label for="f-yt">YouTube</label><div class="pre"><span>youtube.com/@</span><input id="f-yt" value=""></div></div>
+                <div class="field"><label for="f-tt">TikTok</label><div class="pre"><span>tiktok.com/@</span><input id="f-tt" value=""></div></div>
+              </details>
+              <details class="group" open>
+                <summary>Payments</summary>
+                <p class="hint">Store sales, dues and fundraiser donations are paid straight to these lodge accounts.</p>
+                <div class="field"><label for="f-pp">PayPal</label><div class="pre"><span>paypal.me/</span><input id="f-pp" value=""></div></div>
+                <div class="field"><label for="f-venmo">Venmo</label><div class="pre"><span>@</span><input id="f-venmo" value=""></div></div>
+                <div class="field"><label for="f-cash">Cash App</label><div class="pre"><span>$</span><input id="f-cash" value=""></div></div>
+              </details>
+              <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+                <button class="btn" type="submit">Publish site</button>
+                <span class="hint" id="site-status">Draft · last saved just now</span>
+              </div>
+            </form>
+            <div class="browser" style="--site:#1c3a75" id="site-preview">
+              <div class="browser-bar"><span class="dots"><i></i><i></i><i></i></span><span id="pv-url">yourlodge.lodgenet.org</span></div>
+              <div class="site-hero">
+                <svg class="sc"><use href="#sc"/></svg>
+                <h4 id="pv-title">Cedar Hollow Lodge No. 214, F.&amp;A.M.</h4>
+                <p id="pv-sub">Millbrook, Ohio · Stated Communications 2nd Tuesday of each month, 7:30 PM</p>
+              </div>
+              <div class="site-nav"><span>Home</span><span>Calendar</span><span>Store</span><span>Our History</span><span>Become a Mason</span><span>Members</span></div>
+              <div class="site-body">
+                <div>
+                  <h5>UPCOMING</h5>
+                  <ul id="pv-events"></ul>
+                </div>
+                <div>
+                  <h5>OFFICERS, 2026</h5>
+                  <dl class="site-officers" id="pv-officers"></dl>
+                </div>
+              </div>
+              <div class="site-foot">
+                <div><h5>CONTACT</h5><span id="pv-email"></span><div class="socials" id="pv-social"></div></div>
+                <div><h5>GIVE TO THE LODGE</h5><div class="paybtns" id="pv-pay"></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- STORE -->
+        <div class="panel" role="tabpanel" id="p-store" aria-labelledby="t-store" hidden>
+          <div class="store-wrap">
+            <div>
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px">
+                <div class="field" style="margin:0;min-width:220px"><label for="s-charity">Proceeds support</label>
+                  <select id="s-charity">
+                    <option>Lodge Charity Fund</option>
+                    <option>Widows &amp; Orphans Fund</option>
+                    <option>Lodge Building Fund</option>
+                  </select>
+                </div>
+                <span class="hint">Lodge keeps 100% of margin after printing and payment fees.</span>
+              </div>
+              <div class="products" id="products"></div>
+            </div>
+            <aside class="cart" aria-live="polite">
+              <h4>Cart</h4>
+              <div id="cart-lines"><p class="hint">Your cart is empty. Add a shirt or pin to see how proceeds are counted.</p></div>
+              <div class="cart-total">
+                <div class="cart-line"><span>Subtotal</span><b class="num" id="c-sub">$0.00</b></div>
+                <div class="cart-line"><span>To charity</span><b class="num" id="c-char">$0.00</b></div>
+              </div>
+              <div class="paybtns" id="checkout" role="group" aria-label="Pay with"></div>
+              <div id="c-msg" hidden class="toast"></div>
+            </aside>
+          </div>
+        </div>
+
+        <!-- CALENDAR -->
+        <div class="panel" role="tabpanel" id="p-cal" aria-labelledby="t-cal" hidden>
+          <div class="cal-wrap">
+            <div>
+              <div class="cal-head">
+                <button class="btn line sm" id="cal-prev" type="button" aria-label="Previous month">‹</button>
+                <h3 id="cal-title">November 2026</h3>
+                <button class="btn line sm" id="cal-next" type="button" aria-label="Next month">›</button>
+              </div>
+              <div class="cal-scroll"><div class="cal" id="cal"></div></div>
+              <div class="legend" style="margin-top:10px"><span>Lodge meeting</span><span class="f">Public fundraiser</span></div>
+            </div>
+            <div class="side">
+              <div class="card" id="ev-detail"></div>
+              <form class="card" id="ev-form">
+                <h4>Add an event</h4>
+                <div class="field" style="margin:0"><label for="e-title">Title</label><input id="e-title" placeholder="Chili cook-off" required></div>
+                <div class="field" style="margin:0"><label for="e-date">Date</label><input id="e-date" type="date" value="2026-11-21" required></div>
+                <div class="field" style="margin:0"><label for="e-kind">Type</label>
+                  <select id="e-kind"><option value="fund">Public fundraiser</option><option value="lodge">Lodge meeting</option></select></div>
+                <div class="field" style="margin:0"><label for="e-goal">Fundraising goal ($)</label><input id="e-goal" type="number" min="0" step="50" value="1500"></div>
+                <button class="btn" type="submit">Add to calendar</button>
+              </form>
+            </div>
+          </div>
+        </div>
+
+        <!-- MEMBERS -->
+        <div class="panel" role="tabpanel" id="p-mem" aria-labelledby="t-mem" hidden>
+          <div class="mem-wrap">
+            <div>
+              <div class="mem-head">
+                <h3 class="panel-title">Lodge roster</h3>
+                <span class="hint" id="mem-count"></span>
+              </div>
+              <div class="table-scroll">
+                <table class="roster">
+                  <thead><tr><th scope="col">Member</th><th scope="col">Degree</th><th scope="col">Past Master</th><th scope="col">Officer seat</th><th scope="col">Dues</th><th scope="col"><span class="sr">Actions</span></th></tr></thead>
+                  <tbody id="mem-rows"></tbody>
+                </table>
+              </div>
+              <form class="mem-add" id="mem-form" autocomplete="off">
+                <div class="field"><label for="m-name">Name</label><input id="m-name" placeholder="Full name" required></div>
+                <div class="field"><label for="m-deg">Degree</label><select id="m-deg"><option>Master Mason</option><option>Fellowcraft</option><option>Entered Apprentice</option></select></div>
+                <div class="field field-check"><input type="checkbox" id="m-pm"><label for="m-pm">Past Master</label></div>
+                <button class="btn" type="submit">Add member</button>
+              </form>
+            </div>
+            <aside class="card seats-card">
+              <h4>Officers for 2026</h4>
+              <p class="hint">Pick who sits in each chair. New minutes start with these names, and you can change a seat for one meeting when someone fills in. Only Master Masons can be chosen.</p>
+              <div class="seat-list" id="seat-defaults"></div>
+            </aside>
+          </div>
+        </div>
+
+        <!-- MINUTES -->
+        <div class="panel" role="tabpanel" id="p-min" aria-labelledby="t-min" hidden>
+          <div class="min-wrap">
+            <div class="min-list">
+              <button class="btn sm" type="button" id="min-new">New minutes from template</button>
+              <div id="min-list" style="display:grid;gap:8px"></div>
+              <p class="notice">Minutes record lodge business only. LodgeNet never stores ritual or degree work.</p>
+            </div>
+            <div class="min-doc-wrap"><div class="min-toolbar" id="min-toolbar"></div><div class="paper-scroll"><div class="paper" id="min-doc"></div></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+<footer>
+  <div class="wrap">
+    <span><b style="font-family:var(--display);color:#fff;letter-spacing:.06em">LodgeNet</b> · Websites, stores, calendars and minutes for Masonic lodges</span>
+    <span>Prototype · all lodges, names and figures are examples</span>
+  </div>
+</footer>
+<script>
+/* a brand-new lodge: no members, events or minutes yet; the plan comes from /start?plan=… */
+window.LODGE={
+  form:{"f-sched":"2nd Tuesday of each month","f-family":"main"},
+  members:[],
+  officers:{WM:"",SW:"",JW:"",TREAS:"",SEC:"",SD:"",JD:"",STW1:"",STW2:"",TILER:"",CHAP:""},
+  events:[],
+  minutes:[],
+  products:[
+    {id:"tee",n:"Lodge T-shirt",p:24,margin:9,kind:"tee"},
+    {id:"pin",n:"Square & Compasses lapel pin",p:12,margin:7,kind:"pin"},
+    {id:"cap",n:"Embroidered lodge cap",p:22,margin:8,kind:"cap"},
+    {id:"coin",n:"Lodge challenge coin",p:18,margin:10,kind:"coin"}
+  ],
+  coinText:"OUR LODGE",
+  plan:new URLSearchParams(location.search).get("plan")||"lodge"
+};
+</script>
+<script src="/assets/demo.js"></script>
+</body>
+</html>
