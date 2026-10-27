@@ -50,6 +50,7 @@
             <button class="tab" role="tab" id="t-site" aria-controls="p-site" aria-selected="true">Website</button>
             <button class="tab" role="tab" id="t-store" aria-controls="p-store" aria-selected="false">Store</button>
             <button class="tab" role="tab" id="t-cal" aria-controls="p-cal" aria-selected="false">Calendar</button>
+            <button class="tab" role="tab" id="t-mem" aria-controls="p-mem" aria-selected="false">Members</button>
             <button class="tab" role="tab" id="t-min" aria-controls="p-min" aria-selected="false">Minutes</button>
           </div>
         </div>
@@ -62,9 +63,10 @@
               <div class="field"><label for="f-num">Lodge number</label><input id="f-num" value="214" inputmode="numeric"></div>
               <div class="field"><label for="f-jur">Jurisdiction</label>
                 <select id="f-jur">
-                  <option>F.&amp;A.M.</option><option>A.F.&amp;A.M.</option><option>A.F.&amp;A.M. (Prince Hall)</option><option>F.&amp;A.M. (Prince Hall)</option>
+                  <option>F.&amp;A.M.</option><option>A.F.&amp;A.M.</option><option>A.F.M.</option><option>A.F.&amp;A.M. (Prince Hall)</option><option>F.&amp;A.M. (Prince Hall)</option>
                 </select>
               </div>
+              <div class="field"><label for="f-gl">Grand Lodge</label><input id="f-gl" value="Grand Lodge of Free &amp; Accepted Masons of Ohio"></div>
               <div class="field"><label for="f-town">Town</label><input id="f-town" value="Millbrook, Ohio"></div>
               <div class="field"><label for="f-sched">Stated Communications</label><input id="f-sched" value="2nd Tuesday of each month, 7:30 PM"></div>
               <div class="field"><label>Lodge color</label>
@@ -120,13 +122,7 @@
                 </div>
                 <div>
                   <h5>OFFICERS, 2026</h5>
-                  <dl class="site-officers">
-                    <dt>Worshipful Master</dt><dd>Daniel R. Ortega</dd>
-                    <dt>Senior Warden</dt><dd>Marcus Hale</dd>
-                    <dt>Junior Warden</dt><dd>Peter Lindqvist</dd>
-                    <dt>Treasurer</dt><dd>Walter Simms, PM</dd>
-                    <dt>Secretary</dt><dd>James Whitfield, PM</dd>
-                  </dl>
+                  <dl class="site-officers" id="pv-officers"></dl>
                 </div>
               </div>
               <div class="site-foot">
@@ -193,6 +189,35 @@
           </div>
         </div>
 
+        <!-- MEMBERS -->
+        <div class="panel" role="tabpanel" id="p-mem" aria-labelledby="t-mem" hidden>
+          <div class="mem-wrap">
+            <div>
+              <div class="mem-head">
+                <h3 class="panel-title">Lodge roster</h3>
+                <span class="hint" id="mem-count"></span>
+              </div>
+              <div class="table-scroll">
+                <table class="roster">
+                  <thead><tr><th scope="col">Member</th><th scope="col">Degree</th><th scope="col">Past Master</th><th scope="col">Officer seat</th><th scope="col">Dues</th><th scope="col"><span class="sr">Actions</span></th></tr></thead>
+                  <tbody id="mem-rows"></tbody>
+                </table>
+              </div>
+              <form class="mem-add" id="mem-form" autocomplete="off">
+                <div class="field"><label for="m-name">Name</label><input id="m-name" placeholder="Full name" required></div>
+                <div class="field"><label for="m-deg">Degree</label><select id="m-deg"><option>Master Mason</option><option>Fellowcraft</option><option>Entered Apprentice</option></select></div>
+                <div class="field field-check"><input type="checkbox" id="m-pm"><label for="m-pm">Past Master</label></div>
+                <button class="btn" type="submit">Add member</button>
+              </form>
+            </div>
+            <aside class="card seats-card">
+              <h4>Officers for 2026</h4>
+              <p class="hint">Pick who sits in each chair. New minutes start with these names, and you can change a seat for one meeting when someone fills in. Only Master Masons can be chosen.</p>
+              <div class="seat-list" id="seat-defaults"></div>
+            </aside>
+          </div>
+        </div>
+
         <!-- MINUTES -->
         <div class="panel" role="tabpanel" id="p-min" aria-labelledby="t-min" hidden>
           <div class="min-wrap">
@@ -201,7 +226,7 @@
               <div id="min-list" style="display:grid;gap:8px"></div>
               <p class="notice">Minutes record lodge business only. LodgeNet never stores ritual or degree work.</p>
             </div>
-            <div class="doc" id="min-doc"></div>
+            <div class="min-doc-wrap"><div class="min-toolbar" id="min-toolbar"></div><div class="paper-scroll"><div class="paper" id="min-doc"></div></div></div>
           </div>
         </div>
       </div>

@@ -2,6 +2,9 @@
   const $=s=>document.querySelector(s);
   const money=n=>"$"+n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,",");
   const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+  /* a lodge page can set window.LODGE before this script to load its own data */
+  const CFG=window.LODGE||{};
+  Object.entries(CFG.form||{}).forEach(([id,v])=>{const el=document.getElementById(id);if(el)el.value=v});
   const handle=id=>$(id).value.trim().replace(/^[@$]/,"").replace(/^https?:\/\/\S+\//,"");
 
   /* ---------- payment links ---------- */
@@ -22,7 +25,7 @@
 
   /* ---------- shared events ---------- */
   const TODAY=new Date(2026,9,27);
-  let events=[
+  let events=CFG.events||[
     {d:"2026-11-10",t:"Stated Communication",k:"lodge",time:"7:30 PM",note:"Dinner at 6:30. Vote on 2027 budget."},
     {d:"2026-11-14",t:"Pancake Breakfast",k:"fund",time:"7:00–11:00 AM",goal:5000,raised:3180,rsvp:142,note:"Proceeds to the Lodge Scholarship Fund. $10 adults, $5 kids."},
     {d:"2026-11-19",t:"Fellowcraft Degree",k:"lodge",time:"7:00 PM",note:"Special Communication. Master Masons only."},
@@ -36,8 +39,65 @@
   const parse=s=>{const[y,m,d]=s.split("-").map(Number);return new Date(y,m-1,d)};
   const fmt=(dt,o)=>dt.toLocaleDateString("en-US",o);
 
+  /* ---------- members & officer seats ---------- */
+  let nextMember=1;
+  const M=(name,deg,pm,dues)=>({id:nextMember++,name,deg:deg||"Master Mason",pm:!!pm,dues:dues||"Paid 2026",active:true});
+  const members=CFG.members?CFG.members.map(a=>M(...a)):[
+    M("Daniel R. Ortega"),M("Marcus Hale"),M("Peter Lindqvist"),M("Walter Simms","",1),M("James Whitfield","",1),
+    M("Andre Baptiste"),M("Kevin O'Rourke"),M("Samuel Carter"),M("Luis Ferreira"),M("Harold Benson","",1),
+    M("Thomas Greene","",1),M("Robert Kline","",1,"Owes 2026"),M("George Patterson","",1),M("David Okafor"),
+    M("Michael Tran","","", "Owes 2026"),M("Brian Walsh","Fellowcraft"),M("Thomas Reyes","Entered Apprentice")
+  ];
+  const SEATS=[
+    {k:"WM",ab:"WM",t:"Worshipful Master"},{k:"SW",ab:"SW",t:"Senior Warden"},{k:"JW",ab:"JW",t:"Junior Warden"},
+    {k:"TREAS",ab:"Treas.",t:"Treasurer"},{k:"SEC",ab:"Sec.",t:"Secretary"},{k:"SD",ab:"SD",t:"Senior Deacon"},
+    {k:"JD",ab:"JD",t:"Junior Deacon"},{k:"STW1",ab:"Stwd",t:"Senior Steward"},{k:"STW2",ab:"Stwd",t:"Junior Steward"},
+    {k:"TILER",ab:"Tiler",t:"Tiler"},{k:"CHAP",ab:"Chap.",t:"Chaplain"}
+  ];
+  const officers=CFG.officers||{WM:1,SW:2,JW:3,TREAS:4,SEC:5,SD:6,JD:7,STW1:8,STW2:9,TILER:10,CHAP:11};
+  const member=id=>members.find(m=>m.id===+id);
+  const fullName=id=>{const m=member(id);return m?(m.pm?"WB ":"")+m.name:""};
+  const eligible=()=>members.filter(m=>m.active&&m.deg==="Master Mason").sort((a,b)=>a.name.split(" ").pop().localeCompare(b.name.split(" ").pop()));
+  function seatSelect(attr,seat,cur,cls){
+    const opts=eligible();
+    if(cur&&!opts.some(m=>m.id===+cur)&&member(cur))opts.unshift(member(cur));
+    return `<select ${attr}="${seat.k}" class="${cls||""}" aria-label="${seat.t}"><option value="">${cls?"":"Vacant"}</option>${opts.map(m=>`<option value="${m.id}"${+cur===m.id?" selected":""}>${esc((m.pm?"WB ":"")+m.name)}</option>`).join("")}</select>`;
+  }
+  function renderMembers(){
+    const act=members.filter(m=>m.active);
+    $("#mem-count").textContent=`${act.length} members · ${act.filter(m=>m.deg==="Master Mason").length} Master Masons`;
+    const seatOf=id=>SEATS.filter(x=>+officers[x.k]===id).map(x=>x.ab).join(", ");
+    $("#mem-rows").innerHTML=act.map(m=>`<tr>
+      <td class="nm">${esc(m.name)}</td>
+      <td><select data-mdeg="${m.id}" aria-label="Degree for ${esc(m.name)}">${["Master Mason","Fellowcraft","Entered Apprentice"].map(d=>`<option${d===m.deg?" selected":""}>${d}</option>`).join("")}</select></td>
+      <td><input type="checkbox" data-mpm="${m.id}" aria-label="${esc(m.name)} is a Past Master"${m.pm?" checked":""}></td>
+      <td>${seatOf(m.id)?`<span class="pill gold">${seatOf(m.id)}</span>`:'<span class="hint">None</span>'}</td>
+      <td><span class="pill ${m.dues.startsWith("Paid")?"ok":m.dues.startsWith("Owes")?"warn":""}">${esc(m.dues)}</span></td>
+      <td><button type="button" class="btn line sm" data-mrm="${m.id}">Remove</button></td></tr>`).join("");
+    $("#seat-defaults").innerHTML=SEATS.map(x=>`<div class="seat-row"><label for="sd-${x.k}" title="${x.t}">${x.ab}</label>${seatSelect("data-sdef",x,officers[x.k]).replace("<select ",`<select id="sd-${x.k}" `)}</div>`).join("");
+  }
+  $("#mem-rows").addEventListener("change",e=>{
+    const t=e.target;
+    if(t.dataset.mdeg){const m=member(t.dataset.mdeg);m.deg=t.value;if(m.deg!=="Master Mason")for(const k in officers)if(+officers[k]===m.id)officers[k]="";}
+    if(t.dataset.mpm)member(t.dataset.mpm).pm=t.checked;
+    refreshPeople();
+  });
+  $("#mem-rows").addEventListener("click",e=>{
+    const b=e.target.closest("[data-mrm]");if(!b)return;
+    const m=member(b.dataset.mrm);m.active=false;for(const k in officers)if(+officers[k]===m.id)officers[k]="";
+    refreshPeople();
+  });
+  $("#seat-defaults").addEventListener("change",e=>{const k=e.target.dataset.sdef;if(k){officers[k]=e.target.value;refreshPeople()}});
+  $("#mem-form").addEventListener("submit",e=>{
+    e.preventDefault();const n=$("#m-name").value.trim();if(!n)return;
+    members.push(M(n,$("#m-deg").value,$("#m-pm").checked,"Paid 2026"));
+    $("#m-name").value="";$("#m-pm").checked=false;refreshPeople();
+  });
+  function refreshPeople(){renderMembers();renderSite();if(typeof renderMinutes==="function")renderMinutes()}
+
   /* ---------- website builder ---------- */
-  let siteColor="#1c3a75";
+  let siteColor=CFG.color||"#1c3a75";
+  document.querySelectorAll(".swatch").forEach(b=>b.setAttribute("aria-pressed",b.dataset.c===siteColor));
   function renderSite(){
     const name=$("#f-name").value.trim()||"Your Lodge", num=$("#f-num").value.trim(), jur=$("#f-jur").value;
     const full=name+(num?" No. "+num:"");
@@ -45,6 +105,8 @@
     $("#pv-sub").textContent=[$("#f-town").value.trim(),"Stated Communications "+$("#f-sched").value.trim()].filter(Boolean).join(" · ");
     $("#pv-url").textContent=(name.toLowerCase().replace(/lodge/g,"").replace(/[^a-z0-9]/g,"")+num)+".lodgenet.org";
     $("#cb-name").textContent=full;
+    $("#pv-officers").innerHTML=["WM","SW","JW","TREAS","SEC"].map(k=>{const x=SEATS.find(s=>s.k===k),m=member(officers[k]);
+      return `<dt>${x.t}</dt><dd>${m?esc(m.name+(m.pm&&k!=="WM"?", PM":"")):"Vacant"}</dd>`}).join("");
     $("#site-preview").style.setProperty("--site",siteColor);
     const up=events.filter(e=>parse(e.d)>=TODAY).sort((a,b)=>a.d<b.d?-1:1).slice(0,4);
     const email=$("#f-email").value.trim();
@@ -57,7 +119,7 @@
     if(selected&&selected.k==="fund")renderDetail();
     $("#pv-events").innerHTML=up.map(e=>`<li><b>${fmt(parse(e.d),{month:"short",day:"numeric"})}</b> · ${esc(e.t)}</li>`).join("");
   }
-  ["#f-name","#f-num","#f-jur","#f-town","#f-sched","#f-email","#f-fb","#f-ig","#f-x","#f-yt","#f-tt","#f-pp","#f-venmo","#f-cash"].forEach(s=>$(s).addEventListener("input",()=>{renderSite();$("#site-status").textContent="Draft · unpublished changes"}));
+  ["#f-name","#f-num","#f-jur","#f-gl","#f-town","#f-sched","#f-email","#f-fb","#f-ig","#f-x","#f-yt","#f-tt","#f-pp","#f-venmo","#f-cash"].forEach(s=>$(s).addEventListener("input",()=>{renderSite();renderMinutes();$("#site-status").textContent="Draft · unpublished changes"}));
   $("#swatches").addEventListener("click",e=>{const b=e.target.closest(".swatch");if(!b)return;siteColor=b.dataset.c;document.querySelectorAll(".swatch").forEach(s=>s.setAttribute("aria-pressed",s===b));renderSite();$("#site-status").textContent="Draft · unpublished changes"});
   let gmail=false;
   function renderGmail(){
@@ -74,7 +136,7 @@
   $("#site-form").addEventListener("submit",e=>{e.preventDefault();$("#site-status").innerHTML='<span class="pill ok">Published</span> Live at '+esc($("#pv-url").textContent)+" (demo)"});
 
   /* ---------- store ---------- */
-  const products=[
+  const products=CFG.products||[
     {id:"tee",n:"Lodge No. 214 T-shirt",p:24,margin:9,kind:"tee",tag:"Best seller"},
     {id:"pin",n:"Square & Compasses lapel pin",p:12,margin:7,kind:"pin"},
     {id:"cap",n:"Embroidered lodge cap",p:22,margin:8,kind:"cap"},
@@ -103,7 +165,7 @@
       x.moveTo(cx-w*.2,t);x.lineTo(cx-w/2,t+h*.12);x.lineTo(cx-w*.62,t+h*.32);x.lineTo(cx-w*.38,t+h*.38);x.lineTo(cx-w*.36,t+h);x.lineTo(cx+w*.36,t+h);x.lineTo(cx+w*.38,t+h*.38);x.lineTo(cx+w*.62,t+h*.32);x.lineTo(cx+w/2,t+h*.12);x.lineTo(cx+w*.2,t);x.quadraticCurveTo(cx,t+h*.12,cx-w*.2,t);x.fill();sc(cx,cy+s*.03,s*.18)}
     else if(kind==="pin"){x.beginPath();x.arc(cx,cy,s*.24,0,7);x.fill();x.beginPath();x.arc(cx,cy,s*.24,0,7);x.stroke();sc(cx,cy,s*.24)}
     else if(kind==="cap"){x.beginPath();x.ellipse(cx,cy+s*.06,s*.3,s*.24,0,Math.PI,0);x.fill();x.beginPath();x.ellipse(cx+s*.22,cy+s*.07,s*.22,s*.05,0,0,7);x.fill();sc(cx-s*.02,cy-s*.04,s*.14)}
-    else if(kind==="coin"){x.fillStyle=gold;x.beginPath();x.arc(cx,cy,s*.28,0,7);x.fill();x.fillStyle=navy;x.beginPath();x.arc(cx,cy,s*.22,0,7);x.fill();sc(cx,cy-s*.02,s*.2);x.fillStyle=gold;x.font=`600 ${s*.05}px ${cs.getPropertyValue("--mono")}`;x.textAlign="center";x.fillText("100 YEARS",cx,cy+s*.17)}
+    else if(kind==="coin"){x.fillStyle=gold;x.beginPath();x.arc(cx,cy,s*.28,0,7);x.fill();x.fillStyle=navy;x.beginPath();x.arc(cx,cy,s*.22,0,7);x.fill();sc(cx,cy-s*.02,s*.2);x.fillStyle=gold;x.font=`600 ${s*.05}px ${cs.getPropertyValue("--mono")}`;x.textAlign="center";x.fillText(CFG.coinText||"100 YEARS",cx,cy+s*.17)}
     else if(kind==="mug"){x.fillRect(cx-s*.2,cy-s*.22,s*.34,s*.44);x.lineWidth=s*.04;x.strokeStyle=navy;x.beginPath();x.arc(cx+s*.16,cy,s*.1,-1.3,1.3);x.stroke();sc(cx-s*.03,cy,s*.16)}
     else if(kind==="apron"){x.beginPath();x.moveTo(cx-s*.22,cy-s*.12);x.lineTo(cx-s*.1,cy-s*.3);x.lineTo(cx+s*.1,cy-s*.3);x.lineTo(cx+s*.22,cy-s*.12);x.lineTo(cx+s*.24,cy+s*.3);x.lineTo(cx-s*.24,cy+s*.3);x.closePath();x.fill();sc(cx,cy+s*.04,s*.16)}
   }
@@ -135,7 +197,7 @@
 
   /* ---------- calendar ---------- */
   let view=new Date(2026,10,1);
-  let selected=events.find(e=>e.d==="2026-11-14");
+  let selected=events.find(e=>e.k==="fund"&&parse(e.d)>=TODAY)||events.find(e=>parse(e.d)>=TODAY);
   function renderCal(){
     $("#cal-title").textContent=fmt(view,{month:"long",year:"numeric"});
     const first=new Date(view.getFullYear(),view.getMonth(),1);
@@ -186,106 +248,105 @@
     events.push(e);selected=e;view=new Date(parse(d).getFullYear(),parse(d).getMonth(),1);$("#e-title").value="";renderCal();
   });
 
-  /* ---------- minutes ---------- */
-  const minutes=[
-    {id:1,title:"Stated Communication",date:"2026-10-13",status:"Awaiting approval",body:
-`Cedar Hollow Lodge No. 214 was opened on the Third Degree at 7:31 PM,
-Worshipful Brother Daniel R. Ortega presiding.
-
-Officers present: all stations filled.
-Members present: 34.   Visitors: 3 (from Millbrook Lodge No. 88).
-
-1. Minutes of the September Stated Communication were read and approved.
-2. Treasurer's report: General Fund $18,412.07; Charity Fund $6,955.40.
-3. Petitions: two petitions for the degrees received and referred
-   to investigation committees.
-4. Fall Fish Fry: raised $2,740 against a $2,500 goal. Thanks
-   extended to Bro. Hale and the kitchen crew.
-5. Motion to purchase 200 centennial coins for the lodge store
-   ($1,150). Seconded. Carried.
-
-There being no further business, the lodge was closed in due form
-at 8:52 PM.
-
-James Whitfield, PM, Secretary`},
-    {id:2,title:"Stated Communication",date:"2026-09-08",status:"Approved",body:
-`Cedar Hollow Lodge No. 214 was opened on the Third Degree at 7:30 PM,
-Worshipful Brother Daniel R. Ortega presiding.
-
-Members present: 29.   Visitors: 1.
-
-1. Minutes of the August Stated Communication were read and approved.
-2. Treasurer's report accepted as read.
-3. Fish Fry committee appointed: Bros. Hale, Lindqvist, Carter.
-4. Bikes for Books: 12 bicycles pledged for spring.
-
-The lodge was closed in due form at 8:40 PM.
-
-James Whitfield, PM, Secretary`},
-    {id:3,title:"Special Communication: Entered Apprentice Degree",date:"2026-08-20",status:"Approved",body:
-`A Special Communication of Cedar Hollow Lodge No. 214 was opened
-on the Third Degree at 7:00 PM for the purpose of conferring the
-Entered Apprentice Degree.
-
-The Degree was conferred upon Mr. Thomas Reyes in ample form.
-
-The lodge was closed in due form at 9:05 PM.
-
-James Whitfield, PM, Secretary`}
+  /* ---------- minutes (Stated Communication template) ---------- */
+  const BLANK={opened:"",total:"",visitors:"",pms:"",prev:"",corr:"N/A",ballot:"N/A",treas:"",old:"",nb:"",mw:"",edu:"",sick:"",sw:"",jw:"",wm:"",ddgm:"",closed:"",dinner:"",wo:""};
+  const minutes=CFG.minutes?CFG.minutes.map(x=>({...x,seats:{...officers,...(x.seats||{})},f:{...BLANK,...x.f}})):[
+    {id:1,date:"2026-10-13",status:"Awaiting approval",seats:{...officers,STW2:13},f:{...BLANK,opened:"7:31",total:"34",visitors:"3",pms:"6",
+      prev:"Minutes of the September Stated Communication were read and approved.",corr:"Thank-you letter from Millbrook Food Pantry for the summer food drive.",
+      ballot:"N/A",treas:"18,412.07 General Fund; $6,955.40 Charity Fund. Report accepted as read.",
+      old:"Fall Fish Fry raised $2,740 against a $2,500 goal. Thanks to Bro. Hale and the kitchen crew.",
+      nb:"Motion to purchase 200 centennial coins for the lodge store ($1,150). Seconded. Carried.\nTwo petitions for the degrees received and referred to investigation committees.",
+      mw:"",edu:"WB Benson presented on the history of the lodge's 1926 charter.",sick:"Bro. Kline is recovering at home after surgery. Cards welcome.",
+      sw:"Thanked the brethren for the Fish Fry turnout.",jw:"Dinner next month will be roast turkey.",wm:"Reminded all of the Pancake Breakfast on November 14.",ddgm:"N/A",closed:"8:52",dinner:"212",wo:"75"}},
+    {id:2,date:"2026-09-08",status:"Approved",seats:{...officers,TILER:12},f:{...BLANK,opened:"7:30",total:"29",visitors:"1",pms:"5",
+      prev:"Minutes of the August Stated Communication were read and approved.",treas:"17,960.44 General Fund. Accepted as read.",
+      old:"N/A",nb:"Fish Fry committee appointed: Bros. Hale, Lindqvist and Carter.\nBikes for Books: 12 bicycles pledged for spring.",
+      edu:"N/A",sick:"N/A",sw:"N/A",jw:"N/A",wm:"Thanked the brethren for a good summer.",ddgm:"N/A",closed:"8:40",dinner:"180",wo:"60"}}
   ];
-  let current=minutes[0],editing=false,nextId=4;
-  const TEMPLATE=d=>`Cedar Hollow Lodge No. 214 was opened on the Third Degree at __:__ PM,
-Worshipful Brother __________ presiding.
-
-Officers present:
-Members present: __   Visitors: __
-
-1. Minutes of the previous Stated Communication were read and
-2. Treasurer's report:
-3. Bills and communications:
-4. Petitions:
-5. Committee reports:
-6. New business:
-
-There being no further business, the lodge was closed in due form
-at __:__ PM.
-
-__________, Secretary`;
+  let current=minutes[0],editing=CFG.minutes?minutes[0].status==="Draft":false,nextMin=minutes.length+1;
+  const lodgeParts=()=>{
+    const raw=$("#f-name").value.trim()||"Your Lodge";
+    return {base:raw.replace(/\s+lodge$/i,""),num:$("#f-num").value.trim(),abbr:$("#f-jur").value.split(" ")[0],gl:$("#f-gl").value.trim()||"Grand Lodge"};
+  };
   function statusPill(s){return `<span class="pill ${s==="Approved"?"ok":s==="Draft"?"":"warn"}">${s}</span>`}
   function renderMinutes(){
-    $("#min-list").innerHTML=minutes.map(m=>`<button type="button" class="min-item" data-id="${m.id}" aria-current="${m===current}">
-      <b>${esc(m.title)}</b><span>${fmt(parse(m.date),{month:"long",day:"numeric",year:"numeric"})}</span>${statusPill(m.status)}</button>`).join("");
-    const m=current;
-    const head=`<div class="doc-head"><span class="eyebrow">Minutes · ${m.status==="Approved"?"members only":"officers only until approved"}</span>
-      <h3>${esc(m.title)}</h3><p>${fmt(parse(m.date),{weekday:"long",month:"long",day:"numeric",year:"numeric"})}</p></div>`;
-    const body=editing?`<div class="field"><label for="min-edit">Edit minutes</label><textarea id="min-edit" rows="18">${esc(m.body)}</textarea></div>`:`<pre>${esc(m.body)}</pre>`;
-    let actions="";
-    if(editing) actions=`<span class="hint">Editing a draft</span><span style="display:flex;gap:8px"><button class="btn line sm" type="button" data-act="cancel">Cancel</button><button class="btn sm" type="button" data-act="save">Save draft</button></span>`;
-    else if(m.status==="Approved") actions=`${statusPill(m.status)}<span class="hint">Approved at the following Stated Communication. Locked.</span>`;
-    else actions=`${statusPill(m.status)}<span style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn line sm" type="button" data-act="edit">Edit</button>${m.status==="Draft"?'<button class="btn line sm" type="button" data-act="submit">Send for approval</button>':""}<button class="btn sm" type="button" data-act="approve">Mark approved</button></span>`;
-    $("#min-doc").innerHTML=head+body+`<div class="doc-actions">${actions}</div>`;
+    const L=lodgeParts(),m=current,f=m.f,ed=editing;
+    $("#min-list").innerHTML=minutes.map(x=>`<button type="button" class="min-item" data-id="${x.id}" aria-current="${x===current}">
+      <b>Stated Communication</b><span>${fmt(parse(x.date),{month:"long",day:"numeric",year:"numeric"})}</span>${statusPill(x.status)}</button>`).join("");
+    const inl=(k,w)=>ed?`<input class="bl" data-f="${k}" value="${esc(f[k])}" style="width:${w||5}ch" aria-label="${k}">`:(f[k]?`<span class="val">${esc(f[k])}</span>`:`<span class="blank">&nbsp;</span>`);
+    const area=k=>ed?`<textarea class="bl" data-f="${k}" rows="2" aria-label="${k}">${esc(f[k])}</textarea>`:(f[k]?` <span class="val">${esc(f[k])}</span>`:"");
+    const seatCell=k=>{if(!k)return "<td></td><td></td>";const x=SEATS.find(s=>s.k===k);
+      return `<td>${ed?seatSelect("data-seat",x,m.seats[k],"bl"):esc(fullName(m.seats[k]))}</td><td class="ab">${x.ab}</td>`};
+    const rows=[["WM","SD"],["SW","JD"],["JW","STW1"],["TREAS","STW2"],["SEC","TILER"],[null,"CHAP"]];
+    const wmName=(member(m.seats.WM)||{}).name||"__________";
+    const date=ed?`<input class="bl" type="date" data-date value="${m.date}" style="width:auto;text-align:left">`:fmt(parse(m.date),{month:"long",day:"numeric",year:"numeric"});
+    $("#min-doc").innerHTML=`
+      <div class="lh">
+        <div class="lh-name">${esc(L.base)} <span class="scap">Lodge No.</span> ${esc(L.num)}</div>
+        <div class="lh-rule" aria-hidden="true"><i></i>★<i></i></div>
+        <div class="lh-gl">${esc(L.gl)}</div>
+      </div>
+      <p class="dt">${date}</p>
+      <p>At a regular Communication of ${esc(L.base)} Lodge No. ${esc(L.num)}, ${esc(L.abbr)},</p>
+      <table class="seats"><tbody>${rows.map(([a,b])=>`<tr>${seatCell(a)}${seatCell(b)}</tr>`).join("")}</tbody></table>
+      <p class="just">The Worshipful Master, W Bro. ${esc(wmName)}, opened the Lodge at ${inl("opened")} pm in due form on the third degree of Masonry.</p>
+      <p class="just">The Worshipful Master welcomed visiting brothers and the Past Masters visiting and of the Lodge. We had a total of ${inl("total",4)} brothers present, including ${inl("visitors",4)} visitors and ${inl("pms",4)} past masters.</p>
+      <p>The minutes of the previous communications –${area("prev")}</p>
+      <p>Correspondence was read –${area("corr")}</p>
+      <p><span class="hd">Balloting</span>:${area("ballot")}</p>
+      <p><span class="hd">The Treasurer’s Report</span> $${area("treas")}</p>
+      <p><span class="hd">Old Business</span>:${area("old")}</p>
+      <p><span class="hd">New Business:</span>${area("nb")}</p>
+      <p class="gap">Masters &amp; Wardens${area("mw")}</p>
+      <p><span class="hd">Masonic Education</span>:${area("edu")}</p>
+      <p><span class="hd">Sick &amp; Distressed</span>:${area("sick")}</p>
+      <p class="gap">Proceeding to close:</p>
+      <p class="gap">The SW –${area("sw")}</p>
+      <p class="gap">The JW –${area("jw")}</p>
+      <p class="gap">The WM -${area("wm")}</p>
+      <p class="gap">DDGM (or Grand Officer)${area("ddgm")}</p>
+      <p class="just">There being no further business, the Lodge was closed in due form at ${inl("closed")}pm on the third degree of Masonry.</p>
+      <div class="sig">
+        <p>Fraternally Submitted,</p>
+        <p style="margin-top:22px">${esc(fullName(m.seats.SEC))}</p>
+        <p>Secretary</p>
+        <p style="margin-top:12px">Dinner: $${inl("dinner")}</p>
+        <p>W &amp; O: $${inl("wo")}</p>
+      </div>`;
+    let acts;
+    if(ed)acts=`<span class="hint">Editing. Changes save as you type.</span><span class="acts"><button class="btn sm" type="button" data-act="done">Done editing</button></span>`;
+    else if(m.status==="Approved")acts=`<span>${statusPill(m.status)} <span class="hint">Approved at the following Stated. Locked.</span></span><span class="acts"><button class="btn line sm" type="button" data-act="print">Print or save PDF</button></span>`;
+    else acts=`${statusPill(m.status)}<span class="acts"><button class="btn line sm" type="button" data-act="edit">Edit</button>${m.status==="Draft"?'<button class="btn line sm" type="button" data-act="submit">Send for approval</button>':""}<button class="btn line sm" type="button" data-act="print">Print or save PDF</button><button class="btn sm" type="button" data-act="approve">Mark approved</button></span>`;
+    $("#min-toolbar").innerHTML=acts;
   }
   $("#min-list").addEventListener("click",e=>{const b=e.target.closest(".min-item");if(!b)return;current=minutes.find(m=>m.id==b.dataset.id);editing=false;renderMinutes()});
-  $("#min-doc").addEventListener("click",e=>{
+  $("#min-toolbar").addEventListener("click",e=>{
     const a=e.target.closest("[data-act]");if(!a)return;const act=a.dataset.act;
+    if(act==="print"){window.print();return}
     if(act==="edit")editing=true;
-    if(act==="cancel")editing=false;
-    if(act==="save"){current.body=$("#min-edit").value;editing=false}
+    if(act==="done")editing=false;
     if(act==="submit")current.status="Awaiting approval";
-    if(act==="approve")current.status="Approved";
+    if(act==="approve"){current.status="Approved";editing=false}
     renderMinutes();
   });
+  $("#min-doc").addEventListener("input",e=>{const t=e.target;if(t.dataset.f!==undefined)current.f[t.dataset.f]=t.value});
+  $("#min-doc").addEventListener("change",e=>{
+    const t=e.target;
+    if(t.dataset.seat){current.seats[t.dataset.seat]=t.value;renderMinutes()}
+    if(t.hasAttribute("data-date")&&t.value){current.date=t.value;renderMinutes()}
+  });
   $("#min-new").addEventListener("click",()=>{
-    const m={id:nextId++,title:"Stated Communication",date:"2026-11-10",status:"Draft",body:TEMPLATE()};
+    const m={id:nextMin++,date:CFG.nextStated||"2026-11-10",status:"Draft",seats:{...officers},f:{...BLANK}};
     minutes.unshift(m);current=m;editing=true;renderMinutes();
   });
 
+  renderMembers();
   renderCal();renderCart();renderMinutes();
 })();
 
 /* open a tab from the address, e.g. /demo#store */
 (function(){
-  const map={site:"t-site",store:"t-store",calendar:"t-cal",minutes:"t-min"};
+  const map={site:"t-site",store:"t-store",calendar:"t-cal",members:"t-mem",minutes:"t-min"};
   function go(){const id=map[location.hash.slice(1)];if(id)document.getElementById(id).click()}
   go();window.addEventListener("hashchange",go);
 })();
