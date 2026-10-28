@@ -14,7 +14,7 @@
       let cfg=null;
       try{const r=await fetch("/api/config",{cache:"no-store"});if(r.ok)cfg=await r.json()}catch(e){}
       if(!cfg||!cfg.url||!cfg.key)return null;
-      window.LodgeNetAuth.billing=!!cfg.billing;
+      window.LodgeNetAuth.billing=!!cfg.billing;window.LodgeNetAuth.ai=!!cfg.ai;
       if(!window.supabase)await loadScript("/assets/vendor/supabase.umd.min.js");
       return window.supabase.createClient(cfg.url,cfg.key);
     })().catch(()=>null);
