@@ -36,8 +36,14 @@
     sb.rpc("is_platform_admin").then(({data})=>{if(data===true)$("#owner-link").hidden=false},()=>{});
   }
 
+  /* one Subscribe button per paid plan set up in Stripe; with none, the default $19 / month Lodge plan */
+  let PAID=[];
+  const subscribeButtons=()=>PAID.length
+    ?PAID.map(p=>`<button class="btn gold" type="button" data-billing="checkout" data-price="${esc(p.price)}">Subscribe · ${esc(p.name)} · $${(p.amount/100).toFixed(p.amount%100?2:0)} / ${esc(p.interval)}</button>`).join("")
+    :'<button class="btn gold" type="button" data-billing="checkout">Subscribe · $19 / month</button>';
   async function renderLodges(session){
     const box=$("#lodges");box.innerHTML='<p class="hint">Loading your lodges…</p>';
+    if(window.LodgeNetPlans)PAID=(await window.LodgeNetPlans.load()).filter(p=>p.amount>0);
     let rows;
     try{rows=await A.myLodges()}
     catch(e){box.innerHTML=`<div class="card auth-gate"><p class="hint">Couldn't load your lodges (${esc(e.message)}). Reload to try again.</p></div>`;return}
@@ -54,7 +60,7 @@
         <a class="btn" href="/lodges/${encodeURIComponent(l.slug)}">Open dashboard</a>
         ${role==="owner"&&A.billing&&!l.comped?(PAYING.includes(l.billing_status)
           ?'<button class="btn line" type="button" data-billing="portal">Manage billing</button>'
-          :'<button class="btn gold" type="button" data-billing="checkout">Subscribe · $19 / month</button>'):""}
+          :subscribeButtons()):""}
       </span>
       <p class="auth-msg bill-msg" role="status" aria-live="polite"></p>
       ${role==="owner"?`<div class="roll-box" style="display:grid;gap:10px;margin-top:8px"><p class="hint">Loading the lodge roll…</p></div>`:""}
@@ -73,13 +79,12 @@
     return d;
   }
   function billingButtons(lodgeId,session){
-    const card=document.querySelector(`[data-lodge="${lodgeId}"]`),b=card.querySelector("[data-billing]"),out=card.querySelector(".bill-msg");
-    if(!b)return;
-    b.addEventListener("click",async()=>{
+    const card=document.querySelector(`[data-lodge="${lodgeId}"]`),out=card.querySelector(".bill-msg");
+    card.querySelectorAll("[data-billing]").forEach(b=>b.addEventListener("click",async()=>{
       b.disabled=true;msg(out,b.dataset.billing==="checkout"?"Opening Stripe checkout…":"Opening billing…");
-      try{location.href=(await billing(b.dataset.billing,lodgeId,session)).url}
+      try{location.href=(await billing(b.dataset.billing,lodgeId,session,b.dataset.price?{price_id:b.dataset.price}:{})).url}
       catch(err){msg(out,err.message,true);b.disabled=false}
-    });
+    }));
   }
   /* back from Checkout or the Portal: read the subscription back from Stripe */
   async function billingReturn(session){
