@@ -20,6 +20,9 @@
   "functions": {
     "api/minutes.js": {
       "maxDuration": 120
+    },
+    "api/business-search.js": {
+      "maxDuration": 300
     }
   }
 }

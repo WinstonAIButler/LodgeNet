@@ -24,7 +24,7 @@
       {id:"c2",name:"Widows & Orphans Fund",kind:"Lodge fund",note:"Help for the families of departed brethren."},
       {id:"c3",name:"Lodge Building Fund",kind:"Lodge fund",note:"Upkeep of the lodge hall."}]
   };
-  window.LodgeNetDash={snapshot:()=>({treasury:D.treasury,sponsors:D.sponsors,pipeline:D.pipeline,plists:D.plists,ptasks:D.ptasks,announcements:D.announcements,charities:D.charities})};
+  window.LodgeNetDash={snapshot:()=>({treasury:D.treasury,sponsors:D.sponsors,pipeline:D.pipeline,bsearch:D.bsearch,plists:D.plists,ptasks:D.ptasks,announcements:D.announcements,charities:D.charities})};
   const changed=()=>{A.save();kpis(cur)};
   const funds=()=>["General Fund",...D.charities.map(c=>c.name)];
   const fundraisers=()=>A.events.filter(e=>e.k==="fund").sort((a,b)=>a.d<b.d?1:-1);
@@ -207,8 +207,13 @@
   const FITS=[["strong","Strong (80+)",f=>f>=80],["possible","Possible (50–79)",f=>f>=50&&f<80],["weak","Weak (under 50)",f=>f!=null&&f<50],["none","Not scored yet",f=>f==null]];
   const CONTACT=[["email","Has an email",c=>!!c.email],["phone","Has a phone",c=>!!c.phone],["by","Recommended by a brother",c=>!!c.by]];
   D.plists=CFG.plists||[];D.ptasks=CFG.ptasks||[];
+  /* Find businesses: the last AI search (api/business-search.js) is kept with the lodge's records so other officers see it too */
+  D.bsearch=CFG.bsearch||{what:"",where:"",purpose:"Sponsor",count:10,results:[],notes:"",at:""};
+  const PURPOSES=["Sponsor","Fundraiser partner","Event venue","Vendor or supplier","In-kind donor"];
+  const BS={busy:false,msg:""};
+  const SCORE_DIMS=[["giving","Community giving",30],["local","Local roots",20],["ties","Veteran, fraternal and civic ties",15],["capacity","Capacity to give",15],["relevance","Fit for this ask",10],["reach","Reachable decision-maker",10]];
   D.pipeline.forEach(c=>{if(c.contact&&!c.email&&!c.phone){/@/.test(c.contact)?c.email=c.contact:c.phone=c.contact;delete c.contact}c.kind=c.kind||KINDS_P[0];c.lists=c.lists||[];if(c.fit===undefined)c.fit=null});
-  const PF={fopen:null,view:"prospects",stage:new Set(),fit:new Set(),contact:new Set(),kind:new Set(),list:"",q:"",sort:"fit",page:0,sel:new Set(),open:null};
+  const PF={fopen:null,view:"search",stage:new Set(),fit:new Set(),contact:new Set(),kind:new Set(),list:"",q:"",sort:"fit",page:0,sel:new Set(),open:null};
   const PAGE=25;
   const tier=f=>f==null?["none","Not scored"]:f>=80?["strong","Strong"]:f>=50?["possible","Possible"]:["weak","Weak"];
   function syncDegree(c){const deg=DEGREE[c.stage],m=c.member&&A.member(c.member);
@@ -227,7 +232,7 @@
     const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([out.join("\n")],{type:"text/csv"}));a.download="lodge-prospects.csv";document.body.appendChild(a);a.click();a.remove()}
   function renderPipe(){
     const openTasks=D.ptasks.filter(t=>!t.done).length;
-    const tabs=`<div class="tabs pl-tabs" role="tablist" aria-label="Pipelines">${[["prospects",`Prospects (${D.pipeline.length})`],["lists",`Lists (${D.plists.length})`],["tasks",`Tasks (${openTasks})`]]
+    const tabs=`<div class="tabs pl-tabs" role="tablist" aria-label="Pipelines">${[["search","Find businesses"],["prospects",`Prospects (${D.pipeline.length})`],["lists",`Lists (${D.plists.length})`],["tasks",`Tasks (${openTasks})`]]
       .map(([k,l])=>`<button type="button" class="tab" role="tab" data-view="${k}" aria-selected="${PF.view===k}">${l}</button>`).join("")}</div>`;
     let body="";
     if(PF.view==="prospects"){
@@ -286,6 +291,8 @@
             ${detail()}
           </div>
         </div>`;
+    }else if(PF.view==="search"){
+      body=bizSearch();
     }else if(PF.view==="lists"){
       body=`<div class="two-col wide-left"><div class="list">${D.plists.length?D.plists.map(l=>{const n=D.pipeline.filter(c=>c.lists.includes(l.id)).length;
           return `<div class="card" data-li="${esc(l.id)}"><div class="row-sp"><b>${esc(l.name)}</b><span class="pill">${many(n,"prospect")}</span></div>
@@ -308,7 +315,7 @@
           <div class="field"><label for="pt-d">Due</label><input id="pt-d" type="date"></div>
           <button class="btn" type="submit"${D.pipeline.length?"":" disabled"}>Add follow-up</button></form></div>`;
     }
-    $("#p-pipe").innerHTML=tabs+body+`<p class="hint" style="margin:14px 0 0">Moving a prospect to Entered Apprentice adds him to the roster on Members, and Fellowcraft and Raised update his degree there.</p>`;
+    $("#p-pipe").innerHTML=tabs+body+(PF.view==="search"?"":`<p class="hint" style="margin:14px 0 0">Moving a prospect to Entered Apprentice adds him to the roster on Members, and Fellowcraft and Raised update his degree there.</p>`);
     wirePipe();
   }
   function detail(){
@@ -325,8 +332,71 @@
       <div class="mini-list"><b style="font-size:13px">Follow-ups</b>${T.length?T.map(t=>`<span class="hint">${t.done?"✓ ":""}${esc(t.text)}${t.due?" · "+day(t.due):""}</span>`).join(""):'<span class="hint">None yet.</span>'}
         <form class="row-acts" id="pl-dtask"><input id="pl-dt" placeholder="New follow-up" class="amt-in" style="width:auto;flex:1"><input id="pl-dd" type="date" class="amt-in" style="width:auto"><button class="btn line sm" type="submit">Add</button></form></div></div>`;
   }
+  function bizSearch(){
+    const B=D.bsearch,town=[($("#f-city")||{}).value,($("#f-state")||{}).value].filter(Boolean).join(", ");
+    const added=r=>D.sponsors.some(s=>s.name.toLowerCase()===r.name.toLowerCase());
+    return `<form class="biz-form" id="biz-form">
+        <div><h4>Find businesses</h4><p class="hint" style="margin:4px 0 0">Describe the businesses you want to approach and where. Claude searches the web for real ones nearby, scores how likely each is to help, and says why. Add the good ones to Sponsors.</p></div>
+        <div class="inline-form">
+          <div class="field grow"><label for="bz-w">Looking for</label><input id="bz-w" required placeholder="Restaurants, banks, insurance agents, contractors" value="${esc(B.what)}"></div>
+          <div class="field"><label for="bz-a">Near</label><input id="bz-a" required placeholder="Murrells Inlet, SC" value="${esc(B.where||town)}"></div>
+          <div class="field"><label for="bz-p">To be a</label><select id="bz-p">${opts(PURPOSES,B.purpose)}</select></div>
+          <div class="field"><label for="bz-n">How many</label><select id="bz-n">${[10,15,20].map(n=>`<option${+B.count===n?" selected":""}>${n}</option>`).join("")}</select></div>
+          <button class="btn" type="submit"${BS.busy?" disabled":""}>${BS.busy?"Searching…":"Search"}</button>
+        </div>
+        ${BS.msg?`<p class="hint biz-msg" role="status">${esc(BS.msg)}</p>`:""}
+      </form>
+      ${B.results.length?`<div class="pl-bar"><b>${many(B.results.length,"business","businesses")}</b><span class="hint">${esc(B.what)} near ${esc(B.where)} · ${esc(B.purpose)}${B.at?" · searched "+day(B.at):""}</span><button type="button" class="btn line sm" id="bz-csv">Export CSV</button></div>
+      <div class="table-scroll"><table class="dtable biz-table"><thead><tr><th>Business</th><th>Contact</th><th>Fit</th><th>Why, and how to ask</th><th><span class="sr">Actions</span></th></tr></thead><tbody>
+      ${B.results.map((r,i)=>{const [tk,tl]=tier(r.fit);return `<tr data-bz="${i}">
+        <td><b>${esc(r.name)}</b><br><span class="hint">${esc(r.category)}</span><br><span class="hint">${esc([r.address,r.city].filter(Boolean).join(", "))}</span></td>
+        <td>${r.contact?`${esc(r.contact)}${r.role?`<br><span class="hint">${esc(r.role)}</span>`:""}<br>`:""}${[r.phone?`<a href="tel:${esc(r.phone)}">${esc(r.phone)}</a>`:"",r.email?`<a href="mailto:${esc(r.email)}">${esc(r.email)}</a>`:"",r.website?`<a href="${esc(r.website)}" target="_blank" rel="noopener">Website</a>`:""].filter(Boolean).join("<br>")||'<span class="hint">Not found</span>'}</td>
+        <td><span class="fit ${tk}">${tl} · ${r.fit}</span></td>
+        <td class="biz-why">${esc(r.why)}
+          <details class="biz-more"><summary>Evidence, score and suggested ask</summary>
+            ${r.signals&&r.signals.length?`<ul class="biz-sig">${r.signals.map(g=>`<li>${esc(g.text)}${g.url?` <a href="${esc(g.url)}" target="_blank" rel="noopener">Source</a>`:""}</li>`).join("")}</ul>`:""}
+            ${r.score?`<dl class="biz-score">${SCORE_DIMS.map(([k,l,max])=>`<dt>${l}</dt><dd>${+r.score[k]||0} / ${max}</dd>`).join("")}</dl>`:""}
+            ${r.pitch?`<blockquote class="biz-pitch">${esc(r.pitch)}</blockquote><button type="button" class="btn line sm" data-bzcopy>Copy the ask</button>`:""}
+          </details></td>
+        <td class="r">${added(r)?'<span class="hint">In Sponsors</span>':'<button type="button" class="btn line sm" data-bzadd>Add to Sponsors</button>'}</td></tr>`}).join("")}
+      </tbody></table></div>${B.notes?`<p class="notice">${esc(B.notes)}</p>`:""}`
+      :`<div class="empty">No search yet. Try "family restaurants" or "local banks and credit unions" near your lodge.</div>`}`;
+  }
+  async function runBizSearch(){
+    const B=D.bsearch;B.what=$("#bz-w").value.trim();B.where=$("#bz-a").value.trim();B.purpose=$("#bz-p").value;B.count=+$("#bz-n").value;
+    const C=window.LODGENET_CLOUD,say=m=>{BS.msg=m;renderPipe()};
+    if(!C||!C.lodgeId)return say("Business search runs in a signed-in lodge account. Here you can add sponsors by hand on the Sponsors tab.");
+    if(!C.canEdit)return say("Only the lodge's officers can search for businesses.");
+    const session=window.LodgeNetAuth&&await window.LodgeNetAuth.session();
+    if(!session)return say("Your sign-in has expired. Sign in again.");
+    BS.busy=true;say("Searching the web. This usually takes a minute or two.");
+    try{
+      const r=await fetch("/api/business-search",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+session.access_token},
+        body:JSON.stringify({lodge_id:C.lodgeId,lodge:($("#lodge-title")||{}).textContent||"",what:B.what,where:B.where,purpose:B.purpose,count:B.count,
+          exclude:D.sponsors.map(x=>x.name)})});
+      const d=await r.json().catch(()=>({error:"The search didn't finish just now. Try again."}));
+      if(!r.ok)throw new Error(d.error||"The search didn't finish just now.");
+      B.results=d.results||[];B.notes=d.notes||"";B.at=TODAY;
+      BS.msg=B.results.length?"":"No matching businesses turned up. Try a wider area or different wording.";changed();
+    }catch(err){BS.msg=err.message}
+    BS.busy=false;renderPipe();
+  }
   function wirePipe(){
     const P=$("#p-pipe"),re=()=>{renderPipe();changed()};
+    const bf=$("#biz-form");
+    if(bf){bf.addEventListener("submit",e=>{e.preventDefault();if(!BS.busy)runBizSearch()});
+      P.querySelectorAll("[data-bzadd]").forEach(b=>b.addEventListener("click",()=>{const r=D.bsearch.results[+b.closest("[data-bz]").dataset.bz];
+        D.sponsors.push({id:uid(),name:r.name,contact:[r.contact,r.phone,r.email||r.website].filter(Boolean).join(" · "),level:D.bsearch.purpose==="In-kind donor"?"In-kind":"Bronze",amt:0,renew:"",status:"Prospect"});
+        renderSpon();re()}));
+      P.querySelectorAll("[data-bzcopy]").forEach(b=>b.addEventListener("click",async()=>{const r=D.bsearch.results[+b.closest("[data-bz]").dataset.bz];
+        try{await navigator.clipboard.writeText(r.pitch);b.textContent="Copied"}catch{b.textContent="Select the text to copy"}}));
+      const xc=$("#bz-csv");if(xc)xc.addEventListener("click",()=>{const q=v=>`"${String(v==null?"":v).replace(/"/g,'""')}"`;
+        const rows=[["Business","Kind","Address","City","Contact","Role","Phone","Email","Website","Fit","Why","Suggested ask"]].concat(D.bsearch.results.map(r=>
+          [r.name,r.category,r.address,r.city,r.contact,r.role,r.phone,r.email,r.website,r.fit,r.why,r.pitch]));
+        const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([rows.map(x=>x.map(q).join(",")).join("\n")],{type:"text/csv"}));
+        a.download="lodge-business-search.csv";document.body.appendChild(a);a.click();a.remove()});
+      P.querySelectorAll("[data-view]").forEach(b=>b.addEventListener("click",()=>{PF.view=b.dataset.view;renderPipe()}));
+      return}
     P.querySelectorAll("[data-view]").forEach(b=>b.addEventListener("click",()=>{PF.view=b.dataset.view;renderPipe()}));
     const form=$("#pipe-form");
     if(form)form.addEventListener("submit",e=>{e.preventDefault();const n=$("#pp-n").value.trim();if(!n)return;
