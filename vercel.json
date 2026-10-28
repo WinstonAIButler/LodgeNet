@@ -1,5 +1,6 @@
 {
   "cleanUrls": true,
+  "rewrites": [{ "source": "/lodges/:slug", "destination": "/lodge" }],
   "headers": [
     { "source": "/owner", "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }] }
   ]

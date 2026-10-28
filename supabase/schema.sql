@@ -138,3 +138,28 @@ grant execute on function public.redeem_plan_code(uuid,text) to authenticated;
 alter table public.lodges add column if not exists stripe_customer_id text;
 alter table public.lodges add column if not exists stripe_subscription_id text;
 alter table public.lodges add column if not exists billing_status text;   -- Stripe subscription status, null before Checkout
+
+-- Start a lodge from /start: the signed-in (confirmed) account becomes its owner. New lodges begin on Lodge Starter;
+-- the Lodge plan comes from subscribing or a plan code. Returns the lodge's slug (its dashboard is /lodges/<slug>).
+create or replace function public.create_lodge(n text, num text, c text, st text) returns text
+language plpgsql security definer set search_path=public as $$
+declare e text; base text; s text; i int:=1; lid uuid;
+begin
+  select lower(email) into e from auth.users where id=auth.uid() and email_confirmed_at is not null;
+  if e is null then raise exception 'Confirm your email first, then try again.'; end if;
+  n:=nullif(trim(n),''); num:=nullif(regexp_replace(coalesce(num,''),'[^0-9A-Za-z-]','','g'),'');
+  if n is null or length(n)>120 then raise exception 'Enter your lodge''s name.'; end if;
+  if (select count(*) from public.lodge_members where user_id=auth.uid() and role='owner')>=5 then
+    raise exception 'This account already owns 5 lodges. Contact LodgeNet to add more.';
+  end if;
+  base:=trim(both '-' from regexp_replace(lower(n||coalesce('-'||num,'')),'[^a-z0-9]+','-','g'));
+  if base='' then base:='lodge'; end if;
+  base:=left(base,60); s:=base;
+  while exists(select 1 from public.lodges where slug=s) loop i:=i+1; s:=base||'-'||i; end loop;
+  insert into public.lodges(slug,name,number,city,state,plan)
+    values(s,n,num,nullif(trim(c),''),nullif(upper(trim(st)),''),'starter') returning id into lid;
+  insert into public.lodge_members(lodge_id,user_id,email,role) values(lid,auth.uid(),e,'owner');
+  return s;
+end $$;
+revoke execute on function public.create_lodge(text,text,text,text) from public, anon;
+grant execute on function public.create_lodge(text,text,text,text) to authenticated;

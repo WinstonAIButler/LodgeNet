@@ -198,7 +198,9 @@
     gmail=!gmail;renderGmail();
   });
   $("#f-email").addEventListener("input",()=>{if(gmail)renderGmail()});
-  $("#site-form").addEventListener("submit",e=>{e.preventDefault();$("#site-status").innerHTML='<span class="pill ok">Published</span> Live at '+esc($("#pv-url").textContent)+" (demo)"});
+  const LOCKED='<span class="pill">Not published</span> Publishing unlocks once the lodge\'s plan is paid for. <a href="/login">Subscribe or enter a plan code</a>';
+  if(CLOUD&&!CLOUD.paid)$("#site-status").innerHTML=LOCKED;
+  $("#site-form").addEventListener("submit",e=>{e.preventDefault();if(CLOUD&&!CLOUD.paid)return $("#site-status").innerHTML=LOCKED;$("#site-status").innerHTML='<span class="pill ok">Published</span> Live at '+esc($("#pv-url").textContent)+" (demo)"});
 
   /* ---------- store ---------- */
   const products=CFG.products||[
@@ -663,11 +665,11 @@
   if(plan&&!PLANS[plan])plan="lodge";
   if(plan){
     const P=PLANS[plan];
-    const pl=$("#plan-line");if(pl)pl.innerHTML=`${P.name} plan · ${P.price} · <a href="/pricing">Change plan</a>`;
+    const pl=$("#plan-line");if(pl)pl.innerHTML=`${P.name} plan · ${P.price} · ${CLOUD?'<a href="/login">Plan &amp; billing</a>':'<a href="/pricing">Change plan</a>'}`;
     const eb=$("#plan-eyebrow");if(eb)eb.textContent=`Step 2 · Set up your lodge · ${P.name} plan`;
     if(plan==="starter"){
       $("#p-store .store-wrap").hidden=true;
-      $("#p-store").insertAdjacentHTML("afterbegin",'<div class="card" style="max-width:560px"><h4>The store comes with the Lodge plan</h4><p class="hint">Lodge Starter includes your website, calendar, members and minutes. Move to the Lodge plan ($19 / month) to sell shirts, pins and coins and take donations through PayPal, Venmo or Cash App.</p><a class="btn sm" href="/pricing" style="justify-self:start">See plans</a></div>');
+      $("#p-store").insertAdjacentHTML("afterbegin",'<div class="card" style="max-width:560px"><h4>The store comes with the Lodge plan</h4><p class="hint">Lodge Starter includes your website, calendar, members and minutes. Move to the Lodge plan ($19 / month) to sell shirts, pins and coins and take donations through PayPal, Venmo or Cash App.</p><a class="btn sm" href="'+(CLOUD?"/login":"/pricing")+'" style="justify-self:start">'+(CLOUD?"Upgrade this lodge":"See plans")+'</a></div>');
     }
   }
 
