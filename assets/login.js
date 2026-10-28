@@ -36,8 +36,14 @@
     sb.rpc("is_platform_admin").then(({data})=>{if(data===true)$("#owner-link").hidden=false},()=>{});
   }
 
+  /* one Subscribe button per paid plan set up in Stripe; with none, the default $19 / month Lodge plan */
+  let PAID=[];
+  const subscribeButtons=()=>PAID.length
+    ?PAID.map(p=>`<button class="btn gold" type="button" data-billing="checkout" data-price="${esc(p.price)}">Subscribe · ${esc(p.name)} · $${(p.amount/100).toFixed(p.amount%100?2:0)} / ${esc(p.interval)}</button>`).join("")
+    :'<button class="btn gold" type="button" data-billing="checkout">Subscribe · $19 / month</button>';
   async function renderLodges(session){
     const box=$("#lodges");box.innerHTML='<p class="hint">Loading your lodges…</p>';
+    if(window.LodgeNetPlans)PAID=(await window.LodgeNetPlans.load()).filter(p=>p.amount>0);
     let rows;
     try{rows=await A.myLodges()}
     catch(e){box.innerHTML=`<div class="card auth-gate"><p class="hint">Couldn't load your lodges (${esc(e.message)}). Reload to try again.</p></div>`;return}
@@ -54,17 +60,12 @@
         <a class="btn" href="/lodges/${encodeURIComponent(l.slug)}">Open dashboard</a>
         ${role==="owner"&&A.billing&&!l.comped?(PAYING.includes(l.billing_status)
           ?'<button class="btn line" type="button" data-billing="portal">Manage billing</button>'
-          :'<button class="btn gold" type="button" data-billing="checkout">Subscribe · $19 / month</button>'):""}
+          :subscribeButtons()):""}
       </span>
       <p class="auth-msg bill-msg" role="status" aria-live="polite"></p>
-      ${role==="owner"?`<form class="invite code-form" novalidate style="grid-template-columns:minmax(0,1fr) auto">
-        <div class="field"><label>Have a plan code?<input name="code" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="LODGE-XXXX-XXXX"></label></div>
-        <button class="btn line sm" type="submit">Redeem</button>
-      </form><p class="auth-msg code-msg" role="status" aria-live="polite"></p>
-      <div class="roll-box" style="display:grid;gap:10px;margin-top:8px"><p class="hint">Loading the lodge roll…</p></div>`:""}
+      ${role==="owner"?`<div class="roll-box" style="display:grid;gap:10px;margin-top:8px"><p class="hint">Loading the lodge roll…</p></div>`:""}
     </div>`).join("");
-    rows.filter(r=>r.role==="owner").forEach(r=>{renderRoll(r.lodge.id,session.user.id);codeForm(r.lodge.id,session);billingButtons(r.lodge.id,session)});
-    if(location.hash==="#code"){const f=box.querySelector(".code-form input");if(f){f.scrollIntoView({block:"center"});f.focus()}}
+    rows.filter(r=>r.role==="owner").forEach(r=>{renderRoll(r.lodge.id,session.user.id);billingButtons(r.lodge.id,session)});
   }
 
   /* account owners: subscribe through Stripe Checkout, or manage the subscription in Stripe's Customer Portal */
@@ -78,13 +79,12 @@
     return d;
   }
   function billingButtons(lodgeId,session){
-    const card=document.querySelector(`[data-lodge="${lodgeId}"]`),b=card.querySelector("[data-billing]"),out=card.querySelector(".bill-msg");
-    if(!b)return;
-    b.addEventListener("click",async()=>{
+    const card=document.querySelector(`[data-lodge="${lodgeId}"]`),out=card.querySelector(".bill-msg");
+    card.querySelectorAll("[data-billing]").forEach(b=>b.addEventListener("click",async()=>{
       b.disabled=true;msg(out,b.dataset.billing==="checkout"?"Opening Stripe checkout…":"Opening billing…");
-      try{location.href=(await billing(b.dataset.billing,lodgeId,session)).url}
+      try{location.href=(await billing(b.dataset.billing,lodgeId,session,b.dataset.price?{price_id:b.dataset.price}:{})).url}
       catch(err){msg(out,err.message,true);b.disabled=false}
-    });
+    }));
   }
   /* back from Checkout or the Portal: read the subscription back from Stripe */
   async function billingReturn(session){
@@ -97,20 +97,6 @@
     catch(err){note="Couldn't check billing with Stripe ("+err.message+")."}
     await renderLodges(session);
     const out=document.querySelector(`[data-lodge="${lodgeId}"] .bill-msg`);if(out)msg(out,note);
-  }
-
-  /* account owners: a plan code puts the lodge on that plan at no charge */
-  function codeForm(lodgeId,session){
-    const card=document.querySelector(`[data-lodge="${lodgeId}"]`),f=card.querySelector(".code-form"),out=card.querySelector(".code-msg");
-    f.addEventListener("submit",async e=>{
-      e.preventDefault();
-      const code=f.code.value.trim();
-      if(!code)return msg(out,"Enter the code.",true);
-      const {data,error}=await sb.rpc("redeem_plan_code",{lid:lodgeId,c:code});
-      if(error)return msg(out,error.message,true);
-      await renderLodges(session);
-      msg(document.querySelector(`[data-lodge="${lodgeId}"] .code-msg`),`Code accepted. This lodge is on the ${PLAN[data]||data} at no charge.`);
-    });
   }
 
   /* account owners: who can sign in to this lodge, and invites waiting to be claimed */

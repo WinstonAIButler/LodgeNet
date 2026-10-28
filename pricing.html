@@ -50,15 +50,15 @@
 <main>
   <section class="band">
     <div class="wrap">
-      <div class="tiers">
-        <div class="tier"><h3>Lodge Starter</h3><div class="amt num">$0<small> / month</small></div>
-          <ul><li>Build your lodge website (publishing comes with the Lodge plan)</li><li>Calendar with public events</li><li>Members roll and officer chairs</li><li>Minutes archive, 2 officer logins</li></ul>
+      <div class="tiers" id="tiers" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr))">
+        <div class="tier" data-tier="starter"><h3>Lodge Starter</h3><div class="amt num">$0<small> / month</small></div>
+          <ul><li>Build your lodge website (publishing comes with a paid plan)</li><li>Calendar with public events</li><li>Members roll and officer chairs</li><li>Minutes archive, 2 officer logins</li></ul>
           <a class="btn line" href="/start?plan=starter">Start with Lodge Starter</a></div>
         <div class="tier feat-tier"><h3>Lodge</h3><div class="amt num">$19<small> / month</small></div>
           <ul><li>Everything in Lodge Starter</li><li>Publish your website, with your own domain</li><li>Merch store with print-on-demand</li><li>Fundraiser goals, RSVPs and donations</li><li>Unlimited officers and members area</li></ul>
           <a class="btn" href="/start?plan=lodge">Start with Lodge</a>
-          <a class="more" href="/login#code" style="text-align:center">Have a plan code? Redeem it</a></div>
-        <div class="tier"><h3>District / Grand Lodge</h3><div class="amt">Let's talk</div>
+          <span class="hint" style="text-align:center">Have a promo code? Enter it at checkout.</span></div>
+        <div class="tier" data-tier="district"><h3>District / Grand Lodge</h3><div class="amt">Let's talk</div>
           <ul><li>Every constituent lodge on one account</li><li>District calendar and visitation schedule</li><li>Shared store and roll-up reporting</li></ul>
           <a class="btn line" href="/start?plan=district">Start a District</a></div>
       </div>
@@ -89,5 +89,7 @@
   </div>
 </footer>
 <script src="/assets/auth.js"></script>
+<script src="/assets/plans.js"></script>
+<script>LodgeNetPlans.render(document.getElementById("tiers"),"pricing")</script>
 </body>
 </html>

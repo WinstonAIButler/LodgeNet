@@ -1,9 +1,10 @@
 // Lodge plan billing: Stripe Checkout to subscribe ($19 / month), the Stripe Customer Portal to manage it,
 // and a sync that reads the subscription back from Stripe (on return from Checkout or the Portal), so no webhook is needed.
 // POST /api/billing {action:"checkout"|"portal"|"sync", lodge_id, session_id?} with the owner's Supabase access token.
-// Needs SUPABASE_SERVICE_ROLE_KEY, and a Stripe secret key: STRIPE_SECRET_KEY from Vercel's Stripe integration,
-// otherwise the one saved in the owner's hub (platform_secrets, row stripe_secret_key).
-const PRICE_CENTS=1900;
+// POST {action:"checkout", price_id} subscribes to one of the plans set up in Stripe (api/plans.js).
+// Needs SUPABASE_SERVICE_ROLE_KEY, and a Stripe secret key (see api/_stripe.js).
+const PRICE_CENTS=1900;   /* used only while Stripe has no plans set up */
+const {stripeKey,stripe,plans}=require("./_stripe");
 const e=process.env;
 const PUBLIC=require("./_public");
 const SB_URL=e.SUPABASE_URL||e.NEXT_PUBLIC_SUPABASE_URL||PUBLIC.url;
@@ -17,33 +18,6 @@ async function sb(path,{method="GET",body,token}={}){
     headers:{apikey:key,Authorization:"Bearer "+(token||SB_SERVICE),"Content-Type":"application/json",Prefer:"return=representation"}});
   const t=await r.text(),d=t?JSON.parse(t):null;
   if(!r.ok)throw Object.assign(new Error((d&&(d.message||d.msg||d.error_description))||r.statusText),{status:r.status});
-  return d;
-}
-
-let savedKey=null;
-async function stripeKey(){
-  if(e.STRIPE_SECRET_KEY)return e.STRIPE_SECRET_KEY;
-  if(!savedKey){
-    try{const [row]=await sb("/rest/v1/platform_secrets?select=*&name=eq.stripe_secret_key");savedKey=row&&(row.value||row.secret)||null}
-    catch(err){savedKey=null}
-  }
-  return savedKey;
-}
-
-/* Stripe takes form encoding with bracketed keys: line_items[0][price_data][currency]=usd */
-function form(o,prefix,out=[]){
-  for(const [k,v] of Object.entries(o)){
-    if(v==null)continue;
-    const key=prefix?`${prefix}[${k}]`:k;
-    if(typeof v==="object")form(v,key,out);else out.push(encodeURIComponent(key)+"="+encodeURIComponent(v));
-  }
-  return out.join("&");
-}
-async function stripe(key,path,params){
-  const r=await fetch("https://api.stripe.com/v1"+path,{method:params?"POST":"GET",body:params&&form(params),
-    headers:{Authorization:"Bearer "+key,"Content-Type":"application/x-www-form-urlencoded"}});
-  const d=await r.json();
-  if(!r.ok)throw Object.assign(new Error(d.error&&d.error.message||"Stripe error"),{status:502});
   return d;
 }
 
@@ -70,15 +44,19 @@ module.exports=async(req,res)=>{
     if(body.action==="checkout"){
       if(lodge.comped)return send(400,{error:"This lodge is already on the Lodge plan at no charge."});
       if(LIVE.includes(lodge.billing_status))return send(400,{error:"This lodge already has a subscription. Use Manage billing."});
+      const list=await plans(key);
+      const chosen=body.price_id?list.find(p=>p.price===body.price_id):null;
+      if(body.price_id&&!chosen)return send(400,{error:"That plan isn't available any more. Reload and choose again."});
       const s=await stripe(key,"/checkout/sessions",{
         mode:"subscription",
-        line_items:[{quantity:1,price_data:{currency:"usd",unit_amount:PRICE_CENTS,recurring:{interval:"month"},
+        line_items:[chosen?{quantity:1,price:chosen.price}:{quantity:1,price_data:{currency:"usd",unit_amount:PRICE_CENTS,recurring:{interval:"month"},
           product_data:{name:"LodgeNet Lodge plan"}}}],
         client_reference_id:lid,
         metadata:{lodge_id:lid},
         subscription_data:{metadata:{lodge_id:lid,lodge:`${lodge.name}${lodge.number?" No. "+lodge.number:""}`}},
         ...(lodge.stripe_customer_id?{customer:lodge.stripe_customer_id}:{customer_email:user.email}),
         allow_promotion_codes:true,
+        payment_method_collection:"if_required",   /* a 100%-off promo code needs no card */
         success_url:`${origin}/login?billing=done&lodge=${lid}&session_id={CHECKOUT_SESSION_ID}`,
         cancel_url:`${origin}/login`
       });

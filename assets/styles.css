@@ -336,6 +336,8 @@ section.band{padding-block:72px}
 .tier{border:1px solid var(--line);border-radius:10px;padding:24px;display:grid;gap:14px;align-content:start;background:var(--surface)}
 .tier.feat-tier{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold)}
 .tier h3{font-family:var(--display);font-size:20px}
+.tier .amt small{display:block;margin-top:2px}
+.tier .crest{width:96px;height:auto;justify-self:center;border-radius:8px}
 .tier .amt{font-size:34px;font-weight:700}
 .tier .amt small{font-size:14px;font-weight:500;color:var(--muted)}
 .tier ul{margin:0;padding-left:18px;color:var(--muted);font-size:14px;display:grid;gap:6px}

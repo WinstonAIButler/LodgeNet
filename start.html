@@ -79,10 +79,10 @@
       <div id="v-pick" hidden>
         <h3 style="font-family:var(--display);margin:0 0 6px">Step 2 · Choose your plan</h3>
         <p class="hint" id="who" style="margin:0 0 18px"></p>
-        <div class="tiers" style="grid-template-columns:repeat(auto-fit,minmax(260px,1fr))">
+        <div class="tiers" id="tiers" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr))">
           <div class="tier" data-tier="starter"><h3>Lodge Starter</h3><div class="amt num">$0<small> / month</small></div>
             <ul>
-              <li>Build your lodge website (preview only; publishing comes with the Lodge plan)</li>
+              <li>Build your lodge website (preview only; publishing comes with a paid plan)</li>
               <li>Lodge calendar with Stated Communications filled in for you</li>
               <li>Members roll and officer chairs</li>
               <li>Meeting minutes: short form, full write-up and PDF</li>
@@ -100,15 +100,13 @@
               <li>Billed monthly by card through Stripe. Cancel any time.</li>
             </ul>
             <button class="btn" type="button" data-pick="lodge">Choose Lodge · $19 / month</button>
-            <form class="invite code-form" id="f-code" novalidate style="grid-template-columns:minmax(0,1fr) auto">
-              <div class="field"><label>Have a plan code? It replaces the payment.<input name="code" id="code" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="LODGE-XXXX-XXXX"></label></div>
-              <button class="btn line sm" type="submit">Use code</button>
-            </form>
-            <p class="auth-msg" id="pick-msg" role="status" aria-live="polite"></p></div>
-          <div class="tier"><h3>District / Grand Lodge</h3><div class="amt">Let's talk</div>
+            <p class="hint">Have a promo code? Enter it on Stripe's checkout page. A full-discount code needs no card.</p>
+          </div>
+          <div class="tier" data-tier="district"><h3>District / Grand Lodge</h3><div class="amt">Let's talk</div>
             <ul><li>Every constituent lodge on one account</li><li>District calendar and visitation schedule</li><li>Shared store and roll-up reporting</li></ul>
             <p class="hint">Start your own lodge on the Lodge plan for now, and we'll link your district's lodges together.</p></div>
         </div>
+        <p class="auth-msg" id="pick-msg" role="status" aria-live="polite" style="margin-top:12px"></p>
       </div>
 
       <!-- step 3: the lodge -->
@@ -131,7 +129,7 @@
         </div>
       </div>
 
-      <!-- after creating: payment didn't open, or the code didn't take -->
+      <!-- after creating: payment didn't open -->
       <div class="card auth-card" id="v-done" hidden style="max-width:560px">
         <h3 id="made-title">Your lodge is set up</h3>
         <p class="auth-msg" id="d-msg" role="status" aria-live="polite"></p>
@@ -150,6 +148,7 @@
   </div>
 </footer>
 <script src="/assets/auth.js"></script>
+<script src="/assets/plans.js"></script>
 <script src="/assets/start.js"></script>
 </body>
 </html>
