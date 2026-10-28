@@ -103,6 +103,7 @@
 
   /* ---------- members & officer seats ---------- */
   let nextMember=1;
+  const DUES_YEAR=new Date().getFullYear();
   const M=(name,deg,pm,dues)=>({id:nextMember++,name,deg:deg||"Master Mason",pm:!!pm,dues:dues||"Paid 2026",active:true});
   const members=CFG.membersFull?CFG.membersFull.map(m=>({...m})):CFG.members?CFG.members.map(a=>M(...a)):[
     M("Daniel R. Ortega"),M("Marcus Hale"),M("Peter Lindqvist"),M("Walter Simms","",1),M("James Whitfield","",1),
@@ -136,7 +137,7 @@
       <td><select data-mdeg="${m.id}" aria-label="Degree for ${esc(m.name)}">${["Master Mason","Fellowcraft","Entered Apprentice"].map(d=>`<option${d===m.deg?" selected":""}>${d}</option>`).join("")}</select></td>
       <td><input type="checkbox" data-mpm="${m.id}" aria-label="${esc(m.name)} is a Past Master"${m.pm?" checked":""}></td>
       <td>${seatOf(m.id)?`<span class="pill gold">${seatOf(m.id)}</span>`:'<span class="hint">None</span>'}</td>
-      <td><span class="pill ${m.dues.startsWith("Paid")?"ok":m.dues.startsWith("Owes")?"warn":""}">${esc(m.dues)}</span></td>
+      <td><select data-mdues="${m.id}" class="dues ${m.dues.startsWith("Paid")?"ok":m.dues.startsWith("Owes")?"warn":""}" aria-label="Dues for ${esc(m.name)}">${[...new Set([m.dues,"Paid "+DUES_YEAR,"Owes "+DUES_YEAR,"Not recorded"])].map(d=>`<option${d===m.dues?" selected":""}>${esc(d)}</option>`).join("")}</select></td>
       <td><button type="button" class="btn line sm" data-mrm="${m.id}">Remove</button></td></tr>`).join("");
     $("#seat-defaults").innerHTML=SEATS.map(x=>`<div class="seat-row"><label for="sd-${x.k}" title="${x.t}">${x.ab}</label>${seatSelect("data-sdef",x,officers[x.k]).replace("<select ",`<select id="sd-${x.k}" `)}</div>`).join("");
   }
@@ -144,6 +145,7 @@
     const t=e.target;
     if(t.dataset.mdeg){const m=member(t.dataset.mdeg);m.deg=t.value;if(m.deg!=="Master Mason")for(const k in officers)if(+officers[k]===m.id)officers[k]="";}
     if(t.dataset.mpm)member(t.dataset.mpm).pm=t.checked;
+    if(t.dataset.mdues)member(t.dataset.mdues).dues=t.value;
     refreshPeople();
   });
   $("#mem-rows").addEventListener("click",e=>{
@@ -201,7 +203,7 @@
     gmail=!gmail;renderGmail();
   });
   $("#f-email").addEventListener("input",()=>{if(gmail)renderGmail()});
-  const LOCKED='<span class="pill">Not published</span> Publishing unlocks once the lodge\'s plan is paid for. <a href="/login">Subscribe from your account</a>';
+  const LOCKED='<span class="pill">Not published</span> Publishing unlocks once the lodge\'s plan is paid for. <a href="/login?account">Subscribe from your account</a>';
   if(CLOUD&&!CLOUD.paid)$("#site-status").innerHTML=LOCKED;
   $("#site-form").addEventListener("submit",e=>{e.preventDefault();if(CLOUD&&!CLOUD.paid)return $("#site-status").innerHTML=LOCKED;$("#site-status").innerHTML='<span class="pill ok">Published</span> Live at '+esc($("#pv-url").textContent)+" (demo)"});
 
@@ -663,16 +665,16 @@
 
 
   /* ---------- plan (new lodges from /start) ---------- */
-  const PLANS={starter:{name:"Lodge Starter",price:"$0 / month"},lodge:{name:"Lodge",price:"$19 / month"},district:{name:"District / Grand Lodge",price:"custom pricing"}};
+  const PLANS={starter:{name:"Lodge Starter",price:"free"},lodge:{name:"Lodge Level",price:"paid monthly"},district:{name:"District Level",price:"paid monthly"}};
   let plan=CLOUD?CFG.plan:CFG.plan!==undefined?(new URLSearchParams(location.search).get("plan")||CFG.plan):"";
   if(plan&&!PLANS[plan])plan="lodge";
   if(plan){
     const P=PLANS[plan];
-    const pl=$("#plan-line");if(pl)pl.innerHTML=`${P.name} plan · ${P.price} · ${CLOUD?'<a href="/login">Plan &amp; billing</a>':'<a href="/pricing">Change plan</a>'}`;
-    const eb=$("#plan-eyebrow");if(eb)eb.textContent=`Step 2 · Set up your lodge · ${P.name} plan`;
+    const pl=$("#plan-line");if(pl)pl.innerHTML=`${P.name} · ${CLOUD?'<a href="/login?account">Plan &amp; billing</a>':'<a href="/pricing">Change plan</a>'}`;
+    const eb=$("#plan-eyebrow");if(eb)eb.textContent=`Step 2 · Set up your lodge · ${P.name}`;
     if(plan==="starter"){
       $("#p-store .store-wrap").hidden=true;
-      $("#p-store").insertAdjacentHTML("afterbegin",'<div class="card" style="max-width:560px"><h4>The store comes with the Lodge plan</h4><p class="hint">Lodge Starter includes your website, calendar, members and minutes. Move to the Lodge plan ($19 / month) to sell shirts, pins and coins and take donations through PayPal, Venmo or Cash App.</p><a class="btn sm" href="'+(CLOUD?"/login":"/pricing")+'" style="justify-self:start">'+(CLOUD?"Upgrade this lodge":"See plans")+'</a></div>');
+      $("#p-store").insertAdjacentHTML("afterbegin",'<div class="card" style="max-width:560px"><h4>The store comes with a paid level</h4><p class="hint">Lodge Starter includes your website, calendar, members and minutes. Move to a paid level to sell shirts, pins and coins and take donations through PayPal, Venmo or Cash App.</p><a class="btn sm" href="'+(CLOUD?"/login?account":"/pricing")+'" style="justify-self:start">'+(CLOUD?"Upgrade this lodge":"See plans")+'</a></div>');
     }
   }
 
@@ -680,7 +682,8 @@
   function snapshot(){
     const form={};document.querySelectorAll("#site-form input[id],#site-form select[id]").forEach(el=>form[el.id]=el.value);
     return {app:"LodgeNet",version:1,page:STORE_KEY,savedAt:new Date().toISOString(),form,color:siteColor,
-      membersFull:members,officers,events,minutes,minuteSections,gmail,nextStated,...(plan?{plan}:{})};
+      membersFull:members,officers,events,minutes,minuteSections,gmail,nextStated,...(plan?{plan}:{}),
+      ...(window.LodgeNetDash?window.LodgeNetDash.snapshot():{})};
   }
   const stamp=d=>new Date(d).toLocaleString("en-US",{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"});
   function setState(t){const el=$("#save-state");if(el)el.textContent=t}
@@ -737,12 +740,20 @@
 
   renderMembers();renderGmail();regenStated();
   renderCal();renderCart();renderMinutes();
+  /* the signed-in dashboard (assets/dash.js) builds its other sections on the same lodge data and saves through queueSave */
+  window.LodgeNetApp={CFG,CLOUD,TODAY,money,esc,parse,fmt,members,officers,products,SEATS,member,minutes,
+    get events(){return events},get plan(){return plan},get nextStated(){return nextStated},
+    addMember(name,deg){const m=M(name,deg,false,"Not recorded");members.push(m);refreshPeople();return m},
+    select(e){selected=e;view=new Date(parse(e.d).getFullYear(),parse(e.d).getMonth(),1);renderCal()},
+    addEvent(e){events.push(e);renderCal();return e},
+    refresh(){renderCal();refreshPeople()},
+    drawProducts,payLink,payButtons,save:queueSave};
   if(MOVE_LOCAL)save().then(ok=>{if(ok)try{localStorage.removeItem(STORE_KEY)}catch(e){}});
 })();
 
 /* open a tab from the address, e.g. /demo#store */
 (function(){
   const map={site:"t-site",store:"t-store",calendar:"t-cal",members:"t-mem",minutes:"t-min"};
-  function go(){const id=map[location.hash.slice(1)];if(id)document.getElementById(id).click()}
+  function go(){const el=document.getElementById(map[location.hash.slice(1)]);if(el)el.click()}
   go();window.addEventListener("hashchange",go);
 })();

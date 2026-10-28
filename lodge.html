@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Lodge Dashboard · LodgeNet</title>
-<meta name="description" content="Your lodge's LodgeNet dashboard: website, members, calendar, store and minutes.">
+<title>Lodge Dashboard</title>
+<meta name="description" content="Your lodge's LodgeNet dashboard: website, members, communications, treasury, fundraisers, pipelines, sponsors, merchandise, charities and settings.">
 <meta name="robots" content="noindex">
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="icon" type="image/png" href="/assets/brand/icon-192.png" sizes="192x192">
@@ -14,7 +14,7 @@
 <meta property="og:site_name" content="LodgeNet">
 <meta property="og:type" content="website">
 <meta property="og:title" content="Lodge Dashboard · LodgeNet">
-<meta property="og:description" content="Your lodge's LodgeNet dashboard: website, members, calendar, store and minutes.">
+<meta property="og:description" content="Your lodge's LodgeNet dashboard: website, members, communications, treasury, fundraisers, pipelines, sponsors, merchandise, charities and settings.">
 <meta property="og:image" content="/og-image.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
@@ -26,54 +26,44 @@
 <link rel="stylesheet" href="/assets/styles.css">
 <style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
 </head>
-<body>
-<header class="top">
-  <div class="wrap">
-    <nav class="nav" aria-label="Main">
-      <a class="brand" href="/" aria-label="LodgeNet home"><img src="/assets/brand/lodgenet-crest.webp" alt="" width="52" height="56"><span>LodgeNet<small>Masonic Software</small></span></a>
-      <ul>
-        <li><a href="/features">Features</a></li>
-        <li><a href="/demo">Live demo</a></li>
-        <li><a href="/pricing">Pricing</a></li>
-        <li><a href="/login">Login</a></li>
-      </ul>
-      <a class="btn gold sm" href="/pricing">Start now</a>
-    </nav>
-    <div class="page-head">
-      <div class="eyebrow" id="lodge-place">Lodge dashboard</div>
-      <h1 id="lodge-title">Your lodge</h1>
-      <p>Start on the Website tab with your lodge's details, then add your brethren on Members and fill each officer chair. Changes save to the lodge account, so every officer sees the same dashboard on any device.</p>
+<body class="app">
+<div class="app-shell" data-gate>
+  <aside class="side">
+    <a class="side-brand" href="/" aria-label="LodgeNet home"><img src="/assets/brand/lodgenet-crest.webp" alt="" width="34" height="37"><span>LodgeNet</span></a>
+    <div class="side-lodge">
+      <b id="cb-name">Your lodge</b>
+      <span id="plan-line"></span>
+      <select id="lodge-switch" aria-label="Switch lodge" hidden></select>
     </div>
-  </div>
-  <div class="pavement" aria-hidden="true"></div>
-</header>
+    <nav class="side-nav" aria-label="Dashboard">
+          <a class="nav-i" href="#website" data-sec="website"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="7.5"/><path d="M2.5 10h15M10 2.5c2.2 2.3 2.2 12.7 0 15M10 2.5c-2.2 2.3-2.2 12.7 0 15"/></svg><span>Website</span></a>
+          <a class="nav-i" href="#members" data-sec="members"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="7.5" cy="7" r="3"/><path d="M2 17c.6-3 2.8-4.5 5.5-4.5S12.4 14 13 17"/><circle cx="14" cy="6.5" r="2.3"/><path d="M14.5 11.5c1.9.3 3.1 1.7 3.5 4"/></svg><span>Members</span></a>
+          <a class="nav-i" href="#communications" data-sec="communications"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 4.5h14v9H8l-4 3v-3H3z"/><path d="M6.5 8h7M6.5 10.5h4.5"/></svg><span>Communications</span></a>
+          <a class="nav-i" href="#treasury" data-sec="treasury"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="2.5" y="5" width="15" height="11" rx="1.5"/><path d="M2.5 8.5h15M13 12.5h2"/><path d="M5 5V3.5h10V5"/></svg><span>Treasury</span></a>
+          <a class="nav-i" href="#fundraiser" data-sec="fundraiser"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 16.5s-6.5-3.8-6.5-8.3A3.4 3.4 0 0 1 10 6.3a3.4 3.4 0 0 1 6.5 1.9c0 4.5-6.5 8.3-6.5 8.3z"/></svg><span>Fundraiser</span></a>
+          <a class="nav-i" href="#pipelines" data-sec="pipelines"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="2.5" y="3.5" width="4" height="13" rx="1"/><rect x="8" y="3.5" width="4" height="9" rx="1"/><rect x="13.5" y="3.5" width="4" height="5.5" rx="1"/></svg><span>Pipelines</span></a>
+          <a class="nav-i" href="#sponsors" data-sec="sponsors"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2.8l2.2 4.5 4.9.7-3.6 3.5.9 4.9-4.4-2.3-4.4 2.3.9-4.9L2.9 8l4.9-.7z"/></svg><span>Sponsors</span></a>
+          <a class="nav-i" href="#merchandise" data-sec="merchandise"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 6.5h12l-1 10.5H5z"/><path d="M7 6.5V5a3 3 0 0 1 6 0v1.5"/></svg><span>Merchandise</span></a>
+          <a class="nav-i" href="#charities" data-sec="charities"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 11.5l3.2-2.3c.8-.5 1.8-.5 2.5.1l1.3 1h2.5a1.3 1.3 0 0 1 0 2.6H9.5"/><path d="M3 16.5l2.5-1.8h5.2l5.3-3.6a1.3 1.3 0 0 0-1.5-2.1L12 10.5"/><path d="M12.5 3.8a1.7 1.7 0 0 1 2.5 0 1.7 1.7 0 0 1 2.5 2.3L15 8.5l-2.5-2.4a1.7 1.7 0 0 1 0-2.3z"/></svg><span>Charities</span></a>
+          <a class="nav-i" href="#settings" data-sec="settings"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="2.6"/><path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.7 4.7l1.4 1.4M13.9 13.9l1.4 1.4M4.7 15.3l1.4-1.4M13.9 6.1l1.4-1.4"/></svg><span>Settings</span></a>
+    </nav>
+    <div class="side-foot"><span id="who-email"></span><button type="button" class="link-btn" id="dash-out">Sign out</button></div>
+  </aside>
 
-<main>
-  <section class="band" id="demo" style="border-top:0">
-    <div class="wrap">
-      <div class="console">
-        <div class="console-bar">
-          <div class="lodge-id"><b id="cb-name">Your Lodge</b><span id="plan-line"></span></div>
-          <div class="tabs" role="tablist" aria-label="Lodge tools">
-            <button class="tab" role="tab" id="t-site" aria-controls="p-site" aria-selected="true">Website</button>
-            <button class="tab" role="tab" id="t-store" aria-controls="p-store" aria-selected="false">Store</button>
-            <button class="tab" role="tab" id="t-cal" aria-controls="p-cal" aria-selected="false">Calendar</button>
-            <button class="tab" role="tab" id="t-mem" aria-controls="p-mem" aria-selected="false">Members</button>
-            <button class="tab" role="tab" id="t-min" aria-controls="p-min" aria-selected="false">Minutes</button>
-          </div>
-        </div>
-        <div class="data-bar">
-          <span class="hint" id="save-state" aria-live="polite"></span>
-          <span class="data-acts">
-            <button type="button" class="btn line sm" id="data-export">Export</button>
-            <button type="button" class="btn line sm" id="data-import">Import</button>
-            <button type="button" class="btn line sm" id="data-reset">Start over</button>
-            <input type="file" id="data-file" accept="application/json,.json" hidden>
-          </span>
-        </div>
+  <main class="app-main console">
+    <header class="app-top">
+      <div>
+        <div class="eyebrow" id="lodge-place">Lodge dashboard</div>
+        <h1 id="sec-title">Website</h1>
+        <span id="lodge-title" hidden>Your lodge</span>
+      </div>
+      <span class="hint" id="save-state" aria-live="polite"></span>
+    </header>
+    <div class="kpis" id="kpis" aria-label="Key figures"></div>
 
-        <!-- WEBSITE -->
-        <div class="panel" role="tabpanel" id="p-site" aria-labelledby="t-site">
+    <!-- WEBSITE -->
+    <section class="sec" data-sec="website">
+        <div class="panel" id="p-site">
           <div class="panel-grid">
             <form id="site-form" autocomplete="off">
               <div class="field"><label for="f-name">Lodge name</label><input id="f-name" value="" placeholder="e.g. Murrells Inlet Lodge"></div>
@@ -164,64 +154,11 @@
           </div>
         </div>
 
-        <!-- STORE -->
-        <div class="panel" role="tabpanel" id="p-store" aria-labelledby="t-store" hidden>
-          <div class="store-wrap">
-            <div>
-              <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px">
-                <div class="field" style="margin:0;min-width:220px"><label for="s-charity">Proceeds support</label>
-                  <select id="s-charity">
-                    <option>Lodge Charity Fund</option>
-                    <option>Widows &amp; Orphans Fund</option>
-                    <option>Lodge Building Fund</option>
-                  </select>
-                </div>
-                <span class="hint">Lodge keeps 100% of margin after printing and payment fees.</span>
-              </div>
-              <div class="products" id="products"></div>
-            </div>
-            <aside class="cart" aria-live="polite">
-              <h4>Cart</h4>
-              <div id="cart-lines"><p class="hint">Your cart is empty. Add a shirt or pin to see how proceeds are counted.</p></div>
-              <div class="cart-total">
-                <div class="cart-line"><span>Subtotal</span><b class="num" id="c-sub">$0.00</b></div>
-                <div class="cart-line"><span>To charity</span><b class="num" id="c-char">$0.00</b></div>
-              </div>
-              <div class="paybtns" id="checkout" role="group" aria-label="Pay with"></div>
-              <div id="c-msg" hidden class="toast"></div>
-            </aside>
-          </div>
-        </div>
+    </section>
 
-        <!-- CALENDAR -->
-        <div class="panel" role="tabpanel" id="p-cal" aria-labelledby="t-cal" hidden>
-          <div class="cal-wrap">
-            <div>
-              <div class="cal-head">
-                <button class="btn line sm" id="cal-prev" type="button" aria-label="Previous month">‹</button>
-                <h3 id="cal-title">November 2026</h3>
-                <button class="btn line sm" id="cal-next" type="button" aria-label="Next month">›</button>
-              </div>
-              <div class="cal-scroll"><div class="cal" id="cal"></div></div>
-              <div class="legend" style="margin-top:10px"><span>Lodge meeting</span><span class="f">Public fundraiser</span></div>
-            </div>
-            <div class="side">
-              <div class="card" id="ev-detail"></div>
-              <form class="card" id="ev-form">
-                <h4>Add an event</h4>
-                <div class="field" style="margin:0"><label for="e-title">Title</label><input id="e-title" placeholder="Chili cook-off" required></div>
-                <div class="field" style="margin:0"><label for="e-date">Date</label><input id="e-date" type="date" value="2026-11-21" required></div>
-                <div class="field" style="margin:0"><label for="e-kind">Type</label>
-                  <select id="e-kind"><option value="fund">Public fundraiser</option><option value="lodge">Lodge meeting</option></select></div>
-                <div class="field" style="margin:0"><label for="e-goal">Fundraising goal ($)</label><input id="e-goal" type="number" min="0" step="50" value="1500"></div>
-                <button class="btn" type="submit">Add to calendar</button>
-              </form>
-            </div>
-          </div>
-        </div>
-
-        <!-- MEMBERS -->
-        <div class="panel" role="tabpanel" id="p-mem" aria-labelledby="t-mem" hidden>
+    <!-- MEMBERS -->
+    <section class="sec" data-sec="members" hidden>
+        <div class="panel" id="p-mem">
           <div class="mem-wrap">
             <div>
               <div class="mem-head">
@@ -249,7 +186,42 @@
           </div>
         </div>
 
-        <!-- MINUTES -->
+    </section>
+
+    <!-- COMMUNICATIONS: calendar, minutes, announcements -->
+    <section class="sec" data-sec="communications" hidden>
+      <div class="tabs sub-tabs" role="tablist" aria-label="Communications">
+        <button class="tab" role="tab" id="t-cal" aria-controls="p-cal" aria-selected="true">Calendar</button>
+        <button class="tab" role="tab" id="t-ann" aria-controls="p-ann" aria-selected="false">Announcements</button>
+        <button class="tab" role="tab" id="t-min" aria-controls="p-min" aria-selected="false">Minutes</button>
+      </div>
+        <div class="panel" role="tabpanel" id="p-cal" aria-labelledby="t-cal">
+          <div class="cal-wrap">
+            <div>
+              <div class="cal-head">
+                <button class="btn line sm" id="cal-prev" type="button" aria-label="Previous month">‹</button>
+                <h3 id="cal-title">November 2026</h3>
+                <button class="btn line sm" id="cal-next" type="button" aria-label="Next month">›</button>
+              </div>
+              <div class="cal-scroll"><div class="cal" id="cal"></div></div>
+              <div class="legend" style="margin-top:10px"><span>Lodge meeting</span><span class="f">Public fundraiser</span></div>
+            </div>
+            <div class="side">
+              <div class="card" id="ev-detail"></div>
+              <form class="card" id="ev-form">
+                <h4>Add an event</h4>
+                <div class="field" style="margin:0"><label for="e-title">Title</label><input id="e-title" placeholder="Chili cook-off" required></div>
+                <div class="field" style="margin:0"><label for="e-date">Date</label><input id="e-date" type="date" value="2026-11-21" required></div>
+                <div class="field" style="margin:0"><label for="e-kind">Type</label>
+                  <select id="e-kind"><option value="fund">Public fundraiser</option><option value="lodge">Lodge meeting</option></select></div>
+                <div class="field" style="margin:0"><label for="e-goal">Fundraising goal ($)</label><input id="e-goal" type="number" min="0" step="50" value="1500"></div>
+                <button class="btn" type="submit">Add to calendar</button>
+              </form>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel" role="tabpanel" id="p-ann" aria-labelledby="t-ann" hidden></div>
         <div class="panel" role="tabpanel" id="p-min" aria-labelledby="t-min" hidden>
           <div class="min-wrap">
             <div class="min-list">
@@ -260,24 +232,120 @@
             <div class="min-doc-wrap"><div class="min-toolbar" id="min-toolbar"></div><div class="paper-scroll"><div class="paper" id="min-doc"></div></div></div>
           </div>
         </div>
+    </section>
+
+    <section class="sec" data-sec="treasury" hidden><div class="panel" id="p-treas"></div></section>
+    <section class="sec" data-sec="fundraiser" hidden><div class="panel" id="p-fund"></div></section>
+    <section class="sec" data-sec="pipelines" hidden><div class="panel" id="p-pipe"></div></section>
+    <section class="sec" data-sec="sponsors" hidden><div class="panel" id="p-spon"></div></section>
+
+    <!-- MERCHANDISE -->
+    <section class="sec" data-sec="merchandise" hidden>
+        <div class="panel" id="p-store">
+          <div class="store-wrap">
+            <div>
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px">
+                <div class="field" style="margin:0;min-width:220px"><label for="s-charity">Proceeds support</label>
+                  <select id="s-charity">
+                    <option>Lodge Charity Fund</option>
+                    <option>Widows &amp; Orphans Fund</option>
+                    <option>Lodge Building Fund</option>
+                  </select>
+                </div>
+                <span class="hint">Lodge keeps 100% of margin after printing and payment fees.</span>
+              </div>
+              <div class="products" id="products"></div>
+            </div>
+            <aside class="cart" aria-live="polite">
+              <h4>Cart</h4>
+              <div id="cart-lines"><p class="hint">Your cart is empty. Add a shirt or pin to see how proceeds are counted.</p></div>
+              <div class="cart-total">
+                <div class="cart-line"><span>Subtotal</span><b class="num" id="c-sub">$0.00</b></div>
+                <div class="cart-line"><span>To charity</span><b class="num" id="c-char">$0.00</b></div>
+              </div>
+              <div class="paybtns" id="checkout" role="group" aria-label="Pay with"></div>
+              <div id="c-msg" hidden class="toast"></div>
+            </aside>
+          </div>
+        </div>
+
+    </section>
+
+    <section class="sec" data-sec="charities" hidden><div class="panel" id="p-char"></div></section>
+
+    <!-- SETTINGS -->
+    <section class="sec" data-sec="settings" hidden>
+      <div class="panel" id="p-set">
+        <div class="set-grid">
+          <div class="card">
+            <h4>Plan &amp; billing</h4>
+            <p class="hint" id="set-plan"></p>
+            <a class="btn sm" href="/login?account" style="justify-self:start">Plan &amp; billing</a>
+          </div>
+          <div class="card">
+            <h4>Who can sign in</h4>
+            <p class="hint" id="set-role"></p>
+            <a class="btn line sm" href="/login?account" style="justify-self:start">Invite officers and brethren</a>
+            <button type="button" class="link-btn" id="set-out">Sign out</button>
+          </div>
+          <div class="card">
+            <h4>Lodge details</h4>
+            <p class="hint">Name, number, Grand Lodge, meeting schedule, lodge email, social media and payment accounts are on the Website tab.</p>
+            <a class="btn line sm" href="#website" style="justify-self:start">Edit lodge details</a>
+          </div>
+          <div class="card data-card">
+            <h4>Lodge data</h4>
+            <p class="hint">Download a copy of everything in this dashboard, load one back in, or start over from a blank lodge.</p>
+            <span class="data-acts">
+              <button type="button" class="btn line sm" id="data-export">Export</button>
+              <button type="button" class="btn line sm" id="data-import">Import</button>
+              <button type="button" class="btn line sm" id="data-reset">Start over</button>
+              <input type="file" id="data-file" accept="application/json,.json" hidden>
+            </span>
+          </div>
+        </div>
       </div>
-    </div>
-  </section>
-</main>
-<footer>
-  <div class="wrap">
-    <span><b style="font-family:var(--display);color:#fff;letter-spacing:.06em">LodgeNet</b> · Websites, stores, calendars and minutes for Masonic lodges</span>
-    <span>Prototype · store checkout takes no payment</span>
-  </div>
-</footer>
+    </section>
+  </main>
+</div>
 <script>
-/* every lodge started from /start opens here: /lodges/<slug> is rewritten to this page unless the lodge has its own lodges/<slug>.html.
-   auth.js fills in the name, number, city and state from the lodge account until the first save */
+/* every lodge's dashboard is this page: /lodges/<slug> is rewritten here (vercel.json). auth.js fills in the name, number, city and
+   state from the lodge account until the first save. A lodge with starting data of its own (SEEDS) begins from that instead of blank;
+   either way, what's saved in the lodge account wins. */
 (function(){
   const m=location.pathname.match(/^\/lodges\/([a-z0-9-]+)\/?$/);
   if(!m){location.replace("/login");return}
-  window.LODGE={
-    slug:m[1],fromAccount:true,
+  const SEEDS={
+  "murrells-inlet-368":{
+    slug:"murrells-inlet-368",
+    form:{"f-name":"Murrells Inlet Lodge","f-num":"368","f-state":"SC","f-family":"main","f-city":"Murrells Inlet",
+     "f-sched":"2nd Tuesday of each month","f-email":"",
+      "f-fb":"","f-ig":"","f-x":"","f-yt":"","f-tt":"","f-pp":"","f-venmo":"","f-cash":""},
+    /* [name, degree, past master, dues] */
+    members:[
+      ["Jim McLean","Master Mason",true,"Not recorded"],["Jason Edwards","Master Mason",false,"Not recorded"],
+      ["Billy Hudson","Master Mason",true,"Not recorded"],["Anthony Novielli","Master Mason",true,"Not recorded"],
+      ["Mike Sheads","Master Mason",true,"Not recorded"],["Brad Nelson","Master Mason",true,"Not recorded"],
+      ["Anthony Policastro","Master Mason",false,"Not recorded"],["Eric Vanden Berghe","Master Mason",true,"Not recorded"],
+      ["Ed Guyer","Master Mason",false,"Not recorded"],["Billy Feick","Master Mason",false,"Not recorded"]
+    ],
+    officers:{WM:1,SW:2,JW:3,TREAS:4,SEC:5,SD:6,JD:7,STW1:8,STW2:"",TILER:9,CHAP:10},
+    events:[
+      {d:"2026-11-10",t:"Stated Communication",k:"lodge",time:"Time not set",note:"Regular Communication on the third degree."},
+      {d:"2026-12-08",t:"Stated Communication",k:"lodge",time:"Time not set",note:"Regular Communication on the third degree."}
+    ],
+    products:[
+      {id:"tee",n:"Lodge No. 368 T-shirt",p:24,margin:9,kind:"tee"},
+      {id:"pin",n:"Square & Compasses lapel pin",p:12,margin:7,kind:"pin"},
+      {id:"cap",n:"Embroidered Lodge No. 368 cap",p:22,margin:8,kind:"cap"},
+      {id:"coin",n:"Murrells Inlet No. 368 challenge coin",p:18,margin:10,kind:"coin"}
+    ],
+    minutes:[{id:1,date:"2026-11-10",status:"Draft",f:{}}],
+    coinText:"NO. 368",
+    nextStated:"2026-12-08"
+  }
+  };
+  const blank={
     form:{"f-sched":"2nd Tuesday of each month","f-family":"main"},
     members:[],
     officers:{WM:"",SW:"",JW:"",TREAS:"",SEC:"",SD:"",JD:"",STW1:"",STW2:"",TILER:"",CHAP:""},
@@ -291,8 +359,9 @@
     ],
     coinText:"OUR LODGE"
   };
+  window.LODGE=Object.assign(blank,SEEDS[m[1]]||{},{slug:m[1],fromAccount:true});
 })();
 </script>
-<script src="/assets/auth.js" data-app="/assets/demo.js"></script>
+<script src="/assets/auth.js" data-app="/assets/demo.js /assets/dash.js"></script>
 </body>
 </html>

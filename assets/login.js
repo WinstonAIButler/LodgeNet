@@ -28,6 +28,13 @@
     try{await sb.rpc("claim_invites")}catch(e){}
     if(next){location.replace(next);return}
     if(fresh){try{const {data}=await sb.rpc("is_platform_admin");if(data===true){location.replace("/owner");return}}catch(e){}}
+    /* a signed-in brother goes straight to his lodge's dashboard (the one he owns first); /login?account keeps this account page,
+       which the dashboard's Settings links to for plan, billing and invites */
+    const q=new URLSearchParams(location.search);
+    if(!q.has("account")&&!q.get("billing")){
+      try{const rows=await A.myLodges(),r=rows.find(x=>x.role==="owner")||rows[0];
+        if(r){location.replace("/lodges/"+encodeURIComponent(r.lodge.slug));return}}catch(e){}
+    }
     $("#head-title").textContent="Your lodge account";
     $("#head-text").textContent="Open your lodge's dashboard. Edits there save to the lodge account, so every officer sees the same website, calendar, members and minutes.";
     $("#who").textContent="Signed in as "+session.user.email;
