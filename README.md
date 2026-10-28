@@ -13,6 +13,7 @@ This repo currently holds the static prototype site:
 - `start.html`: a new, blank lodge in the dashboard layout; `/start?plan=starter|lodge|district` (Starter hides the store)
 - `lodges/murrells-inlet-368.html`: dashboard for Murrells Inlet Lodge No. 368 (served at `/lodges/murrells-inlet-368`). Each lodge page sets `window.LODGE` (name, Grand Lodge, members, officer seats, events, store items) before loading `assets/demo.js`
 - `assets/styles.css` and `assets/demo.js`: shared styles and demo logic
+- `assets/brand/`: the LodgeNet logo. `lodgenet-logo.png` is the full crest and wordmark on a transparent background (for light backgrounds), `lodgenet-crest.webp` is the crest alone, used in every page's header. `favicon.ico`, `apple-touch-icon.png`, `assets/brand/icon-192.png` and the 1200×630 social preview `og-image.png` are cut from the same crest. The site's colors come from it: slate blue `#3b5870` / `#4e6a83`, gold `#c9a54e` (`#856823` for gold text on light backgrounds), and a diamond checkered floor; headings and the wordmark are Montserrat
 - `assets/auth.js` and `assets/login.js`: sign-in (see Accounts below); `api/config.js` is the one Vercel function; `api/_public.js` holds the live Supabase project URL and public key, used when Vercel has no `SUPABASE_*` variables
 - `supabase/schema.sql`: accounts database; `supabase/murrells-inlet-368.sql` adds that lodge
 - `assets/vendor/supabase.umd.min.js`: supabase-js 2.117.3 (MIT)
