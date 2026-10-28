@@ -35,7 +35,7 @@
     <div class="page-head">
       <div class="eyebrow" id="plan-eyebrow">Start your lodge</div>
       <h1>Welcome. Let's build your lodge.</h1>
-      <p>Create your LodgeNet account, then tell us your lodge's name and number. You'll be its account owner, and you can invite your officers and brethren by email.</p>
+      <p>Three steps: create your account, choose your plan, and name your lodge. You'll be its account owner, and you can invite your officers and brethren by email.</p>
     </div>
   </div>
   <div class="pavement" aria-hidden="true"></div>
@@ -57,23 +57,58 @@
       <div class="auth-wrap" id="v-out" hidden>
         <div class="card auth-card">
           <h3>Step 1 · Create your account</h3>
-          <p class="hint">Use your own email. You'll confirm it, and then come straight back here to set up your lodge.</p>
+          <p class="hint">Use your own email. You'll confirm it, and then come straight back here to pick your plan and set up your lodge.</p>
           <span style="display:flex;flex-wrap:wrap;gap:8px">
             <a class="btn" id="go-up" href="/login?mode=up">Create account</a>
             <a class="btn line" id="go-in" href="/login">I already have one</a>
           </span>
         </div>
         <div class="card">
-          <h4 id="plan-name">Your plan</h4>
-          <p class="hint" id="plan-text"></p>
-          <a class="btn line sm" href="/pricing" style="justify-self:start">Change plan</a>
+          <h4>What happens next</h4>
+          <p class="hint">Step 2, choose Lodge Starter (free) or the Lodge plan ($19 a month). Step 3, enter your lodge's name and number. On the Lodge plan you then pay by card through Stripe, and the subscription renews monthly.</p>
         </div>
       </div>
 
-      <!-- step 2: the lodge -->
+      <!-- step 2: the plan -->
+      <div id="v-pick" hidden>
+        <h3 style="font-family:var(--display);margin:0 0 6px">Step 2 · Choose your plan</h3>
+        <p class="hint" id="who" style="margin:0 0 18px"></p>
+        <div class="tiers" style="grid-template-columns:repeat(auto-fit,minmax(260px,1fr))">
+          <div class="tier" data-tier="starter"><h3>Lodge Starter</h3><div class="amt num">$0<small> / month</small></div>
+            <ul>
+              <li>Build your lodge website (preview only; publishing comes with the Lodge plan)</li>
+              <li>Lodge calendar with Stated Communications filled in for you</li>
+              <li>Members roll and officer chairs</li>
+              <li>Meeting minutes: short form, full write-up and PDF</li>
+              <li>2 officer logins</li>
+            </ul>
+            <button class="btn line" type="button" data-pick="starter">Choose Lodge Starter</button></div>
+          <div class="tier feat-tier" data-tier="lodge"><h3>Lodge</h3><div class="amt num">$19<small> / month</small></div>
+            <ul>
+              <li>Everything in Lodge Starter</li>
+              <li>Publish your lodge website, on a lodgenet.org address or your own domain</li>
+              <li>Merch store: shirts, pins, caps and challenge coins, print-on-demand</li>
+              <li>Fundraiser goals, RSVPs and donations</li>
+              <li>Payments go straight to the lodge's PayPal, Venmo or Cash App</li>
+              <li>Unlimited officer logins and a members area</li>
+              <li>Billed monthly by card through Stripe. Cancel any time.</li>
+            </ul>
+            <button class="btn" type="button" data-pick="lodge">Choose Lodge · $19 / month</button>
+            <form class="invite code-form" id="f-code" novalidate style="grid-template-columns:minmax(0,1fr) auto">
+              <div class="field"><label>Have a plan code? It replaces the payment.<input name="code" id="code" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="LODGE-XXXX-XXXX"></label></div>
+              <button class="btn line sm" type="submit">Use code</button>
+            </form>
+            <p class="auth-msg" id="pick-msg" role="status" aria-live="polite"></p></div>
+          <div class="tier"><h3>District / Grand Lodge</h3><div class="amt">Let's talk</div>
+            <ul><li>Every constituent lodge on one account</li><li>District calendar and visitation schedule</li><li>Shared store and roll-up reporting</li></ul>
+            <p class="hint">Start your own lodge on the Lodge plan for now, and we'll link your district's lodges together.</p></div>
+        </div>
+      </div>
+
+      <!-- step 3: the lodge -->
       <div class="auth-wrap" id="v-in" hidden>
         <div class="card auth-card">
-          <h3>Step 2 · Your lodge</h3>
+          <h3>Step 3 · Your lodge</h3>
           <form id="f-lodge" novalidate>
             <div class="field"><label for="l-name">Lodge name</label><input id="l-name" required maxlength="120" placeholder="e.g. Murrells Inlet Lodge"></div>
             <div class="field"><label for="l-num">Lodge number</label><input id="l-num" inputmode="numeric" maxlength="12" placeholder="e.g. 368"></div>
@@ -84,25 +119,20 @@
           <p class="auth-msg" id="l-msg" role="status" aria-live="polite"></p>
         </div>
         <div class="card">
-          <h4 id="plan-name2">Your plan</h4>
-          <p class="hint" id="plan-text2"></p>
-          <p class="hint" id="who"></p>
+          <h4 id="plan-name">Your plan</h4>
+          <p class="hint" id="plan-text"></p>
+          <button class="link-btn" type="button" id="re-pick" style="justify-self:start">Change plan</button>
         </div>
       </div>
 
-      <!-- step 3: the Lodge plan, by plan code or subscription -->
-      <div class="card auth-card" id="v-plan" hidden style="max-width:560px">
+      <!-- after creating: payment didn't open, or the code didn't take -->
+      <div class="card auth-card" id="v-done" hidden style="max-width:560px">
         <h3 id="made-title">Your lodge is set up</h3>
-        <p class="hint">It starts on Lodge Starter (free). To turn on the Lodge plan with the store, enter a plan code or subscribe for $19 a month. You can also do this later from My lodges.</p>
-        <form class="invite code-form" id="f-code" novalidate style="grid-template-columns:minmax(0,1fr) auto">
-          <div class="field"><label>Have a plan code?<input name="code" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="LODGE-XXXX-XXXX"></label></div>
-          <button class="btn line sm" type="submit">Redeem</button>
-        </form>
+        <p class="auth-msg" id="d-msg" role="status" aria-live="polite"></p>
         <span style="display:flex;flex-wrap:wrap;gap:8px">
-          <button class="btn gold" type="button" id="subscribe" hidden>Subscribe · $19 / month</button>
-          <a class="btn" id="open-lodge" href="/login">Open my dashboard</a>
+          <button class="btn gold" type="button" id="pay-again" hidden>Continue to payment · $19 / month</button>
+          <a class="btn line" id="open-lodge" href="/login">Open my dashboard</a>
         </span>
-        <p class="auth-msg" id="p-msg" role="status" aria-live="polite"></p>
       </div>
     </div>
   </section>
@@ -110,7 +140,7 @@
 <footer>
   <div class="wrap">
     <span><b style="font-family:var(--display);color:#fff;letter-spacing:.06em">LodgeNet</b> · Websites, stores, calendars and minutes for Masonic lodges</span>
-    <span>Prototype · store checkout takes no payment</span>
+    <span>Lodge plan payments are handled securely by Stripe</span>
   </div>
 </footer>
 <script src="/assets/auth.js"></script>
