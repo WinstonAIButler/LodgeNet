@@ -15,7 +15,7 @@
   function msg(el,t,err){el.textContent=t;el.classList.toggle("err",!!err)}
   function setMode(m){
     mode=m;
-    $("#m-in").setAttribute("aria-selected",m==="in");$("#m-up").setAttribute("aria-selected",m==="up");
+    $("#a-title").textContent=m==="in"?"Sign in":"Create your account";
     $("#a-go").textContent=m==="in"?"Sign in":"Create account";
     $("#a-pass").setAttribute("autocomplete",m==="in"?"current-password":"new-password");
     $("#a-pass-hint").hidden=m==="in";$("#a-forgot").hidden=m!=="in";
@@ -23,10 +23,12 @@
   }
   const back=()=>location.origin+"/login"+(next?"?next="+encodeURIComponent(next):"");
 
-  async function signedIn(session){
+  /* fresh: just signed in with the form. The platform owner then goes straight to the owner's hub */
+  async function signedIn(session,fresh){
     try{await sb.rpc("claim_invites")}catch(e){}
     if(next){location.replace(next);return}
-    $("#head-title").textContent="My lodges";
+    if(fresh){try{const {data}=await sb.rpc("is_platform_admin");if(data===true){location.replace("/owner");return}}catch(e){}}
+    $("#head-title").textContent="Your lodge account";
     $("#head-text").textContent="Open your lodge's dashboard. Edits there save to the lodge account, so every officer sees the same website, calendar, members and minutes.";
     $("#who").textContent="Signed in as "+session.user.email;
     show("v-in");
@@ -149,8 +151,6 @@
     if(HASH.get("error_description"))msg($("#a-msg"),HASH.get("error_description")+". Try again or ask for a new link.",true);
   }
 
-  $("#m-in").addEventListener("click",()=>setMode("in"));
-  $("#m-up").addEventListener("click",()=>setMode("up"));
   $("#f-auth").addEventListener("submit",async e=>{
     e.preventDefault();
     const out=$("#a-msg"),email=$("#a-email").value.trim(),password=$("#a-pass").value;
@@ -161,7 +161,7 @@
       if(mode==="in"){
         const {data,error}=await sb.auth.signInWithPassword({email,password});
         if(error)return msg(out,error.message==="Invalid login credentials"?"That email and password don't match an account.":error.message,true);
-        return signedIn(data.session);
+        return signedIn(data.session,true);
       }
       const {data,error}=await sb.auth.signUp({email,password,options:{emailRedirectTo:back()}});
       if(error)return msg(out,error.message,true);

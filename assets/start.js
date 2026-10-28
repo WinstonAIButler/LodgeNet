@@ -37,7 +37,7 @@
   }
   $("#tiers").addEventListener("click",e=>{
     const b=e.target.closest("[data-pick]");if(!b)return;
-    if(b.dataset.pick==="lodge"&&!A.billing)return msg($("#pick-msg"),"Payments aren't switched on for LodgeNet yet. Start on Lodge Starter and upgrade later from My lodges.",true);
+    if(b.dataset.pick==="lodge"&&!A.billing)return msg($("#pick-msg"),"Payments aren't switched on for LodgeNet yet. Start on Lodge Starter and upgrade later from your account under Login.",true);
     pick(b.dataset.pick,b);
   });
   $("#re-pick").addEventListener("click",()=>show("v-pick"));
