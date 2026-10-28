@@ -208,7 +208,7 @@ section.band{padding-block:72px}
 
 /* members */
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
-.mem-wrap{display:grid;grid-template-columns:1fr 320px;gap:24px}
+.mem-wrap{display:grid;grid-template-columns:1fr;gap:36px}
 .mem-wrap > *{min-width:0}
 .mem-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:12px;flex-wrap:wrap}
 .panel-title{font-family:var(--display);font-size:20px}
@@ -225,10 +225,14 @@ section.band{padding-block:72px}
 .mem-add .field-check{flex:0 0 auto;display:flex;align-items:center;gap:6px;padding-bottom:10px}
 .mem-add .field-check input{width:auto}
 .seats-card{align-content:start}
-.seat-list{display:grid;gap:8px}
-.seat-row{display:grid;grid-template-columns:58px 1fr;gap:10px;align-items:center}
-.seat-row label{font-family:var(--mono);font-size:12px;font-weight:500;color:var(--muted)}
-.seat-row select{width:100%;background:var(--surface);border:1px solid var(--line);border-radius:0;padding:7px 8px;font-size:14px}
+.seats-card .hint{max-width:62ch;margin:4px 0 18px}
+.seat-list{display:grid;gap:20px}
+.seat-line{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:20px 28px;padding-bottom:20px;border-bottom:1px solid var(--line)}
+.seat-line:last-child{border-bottom:0;padding-bottom:0}
+.seat-row{display:grid;gap:4px;align-content:start;min-width:0}
+.seat-row label{font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.seat-row select{width:100%;font-size:15px}
+@media (max-width:860px){.seat-line{grid-template-columns:repeat(2,minmax(0,1fr))}}
 
 /* minutes */
 .min-wrap{display:grid;grid-template-columns:280px 1fr;gap:24px}
