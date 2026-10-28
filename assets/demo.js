@@ -7,7 +7,10 @@
   /* when a signed-in member opens their lodge, assets/auth.js sets LODGENET_CLOUD and edits save to the lodge account instead */
   const STORE_KEY="lodgenet:"+(location.pathname.replace(/\.html$/,"").replace(/\/$/,"")||"/");
   const CLOUD=window.LODGENET_CLOUD||null;
-  let LOCAL=null;try{LOCAL=JSON.parse(localStorage.getItem(STORE_KEY)||"null")}catch(e){LOCAL=null}
+  /* the live demo (window.LODGENET_DEMO) keeps nothing: every visit starts from the sample lodge and edits clear when you leave */
+  const DEMO=!!window.LODGENET_DEMO;
+  if(DEMO)try{localStorage.removeItem(STORE_KEY)}catch(e){}
+  let LOCAL=null;if(!DEMO)try{LOCAL=JSON.parse(localStorage.getItem(STORE_KEY)||"null")}catch(e){LOCAL=null}
   /* the first officer to sign in carries this browser's saved edits up to the account */
   const MOVE_LOCAL=!!(CLOUD&&CLOUD.canEdit&&!CLOUD.data&&LOCAL);
   const SAVED=CLOUD?(CLOUD.data||(MOVE_LOCAL?LOCAL:null)):LOCAL;
@@ -691,12 +694,14 @@
       try{const at=await CLOUD.save(snap);setState("Saved to the lodge account · "+stamp(at||snap.savedAt));return true}
       catch(e){setState("Couldn't save to the lodge account ("+e.message+"). Your changes are still on screen; keep editing to retry, or Export a copy.");return false}
     }
+    if(DEMO)return setState("Demo · changes clear when you leave this page");
     try{localStorage.setItem(STORE_KEY,JSON.stringify(snap));setState("Saved in this browser · "+stamp(snap.savedAt))}
     catch(e){setState("Couldn't save in this browser. Use Export to keep a copy.")}
   }
   const queueSave=()=>{clearTimeout(saveTimer);saveTimer=setTimeout(save,400)};
   ["input","change"].forEach(t=>$(".console").addEventListener(t,queueSave));
   $(".console").addEventListener("click",e=>{if(e.target.closest("button"))queueSave()});
+  if(DEMO)setState("Demo · try anything; changes clear when you leave this page");
   if(CLOUD)setState(!CLOUD.canEdit?VIEW_ONLY:CLOUD.data?"Saved to the lodge account · "+stamp(CLOUD.updatedAt):"Signed in as "+CLOUD.email+". Changes save to the lodge account automatically.");
   else setState(SAVED?"Saved in this browser · "+stamp(SAVED.savedAt):"Not saved yet. Changes save automatically.");
   $("#data-export").addEventListener("click",()=>{
@@ -705,6 +710,7 @@
     const a=document.createElement("a");a.href=url;a.download=`${slug}-lodgenet-${snap.savedAt.slice(0,10)}.json`;
     document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
   });
+  if(DEMO)$("#data-import").hidden=true;
   $("#data-import").addEventListener("click",()=>$("#data-file").click());
   $("#data-file").addEventListener("change",async e=>{
     const f=e.target.files[0];if(!f)return;
