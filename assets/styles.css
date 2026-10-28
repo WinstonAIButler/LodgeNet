@@ -609,3 +609,14 @@ body.app{background:var(--bg)}
 /* plan crests: transparent artwork, shown larger */
 .tier .crest{width:132px;height:auto}
 .tier.free-tier .crest{width:96px}
+
+/* members: Edit opens the brother's details under his row */
+.mem-contact{display:block;font-size:12px;font-weight:400;color:var(--muted);margin-top:2px}
+.mem-acts{white-space:nowrap;text-align:right}
+.roster tr.editing td{border-bottom-color:transparent}
+.mem-edit td{padding:4px 10px 18px}
+.mem-edit-form{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;align-items:end}
+.mem-edit-form .field{margin:0}
+.mem-edit-form .field.wide{grid-column:span 2}
+.mem-edit-acts{display:flex;gap:8px}
+@media (max-width:560px){.mem-edit-form .field.wide{grid-column:auto}}

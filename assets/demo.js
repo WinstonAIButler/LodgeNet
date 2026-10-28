@@ -138,24 +138,45 @@
     if(!act.length){$("#mem-count").textContent="No members yet";$("#mem-rows").innerHTML='<tr><td colspan="6" class="hint">Add your first brother below. Officers are picked from Master Masons on this list.</td></tr>';$("#seat-defaults").innerHTML=SEATS.map(x=>`<div class="seat-row"><label for="sd-${x.k}" title="${x.t}">${x.ab}</label>${seatSelect("data-sdef",x,officers[x.k]).replace("<select ",`<select id="sd-${x.k}" `)}</div>`).join("");return}
     $("#mem-count").textContent=`${act.length} members · ${act.filter(m=>m.deg==="Master Mason").length} Master Masons`;
     const seatOf=id=>SEATS.filter(x=>+officers[x.k]===id).map(x=>x.ab).join(", ");
-    $("#mem-rows").innerHTML=act.map(m=>`<tr>
-      <td class="nm">${esc(pre(m)+m.name)}</td>
+    const contact=m=>[m.email,m.phone].filter(Boolean).map(esc).join(" · ");
+    $("#mem-rows").innerHTML=act.map(m=>`<tr${+editing===m.id?' class="editing"':""}>
+      <td class="nm">${esc(pre(m)+m.name)}${contact(m)?`<span class="mem-contact">${contact(m)}</span>`:""}</td>
       <td><select data-mdeg="${m.id}" aria-label="Degree for ${esc(m.name)}">${["Master Mason","Fellowcraft","Entered Apprentice"].map(d=>`<option${d===m.deg?" selected":""}>${d}</option>`).join("")}</select></td>
       <td><select data-mtitle="${m.id}" aria-label="Title for ${esc(m.name)}">${TITLES.map(([v,l])=>`<option value="${v}" title="${l}"${v===m.title?" selected":""}>${v}</option>`).join("")}</select></td>
       <td>${seatOf(m.id)?`<span class="pill gold">${seatOf(m.id)}</span>`:'<span class="hint">None</span>'}</td>
       <td><select data-mdues="${m.id}" class="dues ${m.dues.startsWith("Paid")?"ok":m.dues.startsWith("Owes")?"warn":""}" aria-label="Dues for ${esc(m.name)}">${[...new Set([m.dues,"Paid "+DUES_YEAR,"Owes "+DUES_YEAR,"Not recorded"])].map(d=>`<option${d===m.dues?" selected":""}>${esc(d)}</option>`).join("")}</select></td>
-      <td><button type="button" class="btn line sm" data-mrm="${m.id}">Remove</button></td></tr>`).join("");
+      <td class="mem-acts"><button type="button" class="btn line sm" data-medit="${m.id}" aria-expanded="${+editing===m.id}">Edit</button> <button type="button" class="btn line sm" data-mrm="${m.id}">Remove</button></td></tr>${+editing===m.id?editRow(m):""}`).join("");
     $("#seat-defaults").innerHTML=SEATS.map(x=>`<div class="seat-row"><label for="sd-${x.k}" title="${x.t}">${x.ab}</label>${seatSelect("data-sdef",x,officers[x.k]).replace("<select ",`<select id="sd-${x.k}" `)}</div>`).join("");
   }
+  /* Edit opens the brother's details under his row: name, title, degree and how to reach him */
+  let editing=null;
+  const MFIELDS=[["name","Full name","text"],["email","Email","email"],["phone","Phone","tel"],["addr","Mailing address","text"],["raised","Raised","date"],["notes","Notes","text"]];
+  function editRow(m){
+    return `<tr class="mem-edit"><td colspan="6"><form class="mem-edit-form" data-mid="${m.id}" autocomplete="off">
+      ${MFIELDS.map(([k,l,t])=>`<div class="field${k==="addr"||k==="notes"?" wide":""}"><label for="me-${k}">${l}</label><input id="me-${k}" name="${k}" type="${t}" value="${esc(m[k]||"")}"${k==="name"?" required":""}></div>`).join("")}
+      <div class="mem-edit-acts"><button class="btn sm" type="submit">Save</button><button class="btn line sm" type="button" data-mcancel>Cancel</button></div>
+    </form></td></tr>`;
+  }
+  $("#mem-rows").addEventListener("submit",e=>{
+    const f=e.target.closest(".mem-edit-form");if(!f)return;e.preventDefault();
+    const m=member(f.dataset.mid),fd=new FormData(f);
+    const name=String(fd.get("name")||"").trim();if(!name)return;
+    for(const [k] of MFIELDS)m[k]=String(fd.get(k)||"").trim();
+    m.name=name;editing=null;refreshPeople();queueSave();
+  });
   $("#mem-rows").addEventListener("change",e=>{
-    const t=e.target;
+    const t=e.target;if(t.closest(".mem-edit-form"))return;
     if(t.dataset.mdeg){const m=member(t.dataset.mdeg);m.deg=t.value;if(m.deg!=="Master Mason")for(const k in officers)if(+officers[k]===m.id)officers[k]="";}
     if(t.dataset.mtitle){const m=member(t.dataset.mtitle);m.title=t.value;m.pm=m.title!=="B."}
     if(t.dataset.mdues)member(t.dataset.mdues).dues=t.value;
     refreshPeople();
   });
   $("#mem-rows").addEventListener("click",e=>{
+    const ed=e.target.closest("[data-medit]");
+    if(ed){editing=+editing===+ed.dataset.medit?null:+ed.dataset.medit;renderMembers();const n=$("#me-name");if(n&&editing)n.focus();return}
+    if(e.target.closest("[data-mcancel]")){editing=null;renderMembers();return}
     const b=e.target.closest("[data-mrm]");if(!b)return;
+    if(+editing===+b.dataset.mrm)editing=null;
     const m=member(b.dataset.mrm);m.active=false;for(const k in officers)if(+officers[k]===m.id)officers[k]="";
     refreshPeople();
   });
