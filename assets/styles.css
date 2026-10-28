@@ -582,3 +582,4 @@ body.app{background:var(--bg)}
 .rec-notes{font-size:13px;padding:10px 12px;border:1px dashed var(--line);border-radius:var(--r)}
 .rec-notes p{margin:4px 0 0;white-space:pre-wrap}
 .sf-f.ai input,.sf-f.ai textarea,.sf-f.ai select,.sf-f.ai .sf-row{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold)}
+.rec-how{margin:0;font-size:13px}

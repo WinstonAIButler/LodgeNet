@@ -752,12 +752,21 @@
       <p class="rec-warn"><b>Pause for ritual.</b> Start listening when the lodge turns to business, and pause for the opening and closing, degree work and anything said under obligation. LodgeNet never stores ritual. No audio is kept: only the words below, and they're cleared when you leave the page.</p>
       ${SR?"":'<p class="hint">This browser can\'t turn speech into text. Use Chrome, Edge or Safari, or paste or type your notes below.</p>'}
       <div class="rec-btns">${btn}${rec.text?'<button class="btn line sm" type="button" data-rec="clear">Clear</button>':""}</div>
+      <p class="rec-how">${aiState()}</p>
       <textarea id="rec-text" rows="8" aria-label="Meeting transcript" placeholder="What's said appears here. You can also paste or type notes from the meeting.">${esc(rec.text)}</textarea>
       <p class="rec-live hint" id="rec-live" aria-live="polite"></p>
       <div class="rec-btns"><button class="btn gold sm" type="button" data-rec="fill"${rec.busy?" disabled":""}>${rec.busy?"Writing up the minutes…":"Fill in the minutes"}</button>
         <span class="hint" id="rec-msg">${esc(rec.msg)}</span></div>
       ${rec.notes?`<div class="rec-notes"><b>Claude's notes to check</b><p>${esc(rec.notes)}</p></div>`:""}
     </div>`;
+  }
+  /* says up front whether Claude can fill in the form here, so nobody records a whole meeting expecting it */
+  function aiState(){
+    const C=window.LODGENET_CLOUD,A=window.LodgeNetAuth||{};
+    if(!C||!C.lodgeId)return "In a signed-in lodge account, Claude fills in the short form from this transcript. Here, use the microphones on each box.";
+    if(!C.canEdit)return "Only the lodge's officers can have Claude fill in the minutes.";
+    if(A.ai===false)return "<b>Claude fill-in isn't switched on for this site yet.</b> You can still record now and fill it in once it is.";
+    return "<b>When you pause, press Fill in the minutes.</b> Claude fills in the empty boxes below and highlights them for you to check.";
   }
   function startRecording(){
     if(!SR||rec.on)return;
