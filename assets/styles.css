@@ -1,4 +1,4 @@
-/* Palette (Justin, 2026-10-28): Deep Navy #1E2B3E, Steel Blue #3A5270, Gold/Ochre #D4AF37, Muted White #E5E9EC, Danish Cream #F9F5EC as the page background.
+/* Palette (Justin, 2026-10-28), light only so Danish Cream is the main color on every device: Deep Navy #1E2B3E, Steel Blue #3A5270, Gold/Ochre #D4AF37, Muted White #E5E9EC, Danish Cream #F9F5EC as the page background.
    Layout: a pale masthead with the LodgeNet crest over a checkered-pavement band on every page, in the crest's slate blue and gold; Home, Features, Live demo and Pricing are separate pages sharing this sheet. */
 :root{
   --bg:#f9f5ec; --surface:#fffdf8; --sunk:#e5e9ec; --line:#ddd6c6;
@@ -12,26 +12,10 @@
   --body:"Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
   --mono:"IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
   --r:0;
+  color-scheme:light;
   /* the crest's checkered floor, as a faint diamond tile */
   --floor:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='36' height='36'%3E%3Cpath d='M18 0L36 18L18 36L0 18Z' fill='%234e6a83' fill-opacity='.06'/%3E%3C/svg%3E");
 }
-@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
-  --bg:#1e2b3e; --surface:#243348; --sunk:#2a3b52; --line:#364a63;
-  --fg:#f9f5ec; --muted:#b4bcc6;
-  --blue:#3a5270; --blue-ink:#ffffff; --blue-soft:#2a3b52; --link:#a9bdd3;
-  --gold:#d4af37; --gold-soft:#3b3218; --gilt:#d4af37;
-  --ok:#6cc890; --ok-soft:#173326; --warn:#e7b65a; --warn-soft:#3a2d12;
-  --tile-a:#3a5270; --tile-b:#1e2b3e;
-  --top-bg:#1e2b3e; --top-fg:#f9f5ec; --top-muted:#b4bcc6; --top-line:#364a63; --top-card:#243348; color-scheme:dark;}}
-:root[data-theme="dark"]{
-  --bg:#1e2b3e; --surface:#243348; --sunk:#2a3b52; --line:#364a63;
-  --fg:#f9f5ec; --muted:#b4bcc6;
-  --blue:#3a5270; --blue-ink:#ffffff; --blue-soft:#2a3b52; --link:#a9bdd3;
-  --gold:#d4af37; --gold-soft:#3b3218; --gilt:#d4af37;
-  --ok:#6cc890; --ok-soft:#173326; --warn:#e7b65a; --warn-soft:#3a2d12;
-  --tile-a:#3a5270; --tile-b:#1e2b3e;
-  --top-bg:#1e2b3e; --top-fg:#f9f5ec; --top-muted:#b4bcc6; --top-line:#364a63; --top-card:#243348; color-scheme:dark;}
-
 *{box-sizing:border-box}
 body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:16px;line-height:1.55}
 h1,h2,h3{text-wrap:balance;margin:0}
@@ -67,10 +51,10 @@ button,input,select,textarea{font:inherit;color:inherit}
 .detail p{color:var(--muted);font-size:16px;max-width:60ch}
 .detail ul{margin:16px 0 0;padding-left:20px;display:grid;gap:8px;max-width:60ch}
 .detail .actions{margin-top:20px}
-.cta-band{background:var(--blue);color:var(--blue-ink)}
+.cta-band{background:var(--bg);color:var(--fg);border-top:1px solid var(--line)}
 .cta-band .wrap{padding-block:48px;display:flex;flex-wrap:wrap;gap:20px;align-items:center;justify-content:space-between}
 .cta-band h2{font-family:var(--display);font-size:clamp(24px,3vw,32px)}
-.cta-band p{opacity:.85;margin-top:6px}
+.cta-band p{color:var(--muted);margin-top:6px}
 .faq{display:grid;gap:0;max-width:760px}
 .faq details{border-top:1px solid var(--line);padding-block:16px}
 .faq summary{font-weight:600;cursor:pointer}
@@ -197,8 +181,6 @@ section.band{padding-block:72px}
 .cal .day.today .d{background:var(--gold);color:#fff;border-radius:0;padding:0 5px;justify-self:start}
 .ev{border:0;text-align:left;padding:3px 6px;border-radius:0;font-size:11.5px;line-height:1.3;cursor:pointer;background:var(--blue-soft);color:var(--blue);font-weight:600}
 .ev.fund{background:var(--gold-soft);color:var(--gold)}
-:root[data-theme="dark"] .ev{color:var(--fg)}
-@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .ev{color:var(--fg)}}
 .side{display:grid;gap:16px;align-content:start}
 .card{border:1px solid var(--line);border-radius:0;padding:16px;display:grid;gap:10px;background:var(--surface)}
 .card h4{margin:0;font-size:16px}
@@ -364,7 +346,7 @@ section.band{padding-block:72px}
 .tier.free-tier .incl ul{display:flex;flex-wrap:wrap;gap:6px 22px}
 .tier .btn{justify-content:center;text-align:center}
 .tiers-note{margin:18px 0 0;text-align:center;font-size:13px;color:var(--muted)}
-footer{background:var(--side-bg,#1e2b3e);color:#e5e9ec;font-size:13px;border-top:3px solid var(--gilt)}
+footer{background:var(--bg);color:var(--muted);font-size:13px;border-top:3px solid var(--gilt)}
 footer .wrap{padding-block:28px;display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px}
 
 /* sign-in */
@@ -435,25 +417,25 @@ footer .wrap{padding-block:28px;display:flex;flex-wrap:wrap;justify-content:spac
 @media (min-width:901px){.panel-grid > .browser{align-self:start;position:sticky;top:16px}}
 
 /* executive lodge dashboard (lodge.html): slate sidebar of sections, key figures on top, the section's tools below */
-:root{--side-bg:#1e2b3e;--side-fg:#e5e9ec;--side-hi:#f9f5ec;--side-line:rgba(255,255,255,.1)}
+:root{--side-bg:#f9f5ec;--side-fg:#4d5a6d;--side-hi:#1e2b3e;--side-line:#ddd6c6}
 body.app{background:var(--bg)}
 .auth-wait .app-shell{visibility:hidden}
 .app-shell{display:grid;grid-template-columns:248px minmax(0,1fr);min-height:100vh;min-height:100dvh}
-.side{background:var(--side-bg);color:var(--side-fg);display:flex;flex-direction:column;gap:18px;padding:20px 14px;position:sticky;top:0;height:100vh;height:100dvh;overflow-y:auto;border-right:3px solid var(--gilt)}
+.side{background:var(--side-bg);color:var(--side-fg);display:flex;flex-direction:column;gap:18px;padding:20px 14px;position:sticky;top:0;height:100vh;height:100dvh;overflow-y:auto;border-right:1px solid var(--line)}
 .side-brand{display:flex;align-items:center;gap:10px;color:var(--side-hi);text-decoration:none;font-family:var(--display);font-weight:700;font-size:17px;letter-spacing:.04em;padding:0 8px}
 .side-lodge{display:grid;gap:4px;padding:14px 8px;border-block:1px solid var(--side-line)}
 .side-lodge b{color:var(--side-hi);font-family:var(--display);font-size:14px;line-height:1.3}
 .side-lodge span{font-size:12px}
-.side-lodge a{color:var(--gilt)}
+.side-lodge a{color:var(--gold)}
 .side-lodge select{margin-top:6px;width:100%;background:var(--side-bg);color:var(--side-hi);border:1px solid var(--side-line);border-radius:0;padding:6px 8px;font-size:13px}
 .side-nav{display:grid;gap:2px}
 .nav-i{display:flex;align-items:center;gap:11px;padding:9px 10px;border-radius:0;color:var(--side-fg);text-decoration:none;font-size:14px;font-weight:500;border-left:3px solid transparent}
 .nav-i svg{width:18px;height:18px;flex:none;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;opacity:.85}
-.nav-i:hover{background:rgba(255,255,255,.05);color:var(--side-hi)}
-.nav-i[aria-current]{background:rgba(255,255,255,.07);color:var(--side-hi);border-left-color:var(--gilt);font-weight:600}
-.nav-i[aria-current] svg{stroke:var(--gilt);opacity:1}
+.nav-i:hover{background:rgba(30,43,62,.05);color:var(--side-hi)}
+.nav-i[aria-current]{background:rgba(30,43,62,.06);color:var(--side-hi);border-left-color:var(--gilt);font-weight:600}
+.nav-i[aria-current] svg{stroke:var(--gold);opacity:1}
 .side-foot{margin-top:auto;display:grid;gap:6px;padding:12px 8px 0;border-top:1px solid var(--side-line);font-size:12px;word-break:break-all}
-.side-foot .link-btn{color:var(--gilt);justify-self:start;font-size:13px}
+.side-foot .link-btn{color:var(--gold);justify-self:start;font-size:13px}
 .app-main{min-width:0;padding:26px 32px 48px;display:grid;gap:20px;align-content:start;background:transparent;border:0;border-radius:0;box-shadow:none;overflow:visible}
 .app-top{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:8px 20px;padding-bottom:16px;border-bottom:1px solid var(--line)}
 .app-top h1{margin:4px 0 0;font-family:var(--display);font-size:28px;line-height:1.15}
@@ -588,9 +570,7 @@ body.app{background:var(--bg)}
 
 /* clean executive finish: square edges, hairlines, no bubbles */
 .kpi:first-child{border-left:0}
-@media (max-width:1100px){.kpi:nth-child(odd){border-left:0}.kpi:nth-child(n+3){border-top:1px solid var(--line)}}
-:root[data-theme="dark"] .kpi-v{color:var(--fg)}
-@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .kpi-v{color:var(--fg)}}
+@media (max-width:1100px){.kpi:nth-child(odd){border-left:0;padding-left:0}.kpi:nth-child(n+3){border-top:1px solid var(--line)}}
 .dtable th,.roster th{font-family:var(--mono);font-size:11px;font-weight:500;letter-spacing:.08em}
 .roster th{background:none;border-bottom:1px solid var(--line)}
 .btn{letter-spacing:.01em}
@@ -629,6 +609,3 @@ body.app{background:var(--bg)}
 /* plan crests: transparent artwork, shown larger */
 .tier .crest{width:132px;height:auto}
 .tier.free-tier .crest{width:96px}
-/* the plan crests' slate wordmark needs a faint cream edge on the navy background */
-:root[data-theme="dark"] .tier .crest{filter:drop-shadow(0 0 1px rgba(249,245,236,.6))}
-@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .tier .crest{filter:drop-shadow(0 0 1px rgba(249,245,236,.6))}}
