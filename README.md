@@ -8,6 +8,7 @@ This repo currently holds the static prototype site:
 - `features.html`: detail on the website, store, calendar and minutes tools
 - `demo.html`: interactive demo with a sample lodge (`/demo#store`, `#calendar`, `#members`, `#minutes` open a tab directly)
 - `pricing.html`: pick a plan ("Start now" in the header lands here) and FAQ
+- `owner.html`: the private owner's hub at `/owner` (see Owner's hub below), with `assets/owner.js`. Not linked from the site's menu
 - `login.html`: the Login tab. Sign in, create an account, reset a password, and see "My lodges"; a lodge's account owner manages its roll and invites here
 - `start.html`: a new, blank lodge in the dashboard layout; `/start?plan=starter|lodge|district` (Starter hides the store)
 - `lodges/murrells-inlet-368.html`: dashboard for Murrells Inlet Lodge No. 368 (served at `/lodges/murrells-inlet-368`). Each lodge page sets `window.LODGE` (name, Grand Lodge, members, officer seats, events, store items) before loading `assets/demo.js`
@@ -36,6 +37,15 @@ Lodges sign in with Supabase (Auth for email and password, Postgres for the lodg
 - Saves replace the whole document, so if two officers edit at the same moment the later save wins.
 
 Setup: create a Supabase project (or add the Supabase integration in Vercel, which sets the variables), run `supabase/schema.sql` then the lodge's SQL in the SQL editor, and under Authentication → URL Configuration set the Site URL to the live domain and add `https://*.vercel.app/**` as a redirect URL for previews.
+
+## Owner's hub
+
+`/owner` is the LodgeNet owner's view of every lodge (plan, no-charge flag, brethren, account owner), every account, the plan codes, and the Stripe API key. Run `supabase/owner-hub.sql` after `schema.sql`, with the owner's email in place of `ADMIN_EMAIL`, then sign in at `/owner` with that account (create it at `/login` first and confirm the email).
+
+- Privacy is enforced in the database: the hub calls `admin_*` functions that refuse anyone whose confirmed email isn't in `platform_admins`. That table can't be read or changed from the site; add another owner in the SQL editor.
+- The hub can change a lodge's plan and no-charge flag, add a lodge with its owner's invite (the page at `lodges/<slug>.html` is still added in the repo), and create or end plan codes.
+- The Stripe key is write-only: it's kept in `platform_secrets` (row `stripe_secret_key`), which only the service role can read; the hub sees just test/live and the last four characters. Server code should use Vercel's `STRIPE_SECRET_KEY` when it's set and this row otherwise.
+- Revenue figures are at list price from the plans until Stripe billing is live.
 
 ## Deploy
 
