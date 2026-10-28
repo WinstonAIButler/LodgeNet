@@ -109,7 +109,7 @@
   const M=(name,deg,pm,dues)=>({id:nextMember++,name,deg:deg||"Master Mason",pm:!!pm,title:pm?"WB.":"B.",dues:dues||"Paid 2026",active:true});
   /* a brother's title: B. (Brother), WB. (Worshipful Brother) or RWB. (Right Worshipful Brother); WB. and RWB. count as Past Masters */
   const TITLES=[["B.","Brother"],["WB.","Worshipful Brother"],["RWB.","Right Worshipful Brother"]];
-  const pre=m=>m.title&&m.title!=="B."?m.title.replace(/\.$/,"")+" ":"";
+  const pre=m=>(m.title||"B.")+" ";
   const members=CFG.membersFull?CFG.membersFull.map(m=>({...m})):CFG.members?CFG.members.map(a=>M(...a)):[
     M("Daniel R. Ortega"),M("Marcus Hale"),M("Peter Lindqvist"),M("Walter Simms","",1),M("James Whitfield","",1),
     M("Andre Baptiste"),M("Kevin O'Rourke"),M("Samuel Carter"),M("Luis Ferreira"),M("Harold Benson","",1),
@@ -139,7 +139,7 @@
     $("#mem-count").textContent=`${act.length} members · ${act.filter(m=>m.deg==="Master Mason").length} Master Masons`;
     const seatOf=id=>SEATS.filter(x=>+officers[x.k]===id).map(x=>x.ab).join(", ");
     $("#mem-rows").innerHTML=act.map(m=>`<tr>
-      <td class="nm">${esc(m.name)}</td>
+      <td class="nm">${esc(pre(m)+m.name)}</td>
       <td><select data-mdeg="${m.id}" aria-label="Degree for ${esc(m.name)}">${["Master Mason","Fellowcraft","Entered Apprentice"].map(d=>`<option${d===m.deg?" selected":""}>${d}</option>`).join("")}</select></td>
       <td><select data-mtitle="${m.id}" aria-label="Title for ${esc(m.name)}">${TITLES.map(([v,l])=>`<option value="${v}" title="${l}"${v===m.title?" selected":""}>${v}</option>`).join("")}</select></td>
       <td>${seatOf(m.id)?`<span class="pill gold">${seatOf(m.id)}</span>`:'<span class="hint">None</span>'}</td>
@@ -633,11 +633,12 @@
         if(type==="list"||type==="motions"){
           const sub=type==="motions"?[["text","Motion to…"],["by","Moved by","member"],["second","Seconded by","member"],["result","Result","sel",RESULT]]:opts;
           const rows=Array.isArray(v)?v:[];
-          h+=`<div class="sf-f sf-wide"><span>${esc(label)}</span><div class="sf-list">${rows.map((r,i)=>`<div class="sf-row">${sub.map(([sk,sl,st,so])=>`<label class="sf-cell"><span>${esc(sl)}</span>${input(st||"text",k,r[sk],sl,so,`data-list="${k}" data-row="${i}" data-sub="${sk}" ${dis}`)}</label>`).join("")}${locked?"":`<button type="button" class="btn line sm sf-del" data-del="${k}" data-row="${i}" aria-label="Remove">✕</button>`}</div>`).join("")}
+          h+=`<div class="sf-f sf-wide${aiKeys.has(k)?" ai":""}"><span>${esc(label)}</span><div class="sf-list">${rows.map((r,i)=>`<div class="sf-row">${sub.map(([sk,sl,st,so])=>`<label class="sf-cell"><span>${esc(sl)}</span>${input(st||"text",k,r[sk],sl,so,`data-list="${k}" data-row="${i}" data-sub="${sk}" ${dis}`)}</label>`).join("")}${locked?"":`<button type="button" class="btn line sm sf-del" data-del="${k}" data-row="${i}" aria-label="Remove">✕</button>`}</div>`).join("")}
             ${locked?"":`<button type="button" class="btn line sm" data-add="${k}">+ Add ${type==="motions"?"motion":esc(label.toLowerCase().replace(/s$/,""))}</button>`}</div></div>`;
           continue;
         }
-        h+=`<label class="sf-f${type==="area"?" sf-wide":""}"><span>${esc(label)}${suffix?` <em>${esc(suffix)}</em>`:""}</span>${input(type||"text",k,v,label,opts,`data-k="${k}" ${dis}`)}</label>`;
+        const ctl=input(type||"text",k,v,label,opts,`data-k="${k}" ${dis}`);
+        h+=`<label class="sf-f${type==="area"?" sf-wide":""}${aiKeys.has(k)?" ai":""}"><span>${esc(label)}${suffix?` <em>${esc(suffix)}</em>`:""}</span>${!locked&&SR&&(!type||type==="area")?`<span class="mic-wrap">${ctl}${micBtn(label)}</span>`:ctl}</label>`;
       }
       h+=`</div></fieldset>`;
     }
@@ -662,25 +663,30 @@
     const seg=`<span class="seg" role="group" aria-label="View"><button type="button" data-view="short" aria-pressed="${minView==="short"}"${locked?" disabled":""}>Short form</button><button type="button" data-view="long" aria-pressed="${minView==="long"}">Full write-up</button></span>`;
     const acts=[`<button class="btn sm" type="button" data-act="pdf">Save as PDF</button>`];
     if(!locked){acts.unshift(`<button class="btn line sm" type="button" data-act="sections" aria-expanded="${showSections}">Sections</button>`);
+      acts.unshift(`<button class="btn line sm" type="button" data-act="record" aria-expanded="${rec.open}">${rec.on?"● Recording":"Record meeting"}</button>`);
       if(m.status==="Draft")acts.push('<button class="btn line sm" type="button" data-act="submit">Send for approval</button>');
       acts.push('<button class="btn line sm" type="button" data-act="approve">Mark approved</button>')}
     $("#min-toolbar").innerHTML=`<span class="min-state">${statusPill(m.status)}${locked?' <span class="hint">Approved. Locked.</span>':""}</span>${seg}<span class="acts">${acts.join("")}</span>`;
     const wrap=$("#min-doc");
-    if(minView==="short"){wrap.className="sf";wrap.innerHTML=(showSections?sectionsPanel():"")+shortForm(m,locked)}
+    stopDictation();
+    if(minView==="short"){wrap.className="sf";wrap.innerHTML=(rec.open&&!locked?recPanel():"")+(showSections?sectionsPanel():"")+shortForm(m,locked)}
     else{wrap.className="paper";wrap.innerHTML=longHTML(m)}
   }
-  $("#min-list").addEventListener("click",e=>{const b=e.target.closest(".min-item");if(!b)return;current=minutes.find(m=>m.id==b.dataset.id);minView=current.status==="Approved"?"long":"short";renderMinutes()});
+  $("#min-list").addEventListener("click",e=>{const b=e.target.closest(".min-item");if(!b)return;if(current!==minutes.find(m=>m.id==b.dataset.id)){stopRecording();aiKeys.clear()}current=minutes.find(m=>m.id==b.dataset.id);minView=current.status==="Approved"?"long":"short";renderMinutes()});
   $("#min-toolbar").addEventListener("click",e=>{
     const v=e.target.closest("[data-view]");if(v&&!v.disabled){minView=v.dataset.view;renderMinutes();return}
     const a=e.target.closest("[data-act]");if(!a)return;const act=a.dataset.act;
     if(act==="pdf"){downloadPdf();return}
     if(act==="sections"){showSections=!showSections;minView="short"}
+    if(act==="record"){rec.open=!rec.open;minView="short"}
     if(act==="submit")current.status="Awaiting approval";
     if(act==="approve"){current.status="Approved";minView="long"}
     renderMinutes();
   });
   const doc$=$("#min-doc");
   doc$.addEventListener("input",e=>{const t=e.target;
+    if(t.id==="rec-text"){rec.text=t.value;return}
+    const ai=t.closest(".ai");if(ai)ai.classList.remove("ai"),aiKeys.delete(t.dataset.k||t.dataset.list);
     if(t.dataset.k)current.s[t.dataset.k]=t.value;
     if(t.dataset.list){const rows=current.s[t.dataset.list];if(rows&&rows[+t.dataset.row])rows[+t.dataset.row][t.dataset.sub]=t.value}
   });
@@ -692,6 +698,15 @@
     if(t.dataset.list&&t.tagName==="SELECT"){const rows=current.s[t.dataset.list];if(rows&&rows[+t.dataset.row])rows[+t.dataset.row][t.dataset.sub]=t.value}
   });
   doc$.addEventListener("click",e=>{
+    const mic=e.target.closest("[data-mic]");
+    if(mic){e.preventDefault();const was=dict&&dict.btn===mic;stopDictation();if(!was){stopRecording();startDictation(mic)}return}
+    const ra=e.target.closest("[data-rec]");
+    if(ra){const a=ra.dataset.rec;
+      if(a==="start")startRecording();
+      if(a==="pause")stopRecording();
+      if(a==="clear"&&(!rec.text||confirm("Clear the transcript?"))){stopRecording();rec.text="";rec.notes="";rec.msg="";renderMinutes()}
+      if(a==="fill")fillFromRecording();
+      return}
     const add=e.target.closest("[data-add]"),del=e.target.closest("[data-del]");
     if(add){const k=add.dataset.add;(current.s[k]=Array.isArray(current.s[k])?current.s[k]:[]).push({});renderMinutes();
       const last=doc$.querySelector(`[data-add="${k}"]`).closest(".sf-list").querySelector(".sf-row:last-of-type [data-list]");if(last)last.focus()}
@@ -699,8 +714,126 @@
   });
   $("#min-new").addEventListener("click",()=>{
     const m={id:nextMin++,date:nextStated||"2026-11-10",status:"Draft",seats:{...officers},s:{"prev.action":"read and approved"}};
-    minutes.unshift(m);current=m;minView="short";renderMinutes();
+    minutes.unshift(m);current=m;minView="short";stopRecording();aiKeys.clear();renderMinutes();
   });
+
+  /* ---------- speaking the minutes ----------
+     Each text box has a microphone: the browser turns what the Secretary says into text (Chrome, Edge and Safari can).
+     "Record meeting" does the same for the business portion of the meeting, building a transcript on the page,
+     and Claude (api/minutes.js) fills in the short form from it. No audio is ever kept, and the transcript isn't saved:
+     only the filled-in fields are, once the Secretary has checked them. Ritual is never recorded. */
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  const MIC='<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-2.08A7 7 0 0 0 19 12Z"/></svg>';
+  const micBtn=label=>`<button type="button" class="mic" data-mic aria-pressed="false" aria-label="Speak to fill in ${esc(label)}" title="Speak to fill in">${MIC}</button>`;
+  const aiKeys=new Set();
+  const rec={open:false,on:false,text:"",notes:"",msg:"",busy:false,sr:null};
+  let dict=null;
+  const addWords=(prev,words,sep)=>prev&&!/\s$/.test(prev)?prev+sep+words:prev+words;
+  function micError(ev){
+    if(ev.error==="not-allowed"||ev.error==="service-not-allowed")alert("The browser blocked the microphone. Allow it for this site in the address bar, then try again.");
+  }
+  function startDictation(btn){
+    const el=btn.parentElement.querySelector("input,textarea"),sr=new SR();
+    sr.lang=navigator.language||"en-US";sr.continuous=true;sr.interimResults=false;
+    sr.onresult=ev=>{for(let i=ev.resultIndex;i<ev.results.length;i++){const r=ev.results[i];if(!r.isFinal)continue;
+      const w=r[0].transcript.trim();if(!w)continue;el.value=addWords(el.value,w," ");el.dispatchEvent(new Event("input",{bubbles:true}))}};
+    sr.onerror=micError;
+    sr.onend=()=>{if(dict&&dict.sr===sr)stopDictation()};
+    try{sr.start()}catch(e){return}
+    dict={sr,btn};btn.setAttribute("aria-pressed","true");el.focus();
+  }
+  function stopDictation(){if(!dict)return;const d=dict;dict=null;d.sr.onend=null;try{d.sr.stop()}catch(e){}d.btn.setAttribute("aria-pressed","false")}
+
+  function recPanel(){
+    const btn=!SR?"":rec.on?'<button class="btn line sm" type="button" data-rec="pause">Pause</button>'
+      :`<button class="btn sm" type="button" data-rec="start">${rec.text?"Resume listening":"Start listening"}</button>`;
+    return `<div class="card rec-panel">
+      <div class="rec-head"><h4>Record the meeting</h4><span class="rec-state${rec.on?" on":""}" id="rec-state">${rec.on?"Listening":SR?"Paused":""}</span></div>
+      <p class="rec-warn"><b>Pause for ritual.</b> Start listening when the lodge turns to business, and pause for the opening and closing, degree work and anything said under obligation. LodgeNet never stores ritual. No audio is kept: only the words below, and they're cleared when you leave the page.</p>
+      ${SR?"":'<p class="hint">This browser can\'t turn speech into text. Use Chrome, Edge or Safari, or paste or type your notes below.</p>'}
+      <div class="rec-btns">${btn}${rec.text?'<button class="btn line sm" type="button" data-rec="clear">Clear</button>':""}</div>
+      <textarea id="rec-text" rows="8" aria-label="Meeting transcript" placeholder="What's said appears here. You can also paste or type notes from the meeting.">${esc(rec.text)}</textarea>
+      <p class="rec-live hint" id="rec-live" aria-live="polite"></p>
+      <div class="rec-btns"><button class="btn gold sm" type="button" data-rec="fill"${rec.busy?" disabled":""}>${rec.busy?"Writing up the minutes…":"Fill in the minutes"}</button>
+        <span class="hint" id="rec-msg">${esc(rec.msg)}</span></div>
+      ${rec.notes?`<div class="rec-notes"><b>Claude's notes to check</b><p>${esc(rec.notes)}</p></div>`:""}
+    </div>`;
+  }
+  function startRecording(){
+    if(!SR||rec.on)return;
+    stopDictation();
+    const sr=new SR();sr.lang=navigator.language||"en-US";sr.continuous=true;sr.interimResults=true;
+    sr.onresult=ev=>{let interim="";
+      for(let i=ev.resultIndex;i<ev.results.length;i++){const r=ev.results[i],w=r[0].transcript.trim();if(!w)continue;
+        if(r.isFinal)rec.text=addWords(rec.text,w.charAt(0).toUpperCase()+w.slice(1)+(/[.?!]$/.test(w)?"":"."),"\n");else interim+=w+" "}
+      const ta=$("#rec-text");if(ta&&ta.value!==rec.text){ta.value=rec.text;ta.scrollTop=ta.scrollHeight}
+      const live=$("#rec-live");if(live)live.textContent=interim};
+    sr.onerror=ev=>{if(ev.error==="not-allowed"||ev.error==="service-not-allowed"){micError(ev);stopRecording()}};
+    /* browsers end a listening session after a pause in speech; carry on until the Secretary pauses */
+    sr.onend=()=>{if(rec.on&&rec.sr===sr)try{sr.start()}catch(e){stopRecording()}};
+    try{sr.start()}catch(e){return}
+    rec.sr=sr;rec.on=true;rec.msg="";renderMinutes();
+  }
+  function stopRecording(){
+    if(!rec.on)return;rec.on=false;const sr=rec.sr;rec.sr=null;
+    if(sr){sr.onend=null;try{sr.stop()}catch(e){}}
+    if($("#rec-text"))renderMinutes();
+  }
+  function memberByName(name){
+    const n=String(name||"").toLowerCase().replace(/^(r\.?\s*w\.?|rwb\.?|w\.?\s*b\.?|wb\.?|w\.?|bro\.?|brother|b\.)\s*/g,"").replace(/^(bro\.?|brother)\s*/,"").trim();
+    if(!n)return null;
+    const act=members.filter(m=>m.active);
+    const exact=act.find(m=>m.name.toLowerCase()===n);if(exact)return exact;
+    const last=act.filter(m=>m.name.toLowerCase().split(" ").pop()===n.split(" ").pop());
+    return last.length===1?last[0]:null;
+  }
+  const sameRow=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
+  async function fillFromRecording(){
+    rec.text=($("#rec-text")||{value:rec.text}).value;
+    const C=window.LODGENET_CLOUD;
+    const say=m=>{rec.msg=m;renderMinutes()};
+    if(rec.text.trim().length<40)return say("There isn't enough of the meeting here yet.");
+    if(!C||!C.lodgeId)return say("Claude fills in the minutes once your lodge has a LodgeNet account. Here, fill the form in by hand or with the microphones.");
+    if(!C.canEdit)return say("Only the lodge's officers can write up the minutes.");
+    const session=window.LodgeNetAuth&&await window.LodgeNetAuth.session();
+    if(!session)return say("Your sign-in has expired. Sign in again.");
+    stopRecording();
+    const types={},fields=[];
+    for(const sec of MS){if(!secOn(sec))continue;
+      for(const [f,label,type,opts] of sec.fields){const k=`${sec.id}.${f}`;types[k]=type||"text";
+        fields.push([k,`${sec.title}: ${label}`,type||"text",type==="sel"||type==="list"?opts:null])}}
+    rec.busy=true;rec.notes="";say("");
+    try{
+      const r=await fetch("/api/minutes",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+session.access_token},
+        body:JSON.stringify({lodge_id:C.lodgeId,lodge:($("#lodge-title")||{}).textContent||"",date:current.date,transcript:rec.text,fields,
+          roll:members.filter(m=>m.active).map(m=>m.name)})});
+      const d=await r.json().catch(()=>({error:"Claude couldn't write up the minutes just now. Try again."}));
+      if(!r.ok)throw new Error(d.error||"Claude couldn't write up the minutes just now.");
+      let n=0;
+      for(const [k,v] of Object.entries(d.values||{})){
+        const type=types[k];if(!type)continue;
+        if(type==="list"||type==="motions"){
+          if(!Array.isArray(v)||!v.length)continue;
+          const rows=current.s[k]=Array.isArray(current.s[k])?current.s[k]:[];
+          for(const row of v){
+            const x={...row};
+            if(type==="motions")["by","second"].forEach(p=>{const m=memberByName(x[p]);x[p]=m?String(m.id):""});
+            if(Object.values(x).some(Boolean)&&!rows.some(r=>sameRow(r,x))){rows.push(x);n++;aiKeys.add(k)}
+          }
+          continue;
+        }
+        if(v==null||String(v).trim()===""||String(current.s[k]||"").trim())continue;
+        let val=String(v).trim();
+        if(type==="member"){const m=memberByName(val);if(!m)continue;val=String(m.id)}
+        current.s[k]=val;n++;aiKeys.add(k);
+      }
+      rec.notes=d.notes||"";
+      rec.msg=n?`Filled in ${n} ${n===1?"entry":"entries"}, highlighted below. Anything you'd already typed was kept. Check each one before sending the minutes for approval.`
+        :"Claude didn't find anything new to add to the form.";
+      queueSave();
+    }catch(err){rec.msg=err.message}
+    finally{rec.busy=false;renderMinutes()}
+  }
 
 
   /* ---------- plan (new lodges from /start) ---------- */

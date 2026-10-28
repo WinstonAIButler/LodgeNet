@@ -1,7 +1,25 @@
 {
   "cleanUrls": true,
-  "rewrites": [{ "source": "/lodges/:slug", "destination": "/lodge" }],
+  "rewrites": [
+    {
+      "source": "/lodges/:slug",
+      "destination": "/lodge"
+    }
+  ],
   "headers": [
-    { "source": "/owner", "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }] }
-  ]
+    {
+      "source": "/owner",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow"
+        }
+      ]
+    }
+  ],
+  "functions": {
+    "api/minutes.js": {
+      "maxDuration": 120
+    }
+  }
 }

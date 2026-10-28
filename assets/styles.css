@@ -560,3 +560,25 @@ body.app{background:var(--bg)}
 .pl-fd{display:grid;gap:16px}
 .pl-fd>summary{cursor:pointer;font-weight:700;font-size:14px;margin-bottom:10px}
 .pl-fd[open]>.pl-group+.pl-group{margin-top:16px}
+
+/* minutes: speak to fill in, and Record meeting */
+.mic-wrap{position:relative;display:block}
+.mic-wrap > input{padding-right:40px}
+.mic-wrap > textarea{padding-right:40px}
+.mic{position:absolute;top:6px;right:6px;width:28px;height:28px;display:grid;place-items:center;border:1px solid var(--line);border-radius:50%;background:var(--bg);color:var(--muted);cursor:pointer;padding:0}
+.mic:hover{color:var(--fg);border-color:var(--gilt)}
+.mic[aria-pressed="true"]{background:var(--gold);border-color:var(--gold);color:var(--bg);animation:mic-pulse 1.4s ease-in-out infinite}
+@keyframes mic-pulse{50%{box-shadow:0 0 0 5px color-mix(in srgb,var(--gold) 30%,transparent)}}
+@media (prefers-reduced-motion:reduce){.mic[aria-pressed="true"]{animation:none}}
+.rec-panel{display:grid;gap:10px;padding:16px;border-color:var(--gilt)}
+.rec-head{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.rec-head h4{margin:0;font-size:15px}
+.rec-state{font-size:12px;font-weight:600;color:var(--muted)}
+.rec-state.on{color:var(--gold)}
+.rec-state.on::before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;background:currentColor;margin-right:6px;animation:mic-pulse 1.4s ease-in-out infinite}
+.rec-warn{margin:0;font-size:13px;padding:10px 12px;border-left:3px solid var(--gold);background:var(--surface);border-radius:var(--r)}
+.rec-btns{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.rec-live{margin:0;min-height:1.2em;font-style:italic}
+.rec-notes{font-size:13px;padding:10px 12px;border:1px dashed var(--line);border-radius:var(--r)}
+.rec-notes p{margin:4px 0 0;white-space:pre-wrap}
+.sf-f.ai input,.sf-f.ai textarea,.sf-f.ai select,.sf-f.ai .sf-row{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold)}
