@@ -24,7 +24,7 @@
       {id:"c2",name:"Widows & Orphans Fund",kind:"Lodge fund",note:"Help for the families of departed brethren."},
       {id:"c3",name:"Lodge Building Fund",kind:"Lodge fund",note:"Upkeep of the lodge hall."}]
   };
-  window.LodgeNetDash={snapshot:()=>({treasury:D.treasury,sponsors:D.sponsors,pipeline:D.pipeline,announcements:D.announcements,charities:D.charities})};
+  window.LodgeNetDash={snapshot:()=>({treasury:D.treasury,sponsors:D.sponsors,pipeline:D.pipeline,plists:D.plists,ptasks:D.ptasks,announcements:D.announcements,charities:D.charities})};
   const changed=()=>{A.save();kpis(cur)};
   const funds=()=>["General Fund",...D.charities.map(c=>c.name)];
   const fundraisers=()=>A.events.filter(e=>e.k==="fund").sort((a,b)=>a.d<b.d?1:-1);
@@ -45,7 +45,7 @@
     if(sec==="merchandise")requestAnimationFrame(A.drawProducts);
     const on=document.querySelector(".nav-i[aria-current]");if(on&&on.scrollIntoView)on.scrollIntoView({block:"nearest",inline:"nearest"});
   }
-  const route=()=>{const h=location.hash.slice(1);show(h||"website");if(h==="minutes"){const t=$("#t-min");if(t)t.click()}};
+  const route=()=>{const h=location.hash.slice(1);show(h||"website");const sub={minutes:"#t-min",calendar:"#t-cal",store:"#t-store"}[h];if(sub)$(sub).click()};
   window.addEventListener("hashchange",route);
 
   /* ---------- key figures on top of each section ---------- */
@@ -63,19 +63,20 @@
       members:[["Members",act.length,"On the roll"],["Master Masons",act.filter(m=>m.deg==="Master Mason").length,"Eligible for office"],
         ["Past Masters",act.filter(m=>m.pm).length,""],["Dues owed",owe.length,paid.length+" paid"]],
       communications:[["Next Stated",A.nextStated?day(A.nextStated):"Not set","From the meeting schedule"],["Upcoming events",up.length,""],
-        ["Minutes to approve",A.minutes.filter(m=>m.status!=="Approved").length,A.minutes.filter(m=>m.status==="Approved").length+" approved"],
+        ["Write-ups to approve",A.minutes.filter(m=>m.status!=="Approved").length,A.minutes.filter(m=>m.status==="Approved").length+" approved"],
         ["Announcements",D.announcements.filter(a=>a.status==="Posted").length,D.announcements.filter(a=>a.status!=="Posted").length+" drafts"]],
       treasury:[["Balance",money(ledgerSum()),"All funds, from the ledger"],["Dues collected",money(paid.length*D.treasury.dues),many(paid.length,"brother")+" paid"],
         ["Dues outstanding",money(owe.length*D.treasury.dues),many(owe.length,"brother")+" owe"],["Fundraising",money(raised),many(fr.length,"fundraiser")]],
       fundraiser:[["Active",fr.filter(e=>e.d>=TODAY).length,"Upcoming fundraisers"],["Raised",money(raised),"All fundraisers"],
         ["Goal",money(fr.reduce((t,e)=>t+(+e.goal||0),0)),fr.length?Math.round(raised/Math.max(1,fr.reduce((t,e)=>t+(+e.goal||0),0))*100)+"% of goal":""],
         ["RSVPs",fr.reduce((t,e)=>t+(+e.rsvp||0),0),""]],
-      pipelines:[["In progress",D.pipeline.filter(c=>c.stage<STAGES.length-1).length,"Inquiries to Fellowcraft"],["Petitions",D.pipeline.filter(c=>c.stage>=1&&c.stage<=3).length,"Received, investigating or at ballot"],
-        ["In degrees",D.pipeline.filter(c=>c.stage===4||c.stage===5).length,"Entered Apprentice or Fellowcraft"],["Raised",D.pipeline.filter(c=>c.stage===STAGES.length-1).length,"Master Masons"]],
+      pipelines:[["In progress",D.pipeline.filter(c=>c.stage<RAISED).length,many(D.pipeline.filter(c=>c.stage===0).length,"new inquiry","new inquiries")],["Petitions",D.pipeline.filter(c=>c.stage>=1&&c.stage<=3).length,"Received, investigating or at ballot"],
+        ["In degrees",D.pipeline.filter(c=>c.stage===4||c.stage===5).length,"Entered Apprentice or Fellowcraft"],["Follow-ups due",D.ptasks.filter(t=>!t.done&&t.due&&t.due<=TODAY).length,many(D.ptasks.filter(t=>!t.done).length,"open task")]],
       sponsors:[["Active sponsors",live.length,""],["Yearly support",money(live.reduce((t,s)=>t+(+s.amt||0),0)),"From active sponsors"],
         ["Renewals due",live.filter(s=>s.renew&&s.renew<=soon).length,"In the next 60 days"],["Prospects",D.sponsors.filter(s=>s.status==="Prospect").length,""]],
-      merchandise:[["Products",A.products.length,"In the lodge store"],["To charity",money(A.products.reduce((t,p)=>t+p.margin,0)/Math.max(1,A.products.length)),"Average per item"],
-        ["Proceeds support",($("#s-charity")||{}).value||"","Pick on the left"],["Payments",["#f-pp","#f-venmo","#f-cash"].filter(f=>$(f)&&$(f).value.trim()).length+" of 3","Accounts linked on Website"]],
+      merchandise:(()=>{const O=A.orders.filter(o=>o.status!=="Cancelled");
+        return [["Orders",O.length,many(O.filter(o=>o.status==="New").length,"new order")],["Sales",money(O.reduce((t,o)=>t+o.total,0)),"Not counting cancelled"],
+          ["To charity",money(O.reduce((t,o)=>t+o.toCharity,0)),"From these sales"],["To fill",O.filter(o=>o.status!=="Fulfilled").length,"Not yet handed over or shipped"]]})(),
       charities:[["Charities",D.charities.length,"Funds and causes"],["Raised",money(D.charities.reduce((t,c)=>t+raisedFor(c.name),0)),"Donations and fundraisers"],
         ["Given",money(D.charities.reduce((t,c)=>t+givenFor(c.name),0)),"Paid out from the ledger"],["Fundraisers",fr.filter(e=>e.charity).length,"Tied to a charity"]],
       settings:null
@@ -197,35 +198,184 @@
       A.refresh();renderFund();changed()}));
   }
 
-  /* ---------- Pipelines: from first inquiry to Master Mason ---------- */
-  const STAGES=["Inquiry","Petition received","Investigation","Ballot","Entered Apprentice","Fellowcraft","Master Mason"];
-  const DEGREE={4:"Entered Apprentice",5:"Fellowcraft",6:"Master Mason"};
+  /* ---------- Pipelines: prospective brethren from first inquiry to raising, laid out like a lead database:
+     tabs for Prospects, Lists and Tasks; filters on the left; a sortable table with bulk actions; a detail card per prospect.
+     Nothing is found or scored automatically: officers add prospects and set the fit themselves. ---------- */
+  const STAGES=["Inquiry","Petition received","Investigation","Ballot","Entered Apprentice","Fellowcraft","Raised","Not proceeding"];
+  const RAISED=6,NOPE=7,DEGREE={4:"Entered Apprentice",5:"Fellowcraft",6:"Master Mason"};
+  const KINDS_P=["Prospective member","Affiliation","Reinstatement"],SOURCES=["Brother's referral","Website","Event","Walk-in","Other"];
+  const FITS=[["strong","Strong (80+)",f=>f>=80],["possible","Possible (50–79)",f=>f>=50&&f<80],["weak","Weak (under 50)",f=>f!=null&&f<50],["none","Not scored yet",f=>f==null]];
+  const CONTACT=[["email","Has an email",c=>!!c.email],["phone","Has a phone",c=>!!c.phone],["by","Recommended by a brother",c=>!!c.by]];
+  D.plists=CFG.plists||[];D.ptasks=CFG.ptasks||[];
+  D.pipeline.forEach(c=>{if(c.contact&&!c.email&&!c.phone){/@/.test(c.contact)?c.email=c.contact:c.phone=c.contact;delete c.contact}c.kind=c.kind||KINDS_P[0];c.lists=c.lists||[];if(c.fit===undefined)c.fit=null});
+  const PF={fopen:null,view:"prospects",stage:new Set(),fit:new Set(),contact:new Set(),kind:new Set(),list:"",q:"",sort:"fit",page:0,sel:new Set(),open:null};
+  const PAGE=25;
+  const tier=f=>f==null?["none","Not scored"]:f>=80?["strong","Strong"]:f>=50?["possible","Possible"]:["weak","Weak"];
+  function syncDegree(c){const deg=DEGREE[c.stage],m=c.member&&A.member(c.member);
+    if(deg&&m){m.deg=deg;A.refresh()}else if(deg&&!m)c.member=A.addMember(c.name,deg).id}
+  function filtered(){
+    const q=PF.q.toLowerCase();
+    let L=D.pipeline.filter(c=>(!PF.stage.size||PF.stage.has(c.stage))&&(!PF.kind.size||PF.kind.has(c.kind))&&(!PF.list||c.lists.includes(PF.list))
+      &&(!PF.fit.size||FITS.some(([k,,t])=>PF.fit.has(k)&&t(c.fit)))&&[...PF.contact].every(k=>CONTACT.find(x=>x[0]===k)[2](c))
+      &&(!q||[c.name,c.email,c.phone,c.by,c.city,c.notes].some(v=>String(v||"").toLowerCase().includes(q))));
+    const by={fit:(a,b)=>(b.fit??-1)-(a.fit??-1),new:(a,b)=>a.d<b.d?1:-1,name:(a,b)=>a.name.localeCompare(b.name),stage:(a,b)=>a.stage-b.stage}[PF.sort];
+    return L.sort(by);
+  }
+  const chk=(group,k,label,n)=>`<label class="pl-chk"><input type="checkbox" data-fg="${group}" value="${esc(k)}"${PF[group].has(group==="stage"?+k:k)?" checked":""}><span>${esc(label)}</span>${n==null?"":`<span class="pl-n">${n}</span>`}</label>`;
+  function csv(rows){const q=v=>`"${String(v==null?"":v).replace(/"/g,'""')}"`;
+    const out=[["Name","Kind","Email","Phone","Recommended by","City","Source","Fit","Stage","Added"].map(q).join(",")].concat(rows.map(c=>[c.name,c.kind,c.email,c.phone,c.by,c.city,c.source,c.fit,STAGES[c.stage],c.d].map(q).join(",")));
+    const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([out.join("\n")],{type:"text/csv"}));a.download="lodge-prospects.csv";document.body.appendChild(a);a.click();a.remove()}
   function renderPipe(){
-    $("#p-pipe").innerHTML=`<form class="inline-form card" id="pipe-form">
-        <div class="field grow"><label for="pp-n">Name</label><input id="pp-n" required placeholder="Full name"></div>
-        <div class="field grow"><label for="pp-c">Phone or email</label><input id="pp-c"></div>
-        <div class="field grow"><label for="pp-r">Recommended by</label><input id="pp-r" placeholder="Brother's name"></div>
-        <button class="btn" type="submit">Add inquiry</button>
-      </form>
-      <div class="board">${STAGES.map((st,i)=>{const cs=D.pipeline.filter(c=>c.stage===i);
-        return `<div class="col"><div class="col-h"><b>${st}</b><span class="pill">${cs.length}</span></div>${cs.map(c=>`<div class="pcard" data-pc="${esc(c.id)}">
-          <b>${esc(c.name)}</b>${c.contact?`<span class="hint">${esc(c.contact)}</span>`:""}${c.by?`<span class="hint">Recommended by ${esc(c.by)}</span>`:""}
-          <span class="hint">Since ${day(c.d)}</span>
-          <div class="row-acts">${i>0?'<button class="btn line sm" type="button" data-act="back" aria-label="Move back">‹</button>':""}
-            ${i<STAGES.length-1?'<button class="btn line sm" type="button" data-act="fwd">Next ›</button>':""}
-            <button class="btn line sm" type="button" data-act="del" aria-label="Remove">×</button></div>
-          ${c.member?'<span class="pill ok">On the roster</span>':""}</div>`).join("")}</div>`}).join("")}</div>
-      <p class="hint">Once a candidate is initiated, moving him to Entered Apprentice adds him to the roster, and later stages update his degree there.</p>`;
-    $("#pipe-form").addEventListener("submit",e=>{e.preventDefault();const n=$("#pp-n").value.trim();if(!n)return;
-      D.pipeline.push({id:uid(),name:n,contact:$("#pp-c").value.trim(),by:$("#pp-r").value.trim(),stage:0,d:TODAY});renderPipe();changed()});
-    $("#p-pipe").querySelectorAll("[data-act]").forEach(b=>b.addEventListener("click",()=>{
-      const id=b.closest("[data-pc]").dataset.pc,c=D.pipeline.find(x=>x.id===id);if(!c)return;
-      if(b.dataset.act==="del")D.pipeline=D.pipeline.filter(x=>x!==c);
-      else{c.stage=Math.max(0,Math.min(STAGES.length-1,c.stage+(b.dataset.act==="fwd"?1:-1)));c.d=TODAY;
-        const deg=DEGREE[c.stage],m=c.member&&A.member(c.member);
-        if(deg&&m){m.deg=deg;A.refresh()}
-        else if(deg&&!m){c.member=A.addMember(c.name,deg).id}}
-      renderPipe();changed()}));
+    const openTasks=D.ptasks.filter(t=>!t.done).length;
+    const tabs=`<div class="tabs pl-tabs" role="tablist" aria-label="Pipelines">${[["prospects",`Prospects (${D.pipeline.length})`],["lists",`Lists (${D.plists.length})`],["tasks",`Tasks (${openTasks})`]]
+      .map(([k,l])=>`<button type="button" class="tab" role="tab" data-view="${k}" aria-selected="${PF.view===k}">${l}</button>`).join("")}</div>`;
+    let body="";
+    if(PF.view==="prospects"){
+      const L=filtered(),pages=Math.max(1,Math.ceil(L.length/PAGE));PF.page=Math.min(PF.page,pages-1);
+      const shown=L.slice(PF.page*PAGE,PF.page*PAGE+PAGE),allSel=shown.length&&shown.every(c=>PF.sel.has(c.id));
+      const count=f=>D.pipeline.filter(f).length;
+      body=`<form class="card pl-add" id="pipe-form">
+          <div><h4>Add a prospect</h4><p class="hint" style="margin:4px 0 0">Someone who asked about joining, was recommended by a brother, or signed up at an event.</p></div>
+          <div class="inline-form">
+            <div class="field grow"><label for="pp-n">Name</label><input id="pp-n" required placeholder="Full name"></div>
+            <div class="field grow"><label for="pp-e">Email</label><input id="pp-e" type="email"></div>
+            <div class="field"><label for="pp-p">Phone</label><input id="pp-p" type="tel" style="max-width:10em"></div>
+            <div class="field grow"><label for="pp-r">Recommended by</label><input id="pp-r" placeholder="Brother's name"></div>
+            <div class="field"><label for="pp-c">City</label><input id="pp-c" style="max-width:10em"></div>
+            <div class="field"><label for="pp-s">Source</label><select id="pp-s">${opts(SOURCES)}</select></div>
+            <button class="btn" type="submit">Add prospect</button>
+          </div></form>
+        <div class="pl-wrap">
+          <aside class="pl-filters">
+            <input type="search" id="pl-q" placeholder="Search prospects" value="${esc(PF.q)}" aria-label="Search prospects">
+            ${PF.list?`<div class="pl-group"><b>List</b><span class="row-sp"><span class="pill gold">${esc((D.plists.find(l=>l.id===PF.list)||{}).name||"")}</span><button type="button" class="link-btn" id="pl-nolist">Clear</button></span></div>`:""}
+            <details class="pl-fd"${PF.fopen??innerWidth>860?" open":""}><summary>Filters</summary>
+            <div class="pl-group"><b>Stage</b>${STAGES.map((st,i)=>chk("stage",i,st,count(c=>c.stage===i))).join("")}</div>
+            <div class="pl-group"><b>Fit</b>${FITS.map(([k,l,t])=>chk("fit",k,l,count(c=>t(c.fit)))).join("")}</div>
+            <div class="pl-group"><b>Contact info</b>${CONTACT.map(([k,l,t])=>chk("contact",k,l,count(t))).join("")}</div>
+            <div class="pl-group"><b>Kind</b>${KINDS_P.map(k=>chk("kind",k,k,count(c=>c.kind===k))).join("")}</div>
+            </details>
+            ${PF.stage.size||PF.fit.size||PF.contact.size||PF.kind.size||PF.q?'<button type="button" class="btn line sm" id="pl-clear">Clear filters</button>':""}
+          </aside>
+          <div class="pl-main">
+            <div class="pl-bar">
+              <b>${many(L.length,"prospect")}${L.length!==D.pipeline.length?` <span class="hint">of ${D.pipeline.length}</span>`:""}</b>
+              <label class="hint">Sort <select id="pl-sort">${[["fit","Best fit first"],["new","Newest first"],["name","Name A–Z"],["stage","Stage"]].map(([k,l])=>`<option value="${k}"${PF.sort===k?" selected":""}>${l}</option>`).join("")}</select></label>
+            </div>
+            ${PF.sel.size?`<div class="pl-bulk"><b>${PF.sel.size} selected</b>
+              <select id="bk-stage" aria-label="Move to stage"><option value="">Move to stage…</option>${STAGES.map((st,i)=>`<option value="${i}">${st}</option>`).join("")}</select>
+              <select id="bk-list" aria-label="Add to list"><option value="">Add to list…</option>${D.plists.map(l=>`<option value="${esc(l.id)}">${esc(l.name)}</option>`).join("")}<option value="+">New list…</option></select>
+              <button type="button" class="btn line sm" data-bk="task">Add follow-up</button>
+              <button type="button" class="btn line sm" data-bk="csv">Export CSV</button>
+              <button type="button" class="btn line sm" data-bk="del">Delete</button>
+              <button type="button" class="link-btn" data-bk="none">Clear selection</button></div>`:""}
+            <div class="table-scroll"><table class="dtable pl-table"><thead><tr>
+              <th><input type="checkbox" id="pl-all" aria-label="Select all on this page"${allSel?" checked":""}></th><th>Prospect</th><th>Recommended by</th><th>Contact</th><th>Location</th><th>Fit</th><th>Stage</th></tr></thead><tbody>
+            ${shown.length?shown.map(c=>{const [tk,tl]=tier(c.fit);return `<tr data-pc="${esc(c.id)}"${PF.open===c.id?' class="on"':""}>
+              <td><input type="checkbox" data-sel aria-label="Select ${esc(c.name)}"${PF.sel.has(c.id)?" checked":""}></td>
+              <td><button type="button" class="link-btn pl-name" data-open>${esc(c.name)}</button><br><span class="hint">${esc([c.kind!==KINDS_P[0]?c.kind:"",c.source].filter(Boolean).join(" · "))}</span></td>
+              <td>${c.by?esc(c.by):'<span class="hint">None</span>'}</td>
+              <td>${c.email?`<a href="mailto:${esc(c.email)}">${esc(c.email)}</a>`:""}${c.email&&c.phone?"<br>":""}${c.phone?`<a href="tel:${esc(c.phone)}">${esc(c.phone)}</a>`:""}${!c.email&&!c.phone?'<span class="hint">Not added</span>':""}</td>
+              <td>${c.city?esc(c.city):'<span class="hint">—</span>'}</td>
+              <td><span class="fit ${tk}">${tl}${c.fit!=null?` · ${c.fit}`:""}</span></td>
+              <td><select data-stage aria-label="Stage for ${esc(c.name)}">${STAGES.map((st,i)=>`<option value="${i}"${i===c.stage?" selected":""}>${st}</option>`).join("")}</select></td></tr>`}).join("")
+              :`<tr><td colspan="7" class="hint">${D.pipeline.length?"No prospects match these filters.":"No prospects yet. Add the first one above."}</td></tr>`}
+            </tbody></table></div>
+            ${L.length>PAGE?`<div class="row-sp pl-pager"><span class="hint">${PF.page*PAGE+1}–${Math.min(L.length,PF.page*PAGE+PAGE)} of ${L.length}</span><span class="row-acts">
+              <button type="button" class="btn line sm" data-pg="-1"${PF.page?"":" disabled"}>Previous</button><button type="button" class="btn line sm" data-pg="1"${PF.page<pages-1?"":" disabled"}>Next</button></span></div>`:""}
+            ${detail()}
+          </div>
+        </div>`;
+    }else if(PF.view==="lists"){
+      body=`<div class="two-col wide-left"><div class="list">${D.plists.length?D.plists.map(l=>{const n=D.pipeline.filter(c=>c.lists.includes(l.id)).length;
+          return `<div class="card" data-li="${esc(l.id)}"><div class="row-sp"><b>${esc(l.name)}</b><span class="pill">${many(n,"prospect")}</span></div>
+            <div class="row-acts"><button type="button" class="btn line sm" data-lact="show">Show prospects</button><button type="button" class="btn line sm" data-lact="del">Delete list</button></div></div>`}).join("")
+          :'<div class="empty">No lists yet. Lists group prospects, for example "Spring open house" or "Waiting on petition".</div>'}</div>
+        <form class="card" id="plist-form"><h4>New list</h4><div class="field"><label for="pl-ln">Name</label><input id="pl-ln" required placeholder="Spring open house"></div>
+          <button class="btn" type="submit">Create list</button><p class="hint">Add prospects to a list from the Prospects tab: tick them, then choose "Add to list".</p></form></div>`;
+    }else{
+      const T=D.ptasks.slice().sort((a,b)=>a.done-b.done||(a.due||"9")<(b.due||"9")?-1:1);
+      body=`<div class="card"><div class="table-scroll"><table class="dtable"><thead><tr><th><span class="sr">Done</span></th><th>Follow-up</th><th>Prospect</th><th>Due</th><th><span class="sr">Actions</span></th></tr></thead><tbody>
+        ${T.length?T.map(t=>{const c=D.pipeline.find(x=>x.id===t.pid);return `<tr data-ti="${esc(t.id)}"${t.done?' class="done"':""}>
+          <td><input type="checkbox" data-done aria-label="Done"${t.done?" checked":""}></td><td>${esc(t.text)}</td><td>${c?esc(c.name):'<span class="hint">Removed</span>'}</td>
+          <td class="num${!t.done&&t.due&&t.due<TODAY?" late":""}">${t.due?day(t.due):'<span class="hint">No date</span>'}</td>
+          <td class="r"><button type="button" class="btn line sm" data-tdel aria-label="Delete">×</button></td></tr>`}).join("")
+          :'<tr><td colspan="5" class="hint">No follow-ups yet. Add one here, or from a prospect\'s card.</td></tr>'}
+        </tbody></table></div>
+        <form class="inline-form" id="ptask-form">
+          <div class="field grow"><label for="pt-t">Follow-up</label><input id="pt-t" required placeholder="Call to set up a lodge visit"></div>
+          <div class="field"><label for="pt-p">Prospect</label><select id="pt-p">${D.pipeline.map(c=>`<option value="${esc(c.id)}">${esc(c.name)}</option>`).join("")}</select></div>
+          <div class="field"><label for="pt-d">Due</label><input id="pt-d" type="date"></div>
+          <button class="btn" type="submit"${D.pipeline.length?"":" disabled"}>Add follow-up</button></form></div>`;
+    }
+    $("#p-pipe").innerHTML=tabs+body+`<p class="hint" style="margin:14px 0 0">Moving a prospect to Entered Apprentice adds him to the roster on Members, and Fellowcraft and Raised update his degree there.</p>`;
+    wirePipe();
+  }
+  function detail(){
+    const c=D.pipeline.find(x=>x.id===PF.open);if(!c)return "";
+    const T=D.ptasks.filter(t=>t.pid===c.id);
+    const f=(k,l,type)=>`<div class="field"><label>${l}<input data-pf="${k}"${type?` type="${type}"`:""} value="${esc(c[k]==null?"":c[k])}"></label></div>`;
+    return `<div class="card pl-detail" id="pl-detail"><div class="row-sp"><h4>${esc(c.name)}</h4><button type="button" class="btn line sm" id="pl-close">Close</button></div>
+      <div class="pl-dgrid">${f("name","Name")}${f("email","Email","email")}${f("phone","Phone","tel")}${f("by","Recommended by")}${f("city","City")}
+        <div class="field"><label>Kind<select data-pf="kind">${opts(KINDS_P,c.kind)}</select></label></div>
+        <div class="field"><label>Source<select data-pf="source">${opts(SOURCES,c.source)}</select></label></div>
+        <div class="field"><label>Fit score (0–100)<input data-pf="fit" type="number" min="0" max="100" value="${c.fit==null?"":c.fit}" placeholder="Not scored"></label></div></div>
+      <div class="field"><label>Notes<textarea data-pf="notes" rows="3" style="font-family:var(--body);font-size:14px">${esc(c.notes||"")}</textarea></label></div>
+      <div class="row-sp"><span class="hint">Added ${day(c.d)}${c.lists.length?" · Lists: "+c.lists.map(id=>(D.plists.find(l=>l.id===id)||{}).name).filter(Boolean).map(esc).join(", "):""}</span>${c.member?'<span class="pill ok">On the roster</span>':""}</div>
+      <div class="mini-list"><b style="font-size:13px">Follow-ups</b>${T.length?T.map(t=>`<span class="hint">${t.done?"✓ ":""}${esc(t.text)}${t.due?" · "+day(t.due):""}</span>`).join(""):'<span class="hint">None yet.</span>'}
+        <form class="row-acts" id="pl-dtask"><input id="pl-dt" placeholder="New follow-up" class="amt-in" style="width:auto;flex:1"><input id="pl-dd" type="date" class="amt-in" style="width:auto"><button class="btn line sm" type="submit">Add</button></form></div></div>`;
+  }
+  function wirePipe(){
+    const P=$("#p-pipe"),re=()=>{renderPipe();changed()};
+    P.querySelectorAll("[data-view]").forEach(b=>b.addEventListener("click",()=>{PF.view=b.dataset.view;renderPipe()}));
+    const form=$("#pipe-form");
+    if(form)form.addEventListener("submit",e=>{e.preventDefault();const n=$("#pp-n").value.trim();if(!n)return;
+      D.pipeline.push({id:uid(),name:n,email:$("#pp-e").value.trim(),phone:$("#pp-p").value.trim(),by:$("#pp-r").value.trim(),city:$("#pp-c").value.trim(),
+        source:$("#pp-s").value,kind:KINDS_P[0],fit:null,stage:0,lists:[],d:TODAY});re()});
+    P.querySelectorAll("[data-fg]").forEach(i=>i.addEventListener("change",()=>{const g=i.dataset.fg,v=g==="stage"?+i.value:i.value;
+      i.checked?PF[g].add(v):PF[g].delete(v);PF.page=0;renderPipe()}));
+    const q=$("#pl-q");if(q){let t;q.addEventListener("input",()=>{clearTimeout(t);t=setTimeout(()=>{PF.q=q.value;PF.page=0;renderPipe();const n=$("#pl-q");n.focus();n.setSelectionRange(n.value.length,n.value.length)},250)})}
+    const fd=P.querySelector(".pl-fd");if(fd)fd.addEventListener("toggle",()=>PF.fopen=fd.open);
+    const cl=$("#pl-clear");if(cl)cl.addEventListener("click",()=>{["stage","fit","contact","kind"].forEach(g=>PF[g].clear());PF.q="";renderPipe()});
+    const nl=$("#pl-nolist");if(nl)nl.addEventListener("click",()=>{PF.list="";renderPipe()});
+    const so=$("#pl-sort");if(so)so.addEventListener("change",()=>{PF.sort=so.value;renderPipe()});
+    P.querySelectorAll("[data-pg]").forEach(b=>b.addEventListener("click",()=>{PF.page+=+b.dataset.pg;renderPipe()}));
+    const all=$("#pl-all");if(all)all.addEventListener("change",()=>{P.querySelectorAll("tr[data-pc]").forEach(r=>all.checked?PF.sel.add(r.dataset.pc):PF.sel.delete(r.dataset.pc));renderPipe()});
+    P.querySelectorAll("tr[data-pc]").forEach(r=>{const c=D.pipeline.find(x=>x.id===r.dataset.pc);
+      r.querySelector("[data-sel]").addEventListener("change",e=>{e.target.checked?PF.sel.add(c.id):PF.sel.delete(c.id);renderPipe()});
+      r.querySelector("[data-open]").addEventListener("click",()=>{PF.open=PF.open===c.id?null:c.id;renderPipe();const d=$("#pl-detail");if(d)d.scrollIntoView({block:"nearest"})});
+      r.querySelector("[data-stage]").addEventListener("change",e=>{c.stage=+e.target.value;c.d=c.d||TODAY;syncDegree(c);re()})});
+    const sel=()=>D.pipeline.filter(c=>PF.sel.has(c.id));
+    const bs=$("#bk-stage");if(bs)bs.addEventListener("change",()=>{if(bs.value==="")return;sel().forEach(c=>{c.stage=+bs.value;syncDegree(c)});re()});
+    const bl=$("#bk-list");if(bl)bl.addEventListener("change",()=>{let id=bl.value;if(!id)return;
+      if(id==="+"){const n=(prompt("Name the new list")||"").trim();if(!n){bl.value="";return}id=uid();D.plists.push({id,name:n})}
+      sel().forEach(c=>{if(!c.lists.includes(id))c.lists.push(id)});re()});
+    P.querySelectorAll("[data-bk]").forEach(b=>b.addEventListener("click",()=>{const k=b.dataset.bk;
+      if(k==="none")PF.sel.clear();
+      if(k==="csv")return csv(sel());
+      if(k==="task"){const t=(prompt(`Follow-up for ${PF.sel.size} prospect${PF.sel.size>1?"s":""}`,"Call to invite to the next open house")||"").trim();if(!t)return;
+        sel().forEach(c=>D.ptasks.push({id:uid(),pid:c.id,text:t,due:"",done:false}))}
+      if(k==="del"){if(!confirm(`Delete ${PF.sel.size} prospect${PF.sel.size>1?"s":""}? Brothers already on the roster stay there.`))return;
+        D.pipeline=D.pipeline.filter(c=>!PF.sel.has(c.id));D.ptasks=D.ptasks.filter(t=>!PF.sel.has(t.pid));PF.sel.clear()}
+      re()}));
+    const det=$("#pl-detail");
+    if(det){const c=D.pipeline.find(x=>x.id===PF.open);
+      $("#pl-close").addEventListener("click",()=>{PF.open=null;renderPipe()});
+      det.querySelectorAll("[data-pf]").forEach(el=>el.addEventListener("change",()=>{const k=el.dataset.pf;
+        c[k]=k==="fit"?(el.value===""?null:Math.max(0,Math.min(100,Math.round(+el.value)))):el.value.trim();
+        if(k==="name"&&!c.name)c.name="Unnamed";re()}));
+      $("#pl-dtask").addEventListener("submit",e=>{e.preventDefault();const t=$("#pl-dt").value.trim();if(!t)return;
+        D.ptasks.push({id:uid(),pid:c.id,text:t,due:$("#pl-dd").value,done:false});re()});
+    }
+    const lf=$("#plist-form");if(lf)lf.addEventListener("submit",e=>{e.preventDefault();const n=$("#pl-ln").value.trim();if(!n)return;D.plists.push({id:uid(),name:n});re()});
+    P.querySelectorAll("[data-li]").forEach(card=>card.querySelectorAll("[data-lact]").forEach(b=>b.addEventListener("click",()=>{const id=card.dataset.li;
+      if(b.dataset.lact==="show"){PF.view="prospects";PF.list=id;PF.page=0;return renderPipe()}
+      D.plists=D.plists.filter(l=>l.id!==id);D.pipeline.forEach(c=>c.lists=c.lists.filter(x=>x!==id));if(PF.list===id)PF.list="";re()})));
+    const tf=$("#ptask-form");if(tf)tf.addEventListener("submit",e=>{e.preventDefault();const t=$("#pt-t").value.trim();if(!t)return;
+      D.ptasks.push({id:uid(),pid:$("#pt-p").value,text:t,due:$("#pt-d").value,done:false});re()});
+    P.querySelectorAll("tr[data-ti]").forEach(r=>{const t=D.ptasks.find(x=>x.id===r.dataset.ti);
+      r.querySelector("[data-done]").addEventListener("change",e=>{t.done=e.target.checked;re()});
+      r.querySelector("[data-tdel]").addEventListener("click",()=>{D.ptasks=D.ptasks.filter(x=>x!==t);re()})});
   }
 
   /* ---------- Sponsors ---------- */
@@ -295,8 +445,78 @@
     $("#set-role").textContent=CLOUD?`You're signed in as ${CLOUD.email}, ${ROLE[CLOUD.role]||CLOUD.role} of this lodge. Officers can change the dashboard; members can read it.`:"Sign in to manage who can open this dashboard.";
   }
 
+  /* ---------- Merchandise: the order form is demo.js's store; Orders and Products are here ---------- */
+  const OSTATUS=["New","Paid","Fulfilled","Cancelled"];
+  const linesText=o=>o.lines.map(l=>`${l.q} × ${l.n}${[l.size,l.color].filter(Boolean).length?" ("+[l.size,l.color].filter(Boolean).join(", ")+")":""}${l.pers?` · "${l.pers}"`:""}`);
+  function renderOrders(){
+    const O=A.orders;
+    $("#p-ord").innerHTML=`<div class="table-scroll"><table class="dtable"><thead><tr><th>#</th><th>Date</th><th>Buyer</th><th>Items</th><th>Delivery</th><th class="r">Total</th><th>Paid by</th><th>Status</th></tr></thead><tbody>
+      ${O.length?O.map((o,i)=>`<tr data-oi="${i}"><td class="num">${o.no}</td><td class="num">${day(o.d)}</td>
+        <td><b>${esc(o.name)}</b>${o.contact?`<br><span class="hint">${esc(o.contact)}</span>`:""}</td>
+        <td>${linesText(o).map(esc).join("<br>")}</td>
+        <td>${esc(o.get)}${o.addr?`<br><span class="hint">${esc(o.addr)}</span>`:""}</td>
+        <td class="r num"><b>${money(o.total)}</b><br><span class="hint">${money(o.toCharity)} to ${esc(o.charity)}</span></td>
+        <td>${esc(o.pay)}</td>
+        <td><select data-ost aria-label="Status of order ${o.no}">${opts(OSTATUS,o.status)}</select></td></tr>`).join("")
+        :'<tr><td colspan="8" class="hint">No orders yet. Take one on the Order form: pick the items, fill in the buyer, and choose how they pay.</td></tr>'}
+      </tbody></table></div>
+      <p class="hint" style="margin:12px 0 0">Marking an order Paid records it in Treasury: the charity's share to its fund and the rest to the General Fund.</p>`;
+    $("#p-ord").querySelectorAll("[data-oi]").forEach(r=>r.querySelector("[data-ost]").addEventListener("change",e=>{
+      const o=A.orders[+r.dataset.oi];o.status=e.target.value;
+      if(o.status==="Paid"&&!o.booked){o.booked=true;
+        const fund=funds().includes(o.charity)?o.charity:"General Fund";
+        if(o.toCharity)D.treasury.ledger.push({id:uid(),d:TODAY,desc:`Store order #${o.no} · ${o.name}`,fund,kind:"in",amt:o.toCharity});
+        if(o.total-o.toCharity>0)D.treasury.ledger.push({id:uid(),d:TODAY,desc:`Store order #${o.no} · ${o.name}`,fund:"General Fund",kind:"in",amt:o.total-o.toCharity})}
+      changed()}));
+  }
+  const KINDS=[["tee","T-shirt"],["hoodie","Hoodie"],["polo","Polo"],["cap","Cap"],["pin","Pin"],["coin","Coin"],["mug","Mug"],["apron","Apron"],["sticker","Sticker or patch"],["other","Other"]];
+  let redraw=null;
+  const storeChanged=()=>{clearTimeout(redraw);redraw=setTimeout(()=>{A.renderProducts();changed()},300)};
+  function shrink(file){return new Promise((ok,no)=>{const img=new Image(),url=URL.createObjectURL(file);
+    img.onload=()=>{const k=Math.min(1,480/Math.max(img.width,img.height)),c=document.createElement("canvas");c.width=Math.round(img.width*k);c.height=Math.round(img.height*k);
+      c.getContext("2d").drawImage(img,0,0,c.width,c.height);URL.revokeObjectURL(url);ok(c.toDataURL("image/jpeg",.8))};
+    img.onerror=()=>{URL.revokeObjectURL(url);no(new Error("not an image"))};img.src=url})}
+  function renderProd(){
+    const P=A.products;
+    $("#p-prod").innerHTML=`<div class="row-sp" style="margin-bottom:14px"><p class="hint" style="margin:0">Everything here shows on the Order form and, once published, the lodge store. Hide an item to stop selling it without losing it.</p>
+        <button class="btn sm" type="button" id="prod-add">Add a product</button></div>
+      <div class="prod-grid">${P.map((p,i)=>`<div class="card prod-edit${p.off?" off":""}" data-pi="${i}">
+        <div class="prod-pic">${p.img?`<img src="${esc(p.img)}" alt="">`:`<span class="hint">No photo; the store shows a drawing</span>`}
+          <span class="row-acts"><label class="btn line sm">${p.img?"Change photo":"Add photo"}<input type="file" accept="image/*" data-f="img" hidden></label>${p.img?'<button class="btn line sm" type="button" data-act="noimg">Remove photo</button>':""}</span></div>
+        <div class="field"><label>Name<input data-f="n" value="${esc(p.n)}"></label></div>
+        <div class="pe-row">
+          <div class="field"><label>Type<select data-f="kind">${KINDS.map(([k,l])=>`<option value="${k}"${k===p.kind?" selected":""}>${l}</option>`).join("")}</select></label></div>
+          <div class="field"><label>Price ($)<input data-f="p" type="number" min="0" step="0.5" value="${+p.p||0}"></label></div>
+          <div class="field"><label>To charity ($)<input data-f="margin" type="number" min="0" step="0.5" value="${+p.margin||0}"></label></div>
+        </div>
+        <div class="field"><label>Sizes<input data-f="sizes" value="${esc(p.sizes||"")}" placeholder="S, M, L, XL"></label></div>
+        <div class="field"><label>Colors<input data-f="colors" value="${esc(p.colors||"")}" placeholder="Navy, Gray"></label></div>
+        <div class="field"><label>Ask the buyer for<input data-f="pers" value="${esc(p.pers||"")}" placeholder="e.g. Name on the back (leave empty for none)"></label></div>
+        <div class="field"><label>Label<input data-f="tag" value="${esc(p.tag||"")}" placeholder="e.g. Best seller"></label></div>
+        <div class="row-sp"><label class="field-check"><input type="checkbox" data-f="on"${p.off?"":" checked"}> Show in the store</label><button class="btn line sm" type="button" data-act="del">Delete</button></div>
+      </div>`).join("")}</div>`;
+    $("#prod-add").addEventListener("click",()=>{P.push({id:uid(),n:"New product",p:20,margin:5,kind:"tee",sizes:"S, M, L, XL",colors:"",pers:"",tag:""});renderProd();storeChanged();
+      const last=$("#p-prod .prod-edit:last-child [data-f=n]");if(last){last.focus();last.select()}});
+    $("#p-prod").querySelectorAll("[data-pi]").forEach(card=>{const p=P[+card.dataset.pi];
+      card.addEventListener("input",e=>{const f=e.target.dataset.f;if(!f||f==="img"||f==="on")return;
+        p[f]=e.target.type==="number"?Math.max(0,+e.target.value||0):e.target.value;storeChanged()});
+      card.addEventListener("change",async e=>{const f=e.target.dataset.f;
+        if(f==="kind")p.kind=e.target.value;
+        if(f==="on"){p.off=!e.target.checked;card.classList.toggle("off",p.off)}
+        if(f==="img"&&e.target.files[0]){try{p.img=await shrink(e.target.files[0]);renderProd()}catch(err){alert("That file isn't a picture LodgeNet can read.")}}
+        storeChanged()});
+      card.querySelectorAll("[data-act]").forEach(b=>b.addEventListener("click",()=>{
+        if(b.dataset.act==="noimg")delete p.img;
+        if(b.dataset.act==="del"){if(!confirm(`Delete ${p.n}? Past orders keep their record.`))return;P.splice(P.indexOf(p),1)}
+        renderProd();storeChanged()}));
+    });
+  }
+  window.LodgeNetDash.orderPlaced=()=>{if(!$("#p-ord").hidden)renderOrders();changed()};
+  document.querySelectorAll("#t-ord,#t-prod").forEach(t=>t.addEventListener("click",()=>t.id==="t-ord"?renderOrders():renderProd()));
+  if(A.plan==="starter")document.querySelector('[data-sec="merchandise"] .sub-tabs').hidden=true;
+
   const RENDER={communications:()=>{if(!$("#p-ann").innerHTML)renderAnn()},treasury:renderTreasury,fundraiser:renderFund,pipelines:renderPipe,
-    sponsors:renderSpon,charities:renderChar,settings:renderSet};
+    sponsors:renderSpon,charities:renderChar,settings:renderSet,merchandise:()=>{renderOrders();renderProd()}};
 
   /* ---------- sidebar: who's signed in, sign out, other lodges ---------- */
   (async()=>{
