@@ -79,9 +79,11 @@
   const payLink=(k,amt,note)=>{const p=PAY.find(x=>x.k===k);return p.url(handle(p.field),amt,note)};
 
   /* ---------- tabs ---------- */
+  /* each tab list switches only its own panels (the dashboard has one under Communications and one under Merchandise) */
   const tabs=[...document.querySelectorAll(".tab")];
   tabs.forEach(t=>t.addEventListener("click",()=>{
-    tabs.forEach(o=>{o.setAttribute("aria-selected",o===t);document.getElementById(o.getAttribute("aria-controls")).hidden=o!==t});
+    const group=tabs.filter(o=>o.closest("[role=tablist]")===t.closest("[role=tablist]"));
+    group.forEach(o=>{o.setAttribute("aria-selected",o===t);document.getElementById(o.getAttribute("aria-controls")).hidden=o!==t});
     if(t.id==="t-store") drawProducts();
   }));
 
@@ -104,7 +106,10 @@
   /* ---------- members & officer seats ---------- */
   let nextMember=1;
   const DUES_YEAR=new Date().getFullYear();
-  const M=(name,deg,pm,dues)=>({id:nextMember++,name,deg:deg||"Master Mason",pm:!!pm,dues:dues||"Paid 2026",active:true});
+  const M=(name,deg,pm,dues)=>({id:nextMember++,name,deg:deg||"Master Mason",pm:!!pm,title:pm?"WB.":"B.",dues:dues||"Paid 2026",active:true});
+  /* a brother's title: B. (Brother), WB. (Worshipful Brother) or RWB. (Right Worshipful Brother); WB. and RWB. count as Past Masters */
+  const TITLES=[["B.","Brother"],["WB.","Worshipful Brother"],["RWB.","Right Worshipful Brother"]];
+  const pre=m=>m.title&&m.title!=="B."?m.title.replace(/\.$/,"")+" ":"";
   const members=CFG.membersFull?CFG.membersFull.map(m=>({...m})):CFG.members?CFG.members.map(a=>M(...a)):[
     M("Daniel R. Ortega"),M("Marcus Hale"),M("Peter Lindqvist"),M("Walter Simms","",1),M("James Whitfield","",1),
     M("Andre Baptiste"),M("Kevin O'Rourke"),M("Samuel Carter"),M("Luis Ferreira"),M("Harold Benson","",1),
@@ -112,6 +117,7 @@
     M("Michael Tran","","", "Owes 2026"),M("Brian Walsh","Fellowcraft"),M("Thomas Reyes","Entered Apprentice")
   ];
   nextMember=Math.max(0,...members.map(m=>m.id))+1;
+  members.forEach(m=>{if(!TITLES.some(t=>t[0]===m.title))m.title=m.pm?"WB.":"B.";m.pm=m.title!=="B."});
   const SEATS=[
     {k:"WM",ab:"WM",t:"Worshipful Master"},{k:"SW",ab:"SW",t:"Senior Warden"},{k:"JW",ab:"JW",t:"Junior Warden"},
     {k:"TREAS",ab:"Treas.",t:"Treasurer"},{k:"SEC",ab:"Sec.",t:"Secretary"},{k:"SD",ab:"SD",t:"Senior Deacon"},
@@ -120,12 +126,12 @@
   ];
   const officers=CFG.officers||{WM:1,SW:2,JW:3,TREAS:4,SEC:5,SD:6,JD:7,STW1:8,STW2:9,TILER:10,CHAP:11};
   const member=id=>members.find(m=>m.id===+id);
-  const fullName=id=>{const m=member(id);return m?(m.pm?"WB ":"")+m.name:""};
+  const fullName=id=>{const m=member(id);return m?pre(m)+m.name:""};
   const eligible=()=>members.filter(m=>m.active&&m.deg==="Master Mason").sort((a,b)=>a.name.split(" ").pop().localeCompare(b.name.split(" ").pop()));
   function seatSelect(attr,seat,cur,cls){
     const opts=eligible();
     if(cur&&!opts.some(m=>m.id===+cur)&&member(cur))opts.unshift(member(cur));
-    return `<select ${attr}="${seat.k}" class="${cls||""}" aria-label="${seat.t}"><option value="">${cls?"":"Vacant"}</option>${opts.map(m=>`<option value="${m.id}"${+cur===m.id?" selected":""}>${esc((m.pm?"WB ":"")+m.name)}</option>`).join("")}</select>`;
+    return `<select ${attr}="${seat.k}" class="${cls||""}" aria-label="${seat.t}"><option value="">${cls?"":"Vacant"}</option>${opts.map(m=>`<option value="${m.id}"${+cur===m.id?" selected":""}>${esc(pre(m)+m.name)}</option>`).join("")}</select>`;
   }
   function renderMembers(){
     const act=members.filter(m=>m.active);
@@ -135,7 +141,7 @@
     $("#mem-rows").innerHTML=act.map(m=>`<tr>
       <td class="nm">${esc(m.name)}</td>
       <td><select data-mdeg="${m.id}" aria-label="Degree for ${esc(m.name)}">${["Master Mason","Fellowcraft","Entered Apprentice"].map(d=>`<option${d===m.deg?" selected":""}>${d}</option>`).join("")}</select></td>
-      <td><input type="checkbox" data-mpm="${m.id}" aria-label="${esc(m.name)} is a Past Master"${m.pm?" checked":""}></td>
+      <td><select data-mtitle="${m.id}" aria-label="Title for ${esc(m.name)}">${TITLES.map(([v,l])=>`<option value="${v}" title="${l}"${v===m.title?" selected":""}>${v}</option>`).join("")}</select></td>
       <td>${seatOf(m.id)?`<span class="pill gold">${seatOf(m.id)}</span>`:'<span class="hint">None</span>'}</td>
       <td><select data-mdues="${m.id}" class="dues ${m.dues.startsWith("Paid")?"ok":m.dues.startsWith("Owes")?"warn":""}" aria-label="Dues for ${esc(m.name)}">${[...new Set([m.dues,"Paid "+DUES_YEAR,"Owes "+DUES_YEAR,"Not recorded"])].map(d=>`<option${d===m.dues?" selected":""}>${esc(d)}</option>`).join("")}</select></td>
       <td><button type="button" class="btn line sm" data-mrm="${m.id}">Remove</button></td></tr>`).join("");
@@ -144,7 +150,7 @@
   $("#mem-rows").addEventListener("change",e=>{
     const t=e.target;
     if(t.dataset.mdeg){const m=member(t.dataset.mdeg);m.deg=t.value;if(m.deg!=="Master Mason")for(const k in officers)if(+officers[k]===m.id)officers[k]="";}
-    if(t.dataset.mpm)member(t.dataset.mpm).pm=t.checked;
+    if(t.dataset.mtitle){const m=member(t.dataset.mtitle);m.title=t.value;m.pm=m.title!=="B."}
     if(t.dataset.mdues)member(t.dataset.mdues).dues=t.value;
     refreshPeople();
   });
@@ -156,8 +162,8 @@
   $("#seat-defaults").addEventListener("change",e=>{const k=e.target.dataset.sdef;if(k){officers[k]=e.target.value;refreshPeople()}});
   $("#mem-form").addEventListener("submit",e=>{
     e.preventDefault();const n=$("#m-name").value.trim();if(!n)return;
-    members.push(M(n,$("#m-deg").value,$("#m-pm").checked,"Paid 2026"));
-    $("#m-name").value="";$("#m-pm").checked=false;refreshPeople();
+    const nm=M(n,$("#m-deg").value,$("#m-title").value!=="B.","Paid 2026");nm.title=$("#m-title").value;members.push(nm);
+    $("#m-name").value="";$("#m-title").value="B.";refreshPeople();
   });
   function refreshPeople(){renderMembers();renderSite();if(typeof renderMinutes==="function")renderMinutes()}
 
@@ -182,7 +188,7 @@
       .filter(([,f])=>handle(f)).map(([n,f,base])=>`<a href="${esc(base+handle(f))}" target="_blank" rel="noopener">${n}</a>`).join("");
     $("#pv-social").innerHTML=socials||'<span style="color:#5a6276">No social accounts linked</span>';
     $("#pv-pay").innerHTML=PAY.some(p=>handle(p.field))?PAY.filter(p=>handle(p.field)).map(p=>`<span class="paybtn ${p.k}">${p.label}</span>`).join(""):'<span style="color:#5a6276">No payment accounts linked</span>';
-    $("#checkout").innerHTML=payButtons("data-pay");
+    $("#checkout").innerHTML=payButtons("data-pay")+($("#o-name")?'<button type="button" class="paybtn cash" data-pay="cash">Cash or check</button>':"");
     if(selected&&selected.k==="fund")renderDetail();
     $("#pv-events").innerHTML=up.map(e=>`<li><b>${fmt(parse(e.d),{month:"short",day:"numeric"})}</b> · ${esc(e.t)}</li>`).join("");
   }
@@ -216,7 +222,11 @@
     {id:"mug",n:"\"Meet on the Level\" mug",p:16,margin:6,kind:"mug"},
     {id:"apron",n:"Pancake Breakfast apron",p:28,margin:11,kind:"apron",tag:"Fundraiser"}
   ];
-  const cart={};
+  /* sizes and colors are typed as lists ("S, M, L, XL"); a product can ask the buyer for personalization (a name, a year) */
+  products.forEach(p=>{p.sizes=p.sizes||(p.kind==="tee"?"S, M, L, XL, 2XL":"");p.colors=p.colors||""});
+  const optList=s=>String(s||"").split(",").map(x=>x.trim()).filter(Boolean);
+  let orders=(CFG.orders||[]).map(o=>({...o}));
+  const cart=[];
   function drawProducts(){
     document.querySelectorAll(".product canvas").forEach(c=>paint(c,c.dataset.kind));
   }
@@ -233,37 +243,66 @@
     function sc(px,py,size){x.save();x.strokeStyle=gold;x.lineWidth=Math.max(1.5,size/12);x.lineCap="round";x.beginPath();
       x.moveTo(px-size*.45,py+size*.5);x.lineTo(px,py-size*.5);x.lineTo(px+size*.45,py+size*.5);
       x.moveTo(px-size*.6,py-size*.05);x.lineTo(px,py+size*.55);x.lineTo(px+size*.6,py-size*.05);x.stroke();x.restore()}
-    if(kind==="tee"){x.beginPath();const w=s*.62,h=s*.6,t=cy-h/2;
+    if(kind==="tee"||kind==="hoodie"||kind==="polo"){x.beginPath();const w=s*.62,h=s*.6,t=cy-h/2;
       x.moveTo(cx-w*.2,t);x.lineTo(cx-w/2,t+h*.12);x.lineTo(cx-w*.62,t+h*.32);x.lineTo(cx-w*.38,t+h*.38);x.lineTo(cx-w*.36,t+h);x.lineTo(cx+w*.36,t+h);x.lineTo(cx+w*.38,t+h*.38);x.lineTo(cx+w*.62,t+h*.32);x.lineTo(cx+w/2,t+h*.12);x.lineTo(cx+w*.2,t);x.quadraticCurveTo(cx,t+h*.12,cx-w*.2,t);x.fill();sc(cx,cy+s*.03,s*.18)}
     else if(kind==="pin"){x.beginPath();x.arc(cx,cy,s*.24,0,7);x.fill();x.beginPath();x.arc(cx,cy,s*.24,0,7);x.stroke();sc(cx,cy,s*.24)}
     else if(kind==="cap"){x.beginPath();x.ellipse(cx,cy+s*.06,s*.3,s*.24,0,Math.PI,0);x.fill();x.beginPath();x.ellipse(cx+s*.22,cy+s*.07,s*.22,s*.05,0,0,7);x.fill();sc(cx-s*.02,cy-s*.04,s*.14)}
     else if(kind==="coin"){x.fillStyle=gold;x.beginPath();x.arc(cx,cy,s*.28,0,7);x.fill();x.fillStyle=navy;x.beginPath();x.arc(cx,cy,s*.22,0,7);x.fill();sc(cx,cy-s*.02,s*.2);x.fillStyle=gold;x.font=`600 ${s*.05}px ${cs.getPropertyValue("--mono")}`;x.textAlign="center";x.fillText(CFG.coinText||"100 YEARS",cx,cy+s*.17)}
     else if(kind==="mug"){x.fillRect(cx-s*.2,cy-s*.22,s*.34,s*.44);x.lineWidth=s*.04;x.strokeStyle=navy;x.beginPath();x.arc(cx+s*.16,cy,s*.1,-1.3,1.3);x.stroke();sc(cx-s*.03,cy,s*.16)}
+    else if(kind==="sticker"){x.fillStyle=gold;x.beginPath();x.arc(cx,cy,s*.27,0,7);x.fill();x.fillStyle=navy;x.beginPath();x.arc(cx,cy,s*.23,0,7);x.fill();sc(cx,cy,s*.22)}
+    else if(kind==="other"){sc(cx,cy,s*.3)}
     else if(kind==="apron"){x.beginPath();x.moveTo(cx-s*.22,cy-s*.12);x.lineTo(cx-s*.1,cy-s*.3);x.lineTo(cx+s*.1,cy-s*.3);x.lineTo(cx+s*.22,cy-s*.12);x.lineTo(cx+s*.24,cy+s*.3);x.lineTo(cx-s*.24,cy+s*.3);x.closePath();x.fill();sc(cx,cy+s*.04,s*.16)}
   }
-  $("#products").innerHTML=products.map(p=>`<div class="product"><canvas data-kind="${p.kind}" aria-hidden="true"></canvas>
+  const sel=(attr,label,opts)=>opts.length?`<label class="opt"><span>${label}</span><select ${attr} aria-label="${label}">${opts.map(o=>`<option>${esc(o)}</option>`).join("")}</select></label>`:"";
+  function renderProducts(){
+    const shown=products.filter(p=>!p.off);
+    $("#products").innerHTML=shown.length?shown.map(p=>`<div class="product" data-prod="${esc(p.id)}">${p.img?`<img class="pimg" src="${esc(p.img)}" alt="">`:`<canvas data-kind="${esc(p.kind)}" aria-hidden="true"></canvas>`}
     <div class="pbody">${p.tag?`<span class="pill gold" style="justify-self:start">${esc(p.tag)}</span>`:""}<h4>${esc(p.n)}</h4>
-    <span class="hint num">${money(p.margin)} to charity per item</span>
-    <div class="meta"><span class="price num">${money(p.p)}</span><button class="btn sm" type="button" data-add="${p.id}">Add</button></div></div></div>`).join("");
-  $("#products").addEventListener("click",e=>{const b=e.target.closest("[data-add]");if(!b)return;cart[b.dataset.add]=(cart[b.dataset.add]||0)+1;$("#c-msg").hidden=true;renderCart()});
-  $("#cart-lines").addEventListener("click",e=>{const b=e.target.closest("[data-rm]");if(!b)return;cart[b.dataset.rm]--;if(cart[b.dataset.rm]<=0)delete cart[b.dataset.rm];renderCart()});
+    <span class="hint num">${money(+p.margin||0)} to charity per item</span>
+    ${sel("data-size","Size",optList(p.sizes))}${sel("data-color","Color",optList(p.colors))}
+    ${p.pers?`<label class="opt"><span>${esc(p.pers)}</span><input data-pers maxlength="40"></label>`:""}
+    <div class="meta"><span class="price num">${money(+p.p||0)}</span><button class="btn sm" type="button" data-add="${esc(p.id)}">Add</button></div></div></div>`).join("")
+      :'<p class="hint">No products are showing in the store. Add or show some on the Products tab.</p>';
+    drawProducts();
+  }
+  renderProducts();
+  $("#products").addEventListener("click",e=>{const b=e.target.closest("[data-add]");if(!b)return;
+    const card=b.closest("[data-prod]"),v=q=>{const el=card.querySelector(q);return el?el.value.trim():""};
+    const line={id:b.dataset.add,size:v("[data-size]"),color:v("[data-color]"),pers:v("[data-pers]")};
+    const same=cart.find(l=>l.id===line.id&&l.size===line.size&&l.color===line.color&&l.pers===line.pers);
+    if(same)same.q++;else cart.push({...line,q:1});
+    $("#c-msg").hidden=true;renderCart()});
+  $("#cart-lines").addEventListener("click",e=>{const b=e.target.closest("[data-rm]");if(!b)return;const l=cart[+b.dataset.rm];if(--l.q<=0)cart.splice(+b.dataset.rm,1);renderCart()});
+  const lineText=(l,p)=>`${l.q} × ${p.n}${[l.size,l.color].filter(Boolean).length?" ("+[l.size,l.color].filter(Boolean).join(", ")+")":""}${l.pers?` · "${l.pers}"`:""}`;
   function renderCart(){
-    const ids=Object.keys(cart);let sub=0,ch=0;
-    $("#cart-lines").innerHTML=ids.length?ids.map(id=>{const p=products.find(x=>x.id===id),q=cart[id];sub+=p.p*q;ch+=p.margin*q;
-      return `<div class="cart-line"><span>${q} × ${esc(p.n)}</span><span class="num">${money(p.p*q)} <button class="btn line sm" style="padding:0 6px" data-rm="${id}" aria-label="Remove one ${esc(p.n)}">−</button></span></div>`}).join(""):
-      '<p class="hint">Your cart is empty. Add a shirt or pin to see how proceeds are counted.</p>';
+    let sub=0,ch=0;
+    const live=cart.filter(l=>products.some(x=>x.id===l.id));cart.length=0;cart.push(...live);
+    $("#cart-lines").innerHTML=cart.length?cart.map((l,i)=>{const p=products.find(x=>x.id===l.id);sub+=(+p.p||0)*l.q;ch+=(+p.margin||0)*l.q;
+      return `<div class="cart-line"><span>${esc(lineText(l,p))}</span><span class="num">${money((+p.p||0)*l.q)} <button class="btn line sm" style="padding:0 6px" data-rm="${i}" aria-label="Remove one ${esc(p.n)}">−</button></span></div>`}).join(""):
+      '<p class="hint">Nothing ordered yet. Pick a size or color and press Add on any item.</p>';
     $("#c-sub").textContent=money(sub);$("#c-char").textContent=money(ch);
   }
+  const shipSel=$("#o-get");if(shipSel)shipSel.addEventListener("change",()=>{$("#o-addr-f").hidden=shipSel.value!=="Ship to address"});
   $("#checkout").addEventListener("click",e=>{
     const b=e.target.closest("[data-pay]");if(!b||b.disabled)return;
-    const m=$("#c-msg");
-    if(!Object.keys(cart).length){m.hidden=false;m.className="notice";m.textContent="Add at least one item before paying.";return}
-    const total=Object.keys(cart).reduce((t,id)=>t+products.find(x=>x.id===id).p*cart[id],0);
-    const ch=$("#c-char").textContent,label=b.textContent;
-    const url=payLink(b.dataset.pay,total,"LodgeNet store order");
+    const m=$("#c-msg"),f=id=>{const el=$(id);return el?el.value.trim():""};
+    const warn=t=>{m.hidden=false;m.className="notice";m.textContent=t};
+    if(!cart.length)return warn("Add at least one item before placing the order.");
+    if($("#o-name")&&!f("#o-name")){$("#o-name").focus();return warn("Enter the buyer's name.")}
+    if(f("#o-get")==="Ship to address"&&!f("#o-addr")){$("#o-addr").focus();return warn("Enter the shipping address.")}
+    const lines=cart.map(l=>{const p=products.find(x=>x.id===l.id);return {...l,n:p.n,p:+p.p||0,m:+p.margin||0}});
+    const total=lines.reduce((t,l)=>t+l.p*l.q,0),toCharity=lines.reduce((t,l)=>t+l.m*l.q,0);
+    const no=orders.reduce((n,o)=>Math.max(n,o.no||0),0)+1,label=b.textContent;
+    const o={no,d:new Date().toISOString().slice(0,10),name:f("#o-name")||"Store customer",contact:f("#o-contact"),get:f("#o-get")||"Pick up at lodge",addr:f("#o-addr"),
+      lines,total,toCharity,charity:$("#s-charity").value,pay:label,status:"New"};
+    orders.unshift(o);
     m.hidden=false;m.className="toast";
-    m.innerHTML=`Order placed (demo). ${esc(ch)} recorded for ${esc($("#s-charity").value)}. On the live site, ${esc(label)} opens:<br><span class="paylink">${esc(url)}</span>`;
-    for(const k in cart)delete cart[k];renderCart();
+    m.innerHTML=b.dataset.pay==="cash"
+      ?`Order #${no} saved for ${esc(o.name)}: ${money(total)}, paid in cash or by check. Mark it paid on the Orders tab when the money is in.`
+      :`Order #${no} saved for ${esc(o.name)}: ${money(total)}. ${esc(label)} payment link for the buyer:<br><span class="paylink">${esc(payLink(b.dataset.pay,total,"Lodge store order #"+no))}</span>`;
+    cart.length=0;renderCart();
+    ["#o-name","#o-contact","#o-addr"].forEach(id=>{const el=$(id);if(el)el.value=""});
+    if(window.LodgeNetDash&&LodgeNetDash.orderPlaced)LodgeNetDash.orderPlaced();
   });
   window.addEventListener("resize",()=>{if(!$("#p-store").hidden)drawProducts()});
 
@@ -409,7 +448,7 @@
   const longDate=d=>fmt(parse(d),{month:"long",day:"numeric",year:"numeric"});
   const timeLC=t=>time12(t).toLowerCase();
   const money2=v=>{const n=parseFloat(String(v).replace(/[$,]/g,""));return isNaN(n)?String(v):n.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})};
-  const bro=id=>{const m=member(id);return m?(m.pm?"W Bro. ":"Bro. ")+m.name:""};
+  const bro=id=>{const m=member(id);return m?({"WB.":"W Bro. ","RWB.":"R.W. Bro. "}[m.title]||"Bro. ")+m.name:""};
   const val=(m,k)=>{const v=m.s[k];return Array.isArray(v)?v.filter(r=>Object.values(r).some(x=>String(x||"").trim())):String(v||"").trim()};
   const list=(m,k)=>Array.isArray(m.s[k])?val(m,k):[];
   const listJoin=a=>a.length<2?a.join(""):a.slice(0,-1).join(", ")+" and "+a[a.length-1];
@@ -476,7 +515,7 @@
     const ct=val(m,"closing.time");
     P(`There being no further business, the Lodge was closed in due form${ct?` at ${timeLC(ct)}`:""} on the ${deg} degree of Masonry.`,{gap:18,align:"justify"});
     const coll=[["dinner","Dinner"],["wo","W & O"]].filter(([k])=>val(m,"closing."+k)).map(([k,n])=>`${n}: $${money2(val(m,"closing."+k))}`);
-    B.push({t:"sig",sec:fullName(m.seats.SEC),wm:wm?(wm.pm?"WB ":"")+wm.name:"",coll,approved:m.status==="Approved"});
+    B.push({t:"sig",sec:fullName(m.seats.SEC),wm:wm?pre(wm)+wm.name:"",coll,approved:m.status==="Approved"});
     return B;
   }
 
@@ -567,7 +606,7 @@
   /* ---------- short form ---------- */
   function memberOptions(cur){
     const opts=members.filter(x=>x.active).sort((a,b)=>a.name.split(" ").pop().localeCompare(b.name.split(" ").pop()));
-    return `<option value=""></option>`+opts.map(x=>`<option value="${x.id}"${+cur===x.id?" selected":""}>${esc((x.pm?"WB ":"")+x.name)}</option>`).join("");
+    return `<option value=""></option>`+opts.map(x=>`<option value="${x.id}"${+cur===x.id?" selected":""}>${esc(pre(x)+x.name)}</option>`).join("");
   }
   function input(type,k,v,label,opts,attrs){
     const a=`aria-label="${esc(label)}" ${attrs||""}`;
@@ -611,9 +650,9 @@
 
   function renderMinutes(){
     if(!current){
-      $("#min-list").innerHTML='<p class="hint">No minutes yet.</p>';
+      $("#min-list").innerHTML='<p class="hint">Nothing written up yet.</p>';
       $("#min-toolbar").innerHTML="";
-      $("#min-doc").innerHTML='<p style="text-align:center;margin:2in 0">Click "New minutes" to start the minutes for your next Stated Communication.</p>';
+      $("#min-doc").innerHTML='<p style="text-align:center;margin:2in 0">Click "'+esc($("#min-new").textContent)+'" to start the write-up for your next Stated Communication.</p>';
       return;
     }
     const m=current,locked=m.status==="Approved";
@@ -682,7 +721,7 @@
   function snapshot(){
     const form={};document.querySelectorAll("#site-form input[id],#site-form select[id]").forEach(el=>form[el.id]=el.value);
     return {app:"LodgeNet",version:1,page:STORE_KEY,savedAt:new Date().toISOString(),form,color:siteColor,
-      membersFull:members,officers,events,minutes,minuteSections,gmail,nextStated,...(plan?{plan}:{}),
+      membersFull:members,officers,events,minutes,minuteSections,gmail,nextStated,products,orders,...(plan?{plan}:{}),
       ...(window.LodgeNetDash?window.LodgeNetDash.snapshot():{})};
   }
   const stamp=d=>new Date(d).toLocaleString("en-US",{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"});
@@ -747,6 +786,7 @@
     select(e){selected=e;view=new Date(parse(e.d).getFullYear(),parse(e.d).getMonth(),1);renderCal()},
     addEvent(e){events.push(e);renderCal();return e},
     refresh(){renderCal();refreshPeople()},
+    get orders(){return orders},set orders(v){orders=v},renderProducts,
     drawProducts,payLink,payButtons,save:queueSave};
   if(MOVE_LOCAL)save().then(ok=>{if(ok)try{localStorage.removeItem(STORE_KEY)}catch(e){}});
 })();

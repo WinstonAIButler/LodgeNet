@@ -167,14 +167,14 @@
               </div>
               <div class="table-scroll">
                 <table class="roster">
-                  <thead><tr><th scope="col">Member</th><th scope="col">Degree</th><th scope="col">Past Master</th><th scope="col">Officer seat</th><th scope="col">Dues</th><th scope="col"><span class="sr">Actions</span></th></tr></thead>
+                  <thead><tr><th scope="col">Member</th><th scope="col">Degree</th><th scope="col">Title</th><th scope="col">Officer seat</th><th scope="col">Dues</th><th scope="col"><span class="sr">Actions</span></th></tr></thead>
                   <tbody id="mem-rows"></tbody>
                 </table>
               </div>
               <form class="mem-add" id="mem-form" autocomplete="off">
                 <div class="field"><label for="m-name">Name</label><input id="m-name" placeholder="Full name" required></div>
                 <div class="field"><label for="m-deg">Degree</label><select id="m-deg"><option>Master Mason</option><option>Fellowcraft</option><option>Entered Apprentice</option></select></div>
-                <div class="field field-check"><input type="checkbox" id="m-pm"><label for="m-pm">Past Master</label></div>
+                <div class="field"><label for="m-title">Title</label><select id="m-title"><option value="B.">B. · Brother</option><option value="WB.">WB. · Worshipful Brother</option><option value="RWB.">RWB. · Right Worshipful Brother</option></select></div>
                 <button class="btn" type="submit">Add member</button>
               </form>
             </div>
@@ -188,14 +188,14 @@
 
     </section>
 
-    <!-- COMMUNICATIONS: calendar, minutes, announcements -->
+    <!-- COMMUNICATIONS: Stated Communication write-ups (minutes), calendar, announcements -->
     <section class="sec" data-sec="communications" hidden>
       <div class="tabs sub-tabs" role="tablist" aria-label="Communications">
-        <button class="tab" role="tab" id="t-cal" aria-controls="p-cal" aria-selected="true">Calendar</button>
+        <button class="tab" role="tab" id="t-min" aria-controls="p-min" aria-selected="true">Stated Communications</button>
+        <button class="tab" role="tab" id="t-cal" aria-controls="p-cal" aria-selected="false">Calendar</button>
         <button class="tab" role="tab" id="t-ann" aria-controls="p-ann" aria-selected="false">Announcements</button>
-        <button class="tab" role="tab" id="t-min" aria-controls="p-min" aria-selected="false">Minutes</button>
       </div>
-        <div class="panel" role="tabpanel" id="p-cal" aria-labelledby="t-cal">
+        <div class="panel" role="tabpanel" id="p-cal" aria-labelledby="t-cal" hidden>
           <div class="cal-wrap">
             <div>
               <div class="cal-head">
@@ -222,10 +222,10 @@
         </div>
 
         <div class="panel" role="tabpanel" id="p-ann" aria-labelledby="t-ann" hidden></div>
-        <div class="panel" role="tabpanel" id="p-min" aria-labelledby="t-min" hidden>
+        <div class="panel" role="tabpanel" id="p-min" aria-labelledby="t-min">
           <div class="min-wrap">
             <div class="min-list">
-              <button class="btn sm" type="button" id="min-new">New minutes</button>
+              <button class="btn sm" type="button" id="min-new">Add a communication</button>
               <div id="min-list" style="display:grid;gap:8px"></div>
               <p class="notice">Minutes record lodge business only. LodgeNet never stores ritual or degree work.</p>
             </div>
@@ -241,7 +241,12 @@
 
     <!-- MERCHANDISE -->
     <section class="sec" data-sec="merchandise" hidden>
-        <div class="panel" id="p-store">
+      <div class="tabs sub-tabs" role="tablist" aria-label="Merchandise">
+        <button class="tab" role="tab" id="t-store" aria-controls="p-store" aria-selected="true">Order form</button>
+        <button class="tab" role="tab" id="t-ord" aria-controls="p-ord" aria-selected="false">Orders</button>
+        <button class="tab" role="tab" id="t-prod" aria-controls="p-prod" aria-selected="false">Products</button>
+      </div>
+        <div class="panel" role="tabpanel" id="p-store" aria-labelledby="t-store">
           <div class="store-wrap">
             <div>
               <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px">
@@ -257,17 +262,24 @@
               <div class="products" id="products"></div>
             </div>
             <aside class="cart" aria-live="polite">
-              <h4>Cart</h4>
-              <div id="cart-lines"><p class="hint">Your cart is empty. Add a shirt or pin to see how proceeds are counted.</p></div>
+              <h4>Order</h4>
+              <div id="cart-lines"><p class="hint">Nothing ordered yet. Pick a size or color and press Add on any item.</p></div>
               <div class="cart-total">
-                <div class="cart-line"><span>Subtotal</span><b class="num" id="c-sub">$0.00</b></div>
+                <div class="cart-line"><span>Total</span><b class="num" id="c-sub">$0.00</b></div>
                 <div class="cart-line"><span>To charity</span><b class="num" id="c-char">$0.00</b></div>
               </div>
+              <div class="field"><label for="o-name">Buyer's name</label><input id="o-name" autocomplete="off"></div>
+              <div class="field"><label for="o-contact">Email or phone</label><input id="o-contact" autocomplete="off"></div>
+              <div class="field"><label for="o-get">Delivery</label><select id="o-get"><option>Pick up at lodge</option><option>Ship to address</option></select></div>
+              <div class="field" id="o-addr-f" hidden><label for="o-addr">Shipping address</label><textarea id="o-addr" rows="2" style="min-height:0;font-family:var(--body)"></textarea></div>
+              <b style="font-size:13px">Place the order and pay with</b>
               <div class="paybtns" id="checkout" role="group" aria-label="Pay with"></div>
               <div id="c-msg" hidden class="toast"></div>
             </aside>
           </div>
         </div>
+        <div class="panel" role="tabpanel" id="p-ord" aria-labelledby="t-ord" hidden></div>
+        <div class="panel" role="tabpanel" id="p-prod" aria-labelledby="t-prod" hidden></div>
 
     </section>
 

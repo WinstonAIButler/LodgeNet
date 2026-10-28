@@ -229,14 +229,14 @@
               </div>
               <div class="table-scroll">
                 <table class="roster">
-                  <thead><tr><th scope="col">Member</th><th scope="col">Degree</th><th scope="col">Past Master</th><th scope="col">Officer seat</th><th scope="col">Dues</th><th scope="col"><span class="sr">Actions</span></th></tr></thead>
+                  <thead><tr><th scope="col">Member</th><th scope="col">Degree</th><th scope="col">Title</th><th scope="col">Officer seat</th><th scope="col">Dues</th><th scope="col"><span class="sr">Actions</span></th></tr></thead>
                   <tbody id="mem-rows"></tbody>
                 </table>
               </div>
               <form class="mem-add" id="mem-form" autocomplete="off">
                 <div class="field"><label for="m-name">Name</label><input id="m-name" placeholder="Full name" required></div>
                 <div class="field"><label for="m-deg">Degree</label><select id="m-deg"><option>Master Mason</option><option>Fellowcraft</option><option>Entered Apprentice</option></select></div>
-                <div class="field field-check"><input type="checkbox" id="m-pm"><label for="m-pm">Past Master</label></div>
+                <div class="field"><label for="m-title">Title</label><select id="m-title"><option value="B.">B. · Brother</option><option value="WB.">WB. · Worshipful Brother</option><option value="RWB.">RWB. · Right Worshipful Brother</option></select></div>
                 <button class="btn" type="submit">Add member</button>
               </form>
             </div>
