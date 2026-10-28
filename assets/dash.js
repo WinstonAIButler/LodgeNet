@@ -336,9 +336,9 @@
     const B=D.bsearch,town=[($("#f-city")||{}).value,($("#f-state")||{}).value].filter(Boolean).join(", ");
     const added=r=>D.sponsors.some(s=>s.name.toLowerCase()===r.name.toLowerCase());
     return `<form class="biz-form" id="biz-form">
-        <div><h4>Find businesses</h4><p class="hint" style="margin:4px 0 0">Describe the businesses you want to approach and where. Claude searches the web for real ones nearby, scores how likely each is to help, and says why. Add the good ones to Sponsors.</p></div>
+        <div><h4>Find businesses</h4><p class="hint" style="margin:4px 0 0">Say where to look, and the kind of business if you have one in mind. Claude searches the web for real ones nearby, scores how likely each is to help, and says why. Add the good ones to Sponsors.</p></div>
         <div class="inline-form">
-          <div class="field grow"><label for="bz-w">Looking for</label><input id="bz-w" required placeholder="Restaurants, banks, insurance agents, contractors" value="${esc(B.what)}"></div>
+          <div class="field grow"><label for="bz-w">Type of business <span class="hint">(optional)</span></label><input id="bz-w" placeholder="Any kind, or e.g. restaurants, banks, contractors" value="${esc(B.what)}"></div>
           <div class="field"><label for="bz-a">Near</label><input id="bz-a" required placeholder="Murrells Inlet, SC" value="${esc(B.where||town)}"></div>
           <div class="field"><label for="bz-p">To be a</label><select id="bz-p">${opts(PURPOSES,B.purpose)}</select></div>
           <div class="field"><label for="bz-n">How many</label><select id="bz-n">${[10,15,20].map(n=>`<option${+B.count===n?" selected":""}>${n}</option>`).join("")}</select></div>
@@ -346,7 +346,7 @@
         </div>
         ${BS.msg?`<p class="hint biz-msg" role="status">${esc(BS.msg)}</p>`:""}
       </form>
-      ${B.results.length?`<div class="pl-bar"><b>${many(B.results.length,"business","businesses")}</b><span class="hint">${esc(B.what)} near ${esc(B.where)} · ${esc(B.purpose)}${B.at?" · searched "+day(B.at):""}</span><button type="button" class="btn line sm" id="bz-csv">Export CSV</button></div>
+      ${B.results.length?`<div class="pl-bar"><b>${many(B.results.length,"business","businesses")}</b><span class="hint">${esc(B.what||"Any kind of business")} near ${esc(B.where)} · ${esc(B.purpose)}${B.at?" · searched "+day(B.at):""}</span><button type="button" class="btn line sm" id="bz-csv">Export CSV</button></div>
       <div class="table-scroll"><table class="dtable biz-table"><thead><tr><th>Business</th><th>Contact</th><th>Fit</th><th>Why, and how to ask</th><th><span class="sr">Actions</span></th></tr></thead><tbody>
       ${B.results.map((r,i)=>{const [tk,tl]=tier(r.fit);return `<tr data-bz="${i}">
         <td><b>${esc(r.name)}</b><br><span class="hint">${esc(r.category)}</span><br><span class="hint">${esc([r.address,r.city].filter(Boolean).join(", "))}</span></td>
