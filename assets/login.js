@@ -42,10 +42,10 @@
     try{rows=await A.myLodges()}
     catch(e){box.innerHTML=`<div class="card auth-gate"><p class="hint">Couldn't load your lodges (${esc(e.message)}). Reload to try again.</p></div>`;return}
     if(!rows.length){
-      box.innerHTML=`<div class="card auth-gate"><h3>No lodge on this account yet</h3><p class="hint">You're signed in as ${esc(session.user.email)}, but no lodge has invited that email. Ask your lodge's account owner to invite it, then sign in again. Starting a new lodge? Pick a plan.</p><a class="btn line sm" href="/pricing">See plans</a></div>`;
+      box.innerHTML=`<div class="card auth-gate"><h3>No lodge on this account yet</h3><p class="hint">You're signed in as ${esc(session.user.email)}, but no lodge has invited that email. Ask your lodge's account owner to invite it, then sign in again. Starting a new lodge? Set it up now.</p><a class="btn sm" href="/start">Start your lodge</a></div>`;
       return;
     }
-    box.innerHTML=rows.map(({role,lodge:l})=>`<div class="card" data-lodge="${esc(l.id)}">
+    box.innerHTML=`<p style="margin:0 0 4px"><a class="btn line sm" href="/start">Start another lodge</a></p>`+rows.map(({role,lodge:l})=>`<div class="card" data-lodge="${esc(l.id)}">
       <div class="lodge-row">
         <div style="display:grid;gap:4px"><b>${esc(l.name)}${l.number?" No. "+esc(l.number):""}</b><span class="hint">${esc([l.city,l.state].filter(Boolean).join(", "))}</span></div>
         <span><span class="pill gold">${esc(PLAN[l.plan]||l.plan)}${l.comped?" · no charge":BILLING[l.billing_status]?" · "+BILLING[l.billing_status]:""}</span> <span class="pill">${esc(ROLE[role]||role)}</span></span>
@@ -199,6 +199,6 @@
     const s=await A.session();signedIn(s||{user:data.user});
   });
   $("#sign-out").addEventListener("click",async()=>{await sb.auth.signOut();location.href="/login"});
-  setMode("in");
+  setMode(new URLSearchParams(location.search).get("mode")==="up"?"up":"in");
   init();
 })();

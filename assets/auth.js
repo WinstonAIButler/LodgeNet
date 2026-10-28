@@ -41,6 +41,14 @@
     band.innerHTML=`<div class="card auth-gate"><h3>${esc(title)}</h3><p class="hint">${esc(body)}</p>${cta?`<a class="btn" href="${esc(cta[1])}">${esc(cta[0])}</a>`:""}</div>`;
     document.documentElement.classList.remove("auth-wait");
   }
+  /* the shared lodge page (lodge.html) takes its heading, and until the first save its Website fields, from the lodge account */
+  function fromAccount(row){
+    const full=row.name+(row.number?" No. "+row.number:""),place=[row.city,row.state].filter(Boolean).join(", ");
+    document.title=full+" · LodgeNet";
+    document.getElementById("lodge-title").textContent=full;
+    document.getElementById("lodge-place").textContent="Lodge dashboard"+(place?" · "+place:"");
+    if(!row.data)Object.assign(window.LODGE.form,{"f-name":row.name,"f-num":row.number||"","f-city":row.city||"",...(row.state?{"f-state":row.state}:{})});
+  }
   async function bootLodge(){
     const slug=(window.LODGE||{}).slug,sb=await client();
     const open=()=>loadScript(app).finally(()=>document.documentElement.classList.remove("auth-wait"));
@@ -48,12 +56,15 @@
     const s=await session(),login="/login?next="+encodeURIComponent(location.pathname+location.hash);
     if(!s)return gate("Sign in to open this lodge","This dashboard is for the lodge's brethren. Sign in with the email your lodge invited.",["Sign in",login]);
     try{await sb.rpc("claim_invites")}catch(e){}
-    const {data:row,error}=await sb.from("lodges").select("id,plan,data,updated_at").eq("slug",slug).maybeSingle();
+    const {data:row,error}=await sb.from("lodges").select("id,name,number,city,state,plan,comped,billing_status,data,updated_at").eq("slug",slug).maybeSingle();
     if(error)return gate("Couldn't reach the lodge's account",error.message,["Try again",location.pathname]);
     if(!row)return gate("You're not on this lodge's roll yet",`You're signed in as ${s.user.email}. Ask the lodge's account owner to invite that email, then sign in again.`,["My lodges","/login"]);
     const {data:mem}=await sb.from("lodge_members").select("role").eq("lodge_id",row.id).eq("user_id",s.user.id).maybeSingle();
     const role=mem?mem.role:"member";
-    window.LODGENET_CLOUD={role,canEdit:role==="owner"||role==="officer",plan:row.plan,data:row.data,updatedAt:row.updated_at,email:s.user.email,
+    if(window.LODGE.fromAccount)fromAccount(row);
+    window.LODGENET_CLOUD={role,canEdit:role==="owner"||role==="officer",plan:row.plan,
+      /* the site can be published only once the plan is paid for, or comped with a plan code */
+      paid:!!row.comped||["active","trialing","past_due"].includes(row.billing_status),data:row.data,updatedAt:row.updated_at,email:s.user.email,
       async save(snap){
         const {data,error}=await sb.from("lodges").update({data:snap}).eq("id",row.id).select("updated_at");
         if(error)throw error;
