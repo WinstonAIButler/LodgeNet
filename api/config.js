@@ -7,5 +7,7 @@ module.exports=(req,res)=>{
   const key=e.SUPABASE_ANON_KEY||e.NEXT_PUBLIC_SUPABASE_ANON_KEY||e.SUPABASE_PUBLISHABLE_KEY||e.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY||"";
   res.setHeader("Content-Type","application/json");
   res.setHeader("Cache-Control","no-store");
-  res.end(JSON.stringify(url&&key?{url,key}:{}));
+  /* billing: api/billing.js can run (it also needs a Stripe key, from Vercel or the owner's hub) */
+  const billing=!!(e.SUPABASE_SERVICE_ROLE_KEY||e.SUPABASE_SECRET_KEY);
+  res.end(JSON.stringify(url&&key?{url,key,billing}:{}));
 };

@@ -30,7 +30,8 @@
     $("#head-text").textContent="Open your lodge's dashboard. Edits there save to the lodge account, so every officer sees the same website, calendar, members and minutes.";
     $("#who").textContent="Signed in as "+session.user.email;
     show("v-in");
-    renderLodges(session);
+    if(new URLSearchParams(location.search).get("billing"))billingReturn(session);
+    else renderLodges(session);
   }
 
   async function renderLodges(session){
@@ -45,17 +46,55 @@
     box.innerHTML=rows.map(({role,lodge:l})=>`<div class="card" data-lodge="${esc(l.id)}">
       <div class="lodge-row">
         <div style="display:grid;gap:4px"><b>${esc(l.name)}${l.number?" No. "+esc(l.number):""}</b><span class="hint">${esc([l.city,l.state].filter(Boolean).join(", "))}</span></div>
-        <span><span class="pill gold">${esc(PLAN[l.plan]||l.plan)}${l.comped?" · no charge":""}</span> <span class="pill">${esc(ROLE[role]||role)}</span></span>
+        <span><span class="pill gold">${esc(PLAN[l.plan]||l.plan)}${l.comped?" · no charge":BILLING[l.billing_status]?" · "+BILLING[l.billing_status]:""}</span> <span class="pill">${esc(ROLE[role]||role)}</span></span>
       </div>
-      <a class="btn" href="/lodges/${encodeURIComponent(l.slug)}" style="justify-self:start">Open dashboard</a>
+      <span style="display:flex;flex-wrap:wrap;gap:8px">
+        <a class="btn" href="/lodges/${encodeURIComponent(l.slug)}">Open dashboard</a>
+        ${role==="owner"&&A.billing&&!l.comped?(PAYING.includes(l.billing_status)
+          ?'<button class="btn line" type="button" data-billing="portal">Manage billing</button>'
+          :'<button class="btn gold" type="button" data-billing="checkout">Subscribe · $19 / month</button>'):""}
+      </span>
+      <p class="auth-msg bill-msg" role="status" aria-live="polite"></p>
       ${role==="owner"?`<form class="invite code-form" novalidate style="grid-template-columns:minmax(0,1fr) auto">
         <div class="field"><label>Have a plan code?<input name="code" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="LODGE-XXXX-XXXX"></label></div>
         <button class="btn line sm" type="submit">Redeem</button>
       </form><p class="auth-msg code-msg" role="status" aria-live="polite"></p>
       <div class="roll-box" style="display:grid;gap:10px;margin-top:8px"><p class="hint">Loading the lodge roll…</p></div>`:""}
     </div>`).join("");
-    rows.filter(r=>r.role==="owner").forEach(r=>{renderRoll(r.lodge.id,session.user.id);codeForm(r.lodge.id,session)});
+    rows.filter(r=>r.role==="owner").forEach(r=>{renderRoll(r.lodge.id,session.user.id);codeForm(r.lodge.id,session);billingButtons(r.lodge.id,session)});
     if(location.hash==="#code"){const f=box.querySelector(".code-form input");if(f){f.scrollIntoView({block:"center"});f.focus()}}
+  }
+
+  /* account owners: subscribe through Stripe Checkout, or manage the subscription in Stripe's Customer Portal */
+  const PAYING=["active","trialing","past_due"];
+  const BILLING={active:"paid monthly",trialing:"trial",past_due:"payment due",unpaid:"unpaid",canceled:"cancelled"};
+  async function billing(action,lodgeId,session,extra){
+    const r=await fetch("/api/billing",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+session.access_token},
+      body:JSON.stringify({action,lodge_id:lodgeId,...extra})});
+    const d=await r.json().catch(()=>({error:"Billing didn't answer. Try again."}));
+    if(!r.ok)throw new Error(d.error||"Billing didn't answer. Try again.");
+    return d;
+  }
+  function billingButtons(lodgeId,session){
+    const card=document.querySelector(`[data-lodge="${lodgeId}"]`),b=card.querySelector("[data-billing]"),out=card.querySelector(".bill-msg");
+    if(!b)return;
+    b.addEventListener("click",async()=>{
+      b.disabled=true;msg(out,b.dataset.billing==="checkout"?"Opening Stripe checkout…":"Opening billing…");
+      try{location.href=(await billing(b.dataset.billing,lodgeId,session)).url}
+      catch(err){msg(out,err.message,true);b.disabled=false}
+    });
+  }
+  /* back from Checkout or the Portal: read the subscription back from Stripe */
+  async function billingReturn(session){
+    const q=new URLSearchParams(location.search),lodgeId=q.get("lodge");
+    if(!q.get("billing")||!lodgeId)return;
+    history.replaceState(null,"",location.pathname+location.hash);
+    let note;
+    try{const d=await billing("sync",lodgeId,session,q.get("session_id")?{session_id:q.get("session_id")}:{});
+      note=q.get("billing")==="done"?(PAYING.includes(d.billing_status)?"You're subscribed to the Lodge plan. Thank you!":"Checkout finished, but Stripe hasn't confirmed the payment yet. Reload in a minute."):"Billing updated."}
+    catch(err){note="Couldn't check billing with Stripe ("+err.message+")."}
+    await renderLodges(session);
+    const out=document.querySelector(`[data-lodge="${lodgeId}"] .bill-msg`);if(out)msg(out,note);
   }
 
   /* account owners: a plan code puts the lodge on that plan at no charge */
