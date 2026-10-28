@@ -4,7 +4,7 @@
 (function(){
   const $=s=>document.querySelector(s);
   const A=window.LodgeNetAuth;
-  const PLANS={starter:["Lodge Starter","Free. Build your website, calendar, members and minutes. Publishing comes with the Lodge plan."],
+  const PLANS={starter:["Lodge Starter","Free. Build your website, calendar, members and minutes. Publishing comes with a paid level."],
     lodge:["Lodge plan","$19 a month, billed by card through Stripe. Publishing, the lodge store, fundraisers and unlimited officers."]};
   const STATES=[["AL","Alabama"],["AK","Alaska"],["AZ","Arizona"],["AR","Arkansas"],["CA","California"],["CO","Colorado"],["CT","Connecticut"],
     ["DE","Delaware"],["DC","District of Columbia"],["FL","Florida"],["GA","Georgia"],["HI","Hawaii"],["ID","Idaho"],["IL","Illinois"],
