@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>LodgeNet</title>
-<meta name="description" content="LodgeNet gives Masonic lodges a website, merch store, fundraiser calendar and meeting minutes in one place.">
+<meta name="description" content="LodgeNet runs the whole Masonic lodge from one dashboard: website, members, minutes you can speak, treasury, fundraisers, an AI sponsor search, merchandise and charities.">
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="icon" type="image/png" href="/assets/brand/icon-192.png" sizes="192x192">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
@@ -12,7 +12,7 @@
 <meta property="og:site_name" content="LodgeNet">
 <meta property="og:type" content="website">
 <meta property="og:title" content="LodgeNet">
-<meta property="og:description" content="LodgeNet gives Masonic lodges a website, merch store, fundraiser calendar and meeting minutes in one place.">
+<meta property="og:description" content="LodgeNet runs the whole Masonic lodge from one dashboard: website, members, minutes you can speak, treasury, fundraisers, an AI sponsor search, merchandise and charities.">
 <meta property="og:image" content="/og-image.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
@@ -22,6 +22,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <link rel="stylesheet" href="/assets/styles.css">
+<link rel="stylesheet" href="/assets/site.css">
 <style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
 </head>
 <body>
@@ -37,23 +38,22 @@
       </ul>
       <a class="btn gold sm" href="/pricing">Start now</a>
     </nav>
-    <div class="hero" id="top">
+    <div class="hero-x" id="top">
       <div>
-        <div class="eyebrow">For Blue Lodges, Chapters &amp; Districts</div>
-        <h1 style="margin-top:12px">Your lodge, <em>on the level</em> and online.</h1>
-        <p class="lede">LodgeNet gives every lodge its own website, a merch store that funds your charities, a shared calendar for Stated Communications and fundraisers, and a Secretary's desk for meeting minutes. Set up in an evening, run by the brethren you already have.</p>
+        <div class="eyebrow">For Blue Lodges, Districts, Valleys &amp; Grand Lodges</div>
+        <h1 style="margin-top:14px">The whole lodge, <em>on the level</em>, in one place.</h1>
+        <p class="lede">Website, roster, minutes you can speak, the Treasurer's ledger, fundraisers, an AI search for local sponsors, a merchandise store and your charities. One dashboard and one login for every officer, at the price of a single dinner per month.</p>
         <div class="cta">
-          <a class="btn gold" href="/pricing">Start now</a>
-          <a class="btn ghost" href="/features">See what's included</a>
+          <a class="btn gold" href="/pricing">Start now, free</a>
+          <a class="btn ghost" href="/demo">Open the live demo</a>
         </div>
       </div>
-      <aside class="hero-card" aria-label="Example lodge at a glance">
-        <span class="tag">Sample lodge · this week</span>
-        <h3>Cedar Hollow Lodge No. 214</h3>
-        <div class="row"><span>Stated Communication</span><b class="num">Tue, Nov 10 · 7:30 PM</b></div>
-        <div class="row"><span>Pancake Breakfast raised</span><b class="num">$3,180 of $5,000</b></div>
-        <div class="row"><span>Store orders this month</span><b class="num">27</b></div>
-        <div class="row"><span>Minutes awaiting approval</span><b>October Stated</b></div>
+      <aside class="hero-sum" aria-label="What it costs" data-value-sum>
+        <span class="eyebrow">What it would cost separately</span>
+        <div class="line strike"><span><span data-v="count">9</span> standalone tools</span><b><span data-v="them">$248</span><small>/mo</small></b></div>
+        <div class="line ours"><span>LodgeNet, Lodge Level</span><b><span data-v="ours">$49.99</span><small>/mo</small></b></div>
+        <div class="save">About <span data-v="save">$2,380</span> back in the lodge's treasury every year</div>
+        <a href="#value">See the comparison →</a>
       </aside>
     </div>
   </div>
@@ -61,34 +61,137 @@
 </header>
 
 <main>
+  <div class="wrap">
+    <div class="facts">
+      <div><b>10</b><span>sections in one lodge dashboard</span></div>
+      <div><b>1</b><span>login for every officer, set by the Secretary</span></div>
+      <div><b>$0</b><span>to start. Build it before you pay</span></div>
+      <div><b>0%</b><span>of your money held. Payments go straight to the lodge</span></div>
+    </div>
+  </div>
+
   <section class="band">
     <div class="wrap">
       <div class="sec-head">
-        <div class="eyebrow">What's in the box</div>
-        <h2>Four tools the Secretary and Treasurer will actually use</h2>
-        <p>Everything is built around how a lodge already runs: officers, degrees, Stated and Special Communications, and the charities you raise money for.</p>
+        <div class="eyebrow">What's in the dashboard</div>
+        <h2>Everything the Secretary, Treasurer and Master run on</h2>
+        <p>Built around how a lodge already works: officer chairs, degrees, Stated Communications, and the charities you raise money for.</p>
       </div>
-      <div class="features">
-        <div class="feat"><span class="eyebrow">Website</span><h3>A lodge site in minutes</h3><p>Pick your name, number and colors. Meeting schedule, officers, history and a "Become a Mason" inquiry form are filled in for you.</p><a class="more" href="/features#website">Learn more →</a></div>
-        <div class="feat"><span class="eyebrow">Merch store</span><h3>Sell with purpose</h3><p>Lodge shirts, pins, caps and 100-year anniversary coins. Choose which charity each sale supports and see proceeds per fundraiser.</p><a class="more" href="/features#store">Learn more →</a></div>
-        <div class="feat"><span class="eyebrow">Calendar</span><h3>Meetings and fundraisers</h3><p>Recurring Stated Communications, degree nights, and public fundraisers with goals, RSVPs and progress the community can follow.</p><a class="more" href="/features#calendar">Learn more →</a></div>
-        <div class="feat"><span class="eyebrow">Minutes</span><h3>The Secretary's desk</h3><p>Start from a business-meeting template, mark drafts for approval at the next Stated, and keep an archive members can search.</p><a class="more" href="/features#minutes">Learn more →</a></div>
+      <div class="mods">
+        <div class="mod"><span class="n">01 · Website</span><h3>A published lodge website</h3><p>Name, number, Grand Lodge and meeting night fill the pages for you. Officers, calendar, store and a "Become a Mason" page, on a lodgenet.org address or your own domain.</p><a href="/features#website">Website →</a></div>
+        <div class="mod"><span class="n">02 · Members</span><h3>Roster and officer chairs</h3><p>Every brother with his degree, title (B., WB., RWB.) and dues. Seat the officers once and every set of minutes starts with their names.</p><a href="/features#members">Members →</a></div>
+        <div class="mod"><span class="n">03 · Communications</span><h3>Minutes you can speak</h3><p>Talk to type into any field, or record the business portion and let Claude fill in the short form. Full write-up and PDF in your lodge's wording.</p><a href="/features#communications">Communications →</a></div>
+        <div class="mod"><span class="n">04 · Treasury</span><h3>The Treasurer's ledger</h3><p>Dues, donations and bills in one ledger, with dues collected and outstanding and a balance for every fund.</p><a href="/features#treasury">Treasury →</a></div>
+        <div class="mod"><span class="n">05 · Fundraiser</span><h3>Fundraisers with a goal</h3><p>Plan the pancake breakfast, set a goal, tie it to a charity and log donations as they come in. It goes on the calendar too.</p><a href="/features#fundraiser">Fundraiser →</a></div>
+        <div class="mod"><span class="n">06 · Pipelines</span><h3>Sponsor search and prospects</h3><p>An AI search finds local businesses near your ZIP and scores them as sponsors. Track inquiries from first contact to Raised.</p><a href="/features#pipelines">Pipelines →</a></div>
+        <div class="mod"><span class="n">07 · Sponsors</span><h3>The businesses that back you</h3><p>Gold, Silver, Bronze and in-kind sponsors, with what each gives per year, when they renew, and who has lapsed.</p><a href="/features#sponsors">Sponsors →</a></div>
+        <div class="mod"><span class="n">08 · Merchandise</span><h3>A store that funds charity</h3><p>Shirts, pins, caps and coins in your sizes and colors, with personalization. Take orders on the order form and paid orders post to Treasury.</p><a href="/features#merchandise">Merchandise →</a></div>
+        <div class="mod"><span class="n">09 · Charities</span><h3>Every cause, its own fund</h3><p>Add the Widows &amp; Orphans Fund or Shriners Children's once. It becomes a fund in Treasury, a fundraiser choice and a store option.</p><a href="/features#charities">Charities →</a></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="band" style="padding-top:0" id="sponsors">
+    <div class="wrap">
+      <div class="spot">
+        <div>
+          <div class="eyebrow">Pipelines · Find businesses</div>
+          <h2>Find the sponsors in your own town</h2>
+          <p>Type what you're looking for, enter the lodge's ZIP code and pick a radius. LodgeNet searches the web, researches each business, scores how likely it is to sponsor a lodge, and writes the ask for you.</p>
+          <ol class="steps">
+            <li><b>Search by ZIP and radius</b><span>5, 10, 25 or 50 miles, for a sponsor, fundraiser partner, event venue, vendor or in-kind donor.</span></li>
+            <li><b>Every business scored 0 to 100</b><span>With the evidence behind the score, so the Master can see why.</span></li>
+            <li><b>A suggested ask, ready to copy</b><span>Then add the good ones to Sponsors with one press, or download a CSV.</span></li>
+          </ol>
+          <div class="dims" aria-label="How a business is scored">
+            <div><span>Community giving</span><b>30</b></div>
+            <div><span>Local roots</span><b>20</b></div>
+            <div><span>Veteran, fraternal and civic ties</span><b>15</b></div>
+            <div><span>Capacity to give</span><b>15</b></div>
+            <div><span>Fit for this ask</span><b>10</b></div>
+            <div><span>Reachable decision-maker</span><b>10</b></div>
+          </div>
+          <div class="cta"><a class="btn" href="/features#pipelines">How the sponsor search works</a></div>
+        </div>
+        <div class="mock" aria-label="Example sponsor search results">
+          <div class="mk-bar"><b>Find businesses</b><span>Officers only · searches the web</span></div>
+          <div class="q"><span>What <i>Family restaurants</i></span><span>ZIP <i>29576</i></span><span>Within <i>10 miles</i></span><span>For <i>Sponsor</i></span></div>
+          <div class="biz"><b>Harborside Seafood Grill</b><div class="sc"><strong>88</strong><em>Strong</em></div><span class="k">Restaurant · family owned since 1994</span><span class="why">Sponsors the youth baseball league every spring; the owner is a Navy veteran. Ask: a table sponsor for the pancake breakfast.</span></div>
+          <div class="biz"><b>Coastal Community Credit Union</b><div class="sc"><strong>81</strong><em>Strong</em></div><span class="k">Credit union · local branch</span><span class="why">Runs a community grants program each quarter. Ask: a yearly supporter for the scholarship fund.</span></div>
+          <div class="biz"><b>Inlet Hardware &amp; Supply</b><div class="sc"><strong>67</strong><em>Possible</em></div><span class="k">Hardware store · in-kind donor</span><span class="why">Donated lumber to a church rebuild last year. Ask: materials for the lodge hall repairs.</span></div>
+          <p class="note">Illustration. Real searches return real businesses near your ZIP.</p>
+        </div>
+      </div>
+
+      <div class="spot" id="minutes">
+        <div>
+          <div class="eyebrow">Communications · Minutes</div>
+          <h2>The Secretary talks. The minutes write themselves.</h2>
+          <p>Press the microphone on any field and speak, or press Record meeting during the business portion. Claude fills in the short form from what was said, and the Secretary checks it before anything is saved.</p>
+          <ol class="steps">
+            <li><b>Talk to type, field by field</b><span>Works in Chrome, Edge and Safari.</span></li>
+            <li><b>Record meeting, then fill in with Claude</b><span>Petitions, balloting, bills, the Treasurer's report and new business land in the right fields.</span></li>
+            <li><b>Full write-up and PDF</b><span>In your lodge's own Stated wording. Draft, awaiting approval, approved and locked.</span></li>
+          </ol>
+          <div class="cta"><a class="btn" href="/demo#minutes">Try the minutes in the demo</a></div>
+        </div>
+        <div class="minpaper" aria-label="Example short-form minutes">
+          <div class="rec"><b>Stated Communication · Nov 10</b><em>● Recording</em></div>
+          <div class="row"><span>Opened</span><div class="filled"><mark>7:32 PM</mark> on the third degree</div><span class="how">Mic</span></div>
+          <div class="row"><span>Presiding</span><div class="filled">WB. Thomas Reed, Worshipful Master</div><span class="how">Seat</span></div>
+          <div class="row"><span>Motions</span><div class="filled"><mark>Pay the electric bill, $214.60. Carried.</mark></div><span class="how">Mic</span></div>
+          <div class="row"><span>Treasurer's report</span><div class="filled"><mark>General Fund $4,812.40</mark></div><span class="how">Mic</span></div>
+          <div class="row"><span>Closed</span><div class="filled"><mark>8:41 PM</mark></div><span class="how">Mic</span></div>
+          <p class="note">Illustration. No audio is kept, and ritual is never recorded.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="band" id="value" style="border-top:1px solid var(--line)">
+    <div class="wrap">
+      <div class="sec-head">
+        <div class="eyebrow">The value</div>
+        <h2>What it would cost to buy every piece on its own</h2>
+        <p>A lodge that put this together from separate tools would pay for nine subscriptions, and still have to make them talk to each other. LodgeNet is one.</p>
+      </div>
+      <div class="value">
+        <div data-value-table></div>
+        <aside class="vsum" data-value-sum aria-label="Totals">
+          <div class="big them"><span>Nine tools, bought separately</span><b><span data-v="them">$248</span> / mo</b></div>
+          <div class="big"><span>LodgeNet, Lodge Level</span><b><span data-v="ours">$49.99</span> / mo</b></div>
+          <div class="big save"><span>Back in the treasury each year</span><b><span data-v="save">$2,380</span></b></div>
+          <p>That's <span data-v="pct">80%</span> less, with one login, one set of records, and nothing to connect.</p>
+          <a class="btn gold" href="/pricing">See the plans</a>
+        </aside>
+      </div>
+    </div>
+  </section>
+
+  <section class="band" style="padding-top:0">
+    <div class="wrap">
+      <div class="trust">
+        <div><h3>Lodge business, never ritual</h3><p>Minutes record lodge business only. There is nowhere in LodgeNet to store ritual or degree work, and recordings keep no audio.</p></div>
+        <div><h3>The money goes to the lodge</h3><p>Store sales, dues and donations are paid straight into the lodge's own PayPal, Venmo or Cash App. LodgeNet never holds a dollar.</p></div>
+        <div><h3>Only officers get in</h3><p>Every officer signs in with their own login. The Secretary invites who can open the dashboard, and the sponsor search is officers only.</p></div>
       </div>
     </div>
   </section>
 </main>
 <section class="cta-band">
   <div class="wrap">
-    <div><h2>See it working with a sample lodge</h2><p>Build a lodge site, sell a shirt, log a donation and approve minutes in a few minutes.</p></div>
+    <div><h2>See it working with a sample lodge</h2><p>Build a lodge site, seat the officers, speak a set of minutes and sell a shirt in a few minutes.</p></div>
     <a class="btn gold" href="/demo">Open the live demo</a>
   </div>
 </section>
 <footer>
   <div class="wrap">
-    <span><b style="font-family:var(--display);color:var(--fg);letter-spacing:.06em">LodgeNet</b> · Websites, stores, calendars and minutes for Masonic lodges</span>
-    <span>Prototype · all lodges, names and figures are examples</span>
+    <span><b style="font-family:var(--display);color:var(--fg);letter-spacing:.06em">LodgeNet</b> · The lodge dashboard: website, members, minutes, treasury, sponsors and store</span>
+    <span>Sample names and figures are examples</span>
   </div>
 </footer>
 <script src="/assets/auth.js"></script>
+<script src="/assets/plans.js"></script>
+<script src="/assets/site.js"></script>
 </body>
 </html>

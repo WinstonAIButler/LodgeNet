@@ -22,6 +22,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <link rel="stylesheet" href="/assets/styles.css">
+<link rel="stylesheet" href="/assets/site.css">
 <style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
 </head>
 <body>
@@ -40,7 +41,7 @@
     <div class="page-head">
       <div class="eyebrow">Pick your plan</div>
       <h1>Priced for lodge dues, not corporate budgets</h1>
-      <p>Start free, then pick the level that fits your lodge, district, Valley or Grand Lodge. Every level includes the website, calendar and minutes.</p>
+      <p>Start free, then pick the level that fits your lodge, District, Valley or Grand Lodge. One subscription replaces nine separate tools, at a fraction of what they would cost.</p>
     </div>
   </div>
   <div class="pavement" aria-hidden="true"></div>
@@ -57,11 +58,30 @@
           <div class="incl"><b>Includes</b><ul><li>Website builder, in preview</li><li>Calendar with your Stated Communications filled in</li><li>Members roll and officer chairs</li><li>Minutes: short form, full write-up and PDF</li><li>2 officer logins</li></ul></div></div>
         <div class="tier feat-tier"><img class="crest" src="/assets/brand/crest-blue.webp" alt="" width="72" height="70"><h3>Lodge Level</h3>
           <p class="tag">Everything a Blue Lodge needs online, published and taking payments.</p>
-          <div class="amt num">$19<small>per month</small></div>
+          <div class="amt num">$49.99<small>per month</small></div>
           <a class="btn" href="/start?plan=lodge">Start with Lodge Level</a>
           <div class="incl"><b>Everything in Lodge Starter, plus</b><ul><li>Publish on a lodgenet.org address or your own domain</li><li>Print-on-demand store: shirts, pins, caps and coins</li><li>Fundraiser goals, RSVPs and donations</li><li>Payments straight to the lodge's PayPal, Venmo or Cash App</li><li>Unlimited officer logins and a members area</li></ul></div></div>
       </div>
       <p class="tiers-note">Paid levels bill monthly by card through Stripe, and you can cancel from your account at any time. Have a promo code? Enter it at checkout.</p>
+    </div>
+  </section>
+  <section class="band" id="value" style="border-top:1px solid var(--line)">
+    <div class="wrap">
+      <div class="sec-head">
+        <div class="eyebrow">The value</div>
+        <h2>What it would cost to buy every piece on its own</h2>
+        <p>Lodge Level next to the standalone tools a lodge would otherwise piece together, each at its cheapest paid plan.</p>
+      </div>
+      <div class="value">
+        <div data-value-table></div>
+        <aside class="vsum" data-value-sum aria-label="Totals">
+          <div class="big them"><span>Nine tools, bought separately</span><b><span data-v="them">$248</span> / mo</b></div>
+          <div class="big"><span>LodgeNet, Lodge Level</span><b><span data-v="ours">$49.99</span> / mo</b></div>
+          <div class="big save"><span>Back in the treasury each year</span><b><span data-v="save">$2,380</span></b></div>
+          <p>That's <span data-v="themyr">$2,980</span> a year separately against <span data-v="oursyr">$600</span> for LodgeNet, with one login and one set of records.</p>
+          <a class="btn gold" href="/start?plan=lodge">Start with Lodge Level</a>
+        </aside>
+      </div>
     </div>
   </section>
   <section class="band" style="padding-top:0">
@@ -71,6 +91,9 @@
         <details><summary>Who runs the account for our lodge?</summary><p>Usually the Secretary. You can give logins to the Worshipful Master, Treasurer and any brother who helps with the website or store.</p></details>
         <details><summary>Does LodgeNet hold any ritual?</summary><p>No. Minutes record lodge business only, and there is nowhere to store ritual or degree work.</p></details>
         <details><summary>How do store proceeds reach our charity?</summary><p>Payments go straight to the lodge's own PayPal, Venmo or Cash App account. LodgeNet never holds the money. Each sale or donation is tagged to the fund you chose, so the Treasurer can report what every fundraiser raised.</p></details>
+        <details><summary>How does the sponsor search work?</summary><p>On the Pipelines tab, an officer enters the lodge's ZIP code, a radius and what kind of business to look for. LodgeNet searches the web, scores each business 0 to 100 on how likely it is to sponsor a lodge, shows the evidence, and writes a suggested ask. Good matches go to Sponsors with one press.</p></details>
+        <details><summary>Is a recorded meeting kept anywhere?</summary><p>No audio is ever kept. The browser turns the business portion into text, Claude fills in the short form from it, and only the fields the Secretary checks and saves are stored.</p></details>
+        <details><summary>How were the "bought separately" prices worked out?</summary><p>Each is the entry-level paid plan of a well-known tool in that category (Squarespace, WildApricot, Shopify, QuickBooks Online, Otter.ai, Apollo.io, HubSpot, GiveWP and Teamup), at its lowest published monthly rate, checked in October 2026. They're estimates: vendors change prices and most charge more for extra users or contacts.</p></details>
         <details><summary>Can our Grand Lodge set this up for every lodge?</summary><p>Yes. Grand Lodge Level puts every constituent lodge on one account, with the Grand Lodge's own website and a jurisdiction-wide calendar. Districts and Scottish Rite Valleys have their own levels too.</p></details>
       </div>
     </div>
@@ -78,18 +101,19 @@
 </main>
 <section class="cta-band">
   <div class="wrap">
-    <div><h2>See it working with a sample lodge</h2><p>Build a lodge site, sell a shirt, log a donation and approve minutes in a few minutes.</p></div>
+    <div><h2>See it working with a sample lodge</h2><p>Build a lodge site, seat the officers, speak a set of minutes and sell a shirt in a few minutes.</p></div>
     <a class="btn gold" href="/demo">Open the live demo</a>
   </div>
 </section>
 <footer>
   <div class="wrap">
-    <span><b style="font-family:var(--display);color:var(--fg);letter-spacing:.06em">LodgeNet</b> · Websites, stores, calendars and minutes for Masonic lodges</span>
-    <span>Prototype · all lodges, names and figures are examples</span>
+    <span><b style="font-family:var(--display);color:var(--fg);letter-spacing:.06em">LodgeNet</b> · The lodge dashboard: website, members, minutes, treasury, sponsors and store</span>
+    <span>Sample names and figures are examples</span>
   </div>
 </footer>
 <script src="/assets/auth.js"></script>
 <script src="/assets/plans.js"></script>
 <script>LodgeNetPlans.render(document.getElementById("tiers"),"pricing")</script>
+<script src="/assets/site.js"></script>
 </body>
 </html>
