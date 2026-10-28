@@ -71,7 +71,7 @@
         </div>
         <div class="card">
           <h4>What happens next</h4>
-          <p class="hint">Step 2, choose Lodge Starter (free) or the Lodge plan ($19 a month). Step 3, enter your lodge's name and number. On the Lodge plan you then pay by card through Stripe, and the subscription renews monthly.</p>
+          <p class="hint">Step 2, choose Lodge Starter (free) or a paid level. Step 3, enter your lodge's name and number. On a paid level you then pay by card through Stripe, and the subscription renews monthly.</p>
         </div>
       </div>
 
@@ -79,33 +79,19 @@
       <div id="v-pick" hidden>
         <h3 style="font-family:var(--display);margin:0 0 6px">Step 2 · Choose your plan</h3>
         <p class="hint" id="who" style="margin:0 0 18px"></p>
-        <div class="tiers" id="tiers" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr))">
-          <div class="tier" data-tier="starter"><h3>Lodge Starter</h3><div class="amt num">$0<small> / month</small></div>
-            <ul>
-              <li>Build your lodge website (preview only; publishing comes with a paid plan)</li>
-              <li>Lodge calendar with Stated Communications filled in for you</li>
-              <li>Members roll and officer chairs</li>
-              <li>Meeting minutes: short form, full write-up and PDF</li>
-              <li>2 officer logins</li>
-            </ul>
-            <button class="btn line" type="button" data-pick="starter">Choose Lodge Starter</button></div>
-          <div class="tier feat-tier" data-tier="lodge"><h3>Lodge</h3><div class="amt num">$19<small> / month</small></div>
-            <ul>
-              <li>Everything in Lodge Starter</li>
-              <li>Publish your lodge website, on a lodgenet.org address or your own domain</li>
-              <li>Merch store: shirts, pins, caps and challenge coins, print-on-demand</li>
-              <li>Fundraiser goals, RSVPs and donations</li>
-              <li>Payments go straight to the lodge's PayPal, Venmo or Cash App</li>
-              <li>Unlimited officer logins and a members area</li>
-              <li>Billed monthly by card through Stripe. Cancel any time.</li>
-            </ul>
-            <button class="btn" type="button" data-pick="lodge">Choose Lodge · $19 / month</button>
-            <p class="hint">Have a promo code? Enter it on Stripe's checkout page. A full-discount code needs no card.</p>
-          </div>
-          <div class="tier" data-tier="district"><h3>District / Grand Lodge</h3><div class="amt">Let's talk</div>
-            <ul><li>Every constituent lodge on one account</li><li>District calendar and visitation schedule</li><li>Shared store and roll-up reporting</li></ul>
-            <p class="hint">Start your own lodge on the Lodge plan for now, and we'll link your district's lodges together.</p></div>
+        <div class="tiers" id="tiers" style="grid-template-columns:repeat(auto-fit,minmax(210px,1fr))">
+          <div class="tier" data-tier="starter"><img class="crest" src="/assets/brand/lodgenet-crest.webp" alt="" width="72" height="70"><h3>Lodge Starter</h3>
+            <p class="tag">Set up your lodge and see it working before you publish.</p>
+            <div class="amt num">$0<small>free to start</small></div>
+            <button class="btn line" type="button" data-pick="starter">Choose Lodge Starter</button>
+            <div class="incl"><b>Includes</b><ul><li>Website builder, in preview</li><li>Calendar with your Stated Communications filled in</li><li>Members roll and officer chairs</li><li>Minutes: short form, full write-up and PDF</li><li>2 officer logins</li></ul></div></div>
+          <div class="tier feat-tier" data-tier="lodge"><img class="crest" src="/assets/brand/crest-blue.webp" alt="" width="72" height="70"><h3>Lodge Level</h3>
+            <p class="tag">Everything a Blue Lodge needs online, published and taking payments.</p>
+            <div class="amt num">$19<small>per month</small></div>
+            <button class="btn" type="button" data-pick="lodge">Choose Lodge Level</button>
+            <div class="incl"><b>Everything in Lodge Starter, plus</b><ul><li>Publish on a lodgenet.org address or your own domain</li><li>Print-on-demand store: shirts, pins, caps and coins</li><li>Fundraiser goals, RSVPs and donations</li><li>Payments straight to the lodge's PayPal, Venmo or Cash App</li><li>Unlimited officer logins and a members area</li></ul></div></div>
         </div>
+        <p class="tiers-note">Paid levels bill monthly by card through Stripe, and you can cancel from your account at any time. Have a promo code? Enter it on Stripe's checkout page.</p>
         <p class="auth-msg" id="pick-msg" role="status" aria-live="polite" style="margin-top:12px"></p>
       </div>
 
