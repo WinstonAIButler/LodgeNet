@@ -13,7 +13,7 @@ This repo currently holds the static prototype site:
 - `start.html`: a new, blank lodge in the dashboard layout; `/start?plan=starter|lodge|district` (Starter hides the store)
 - `lodges/murrells-inlet-368.html`: dashboard for Murrells Inlet Lodge No. 368 (served at `/lodges/murrells-inlet-368`). Each lodge page sets `window.LODGE` (name, Grand Lodge, members, officer seats, events, store items) before loading `assets/demo.js`
 - `assets/styles.css` and `assets/demo.js`: shared styles and demo logic
-- `assets/auth.js` and `assets/login.js`: sign-in (see Accounts below); `api/config.js` is the one Vercel function
+- `assets/auth.js` and `assets/login.js`: sign-in (see Accounts below); `api/config.js` is the one Vercel function; `api/_public.js` holds the live Supabase project URL and public key, used when Vercel has no `SUPABASE_*` variables
 - `supabase/schema.sql`: accounts database; `supabase/murrells-inlet-368.sql` adds that lodge
 - `assets/vendor/supabase.umd.min.js`: supabase-js 2.117.3 (MIT)
 - `assets/vendor/jspdf.umd.min.js`: jsPDF 2.5.1 (MIT), loaded only when someone saves minutes as a PDF

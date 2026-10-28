@@ -5,8 +5,9 @@
 // otherwise the one saved in the owner's hub (platform_secrets, row stripe_secret_key).
 const PRICE_CENTS=1900;
 const e=process.env;
-const SB_URL=e.SUPABASE_URL||e.NEXT_PUBLIC_SUPABASE_URL||"";
-const SB_ANON=e.SUPABASE_ANON_KEY||e.NEXT_PUBLIC_SUPABASE_ANON_KEY||e.SUPABASE_PUBLISHABLE_KEY||e.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY||"";
+const PUBLIC=require("./_public");
+const SB_URL=e.SUPABASE_URL||e.NEXT_PUBLIC_SUPABASE_URL||PUBLIC.url;
+const SB_ANON=e.SUPABASE_ANON_KEY||e.NEXT_PUBLIC_SUPABASE_ANON_KEY||e.SUPABASE_PUBLISHABLE_KEY||e.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY||(SB_URL===PUBLIC.url?PUBLIC.key:"");
 const SB_SERVICE=e.SUPABASE_SERVICE_ROLE_KEY||e.SUPABASE_SECRET_KEY||"";
 const LIVE=["active","trialing","past_due"],ENDED=["canceled","unpaid","incomplete_expired"];
 
