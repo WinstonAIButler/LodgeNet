@@ -1,12 +1,13 @@
-/* Layout: a pale masthead with the LodgeNet crest over a checkered-pavement band on every page, in the crest's slate blue and gold; Home, Features, Live demo and Pricing are separate pages sharing this sheet. */
+/* Palette (Justin, 2026-10-28): Deep Navy #1E2B3E, Steel Blue #3A5270, Gold/Ochre #D4AF37, Muted White #E5E9EC, Danish Cream #F9F5EC as the page background.
+   Layout: a pale masthead with the LodgeNet crest over a checkered-pavement band on every page, in the crest's slate blue and gold; Home, Features, Live demo and Pricing are separate pages sharing this sheet. */
 :root{
-  --bg:#f4f6f8; --surface:#ffffff; --sunk:#eef1f4; --line:#d9e0e7;
-  --fg:#1f3042; --muted:#5a6d81;
-  --blue:#3c546c; --blue-ink:#ffffff; --blue-soft:#e6ecf2; --link:#3c546c;
-  --gold:#8a6a24; --gold-soft:#f6efdd; --gilt:#c9a54e;
+  --bg:#f9f5ec; --surface:#fffdf8; --sunk:#e5e9ec; --line:#ddd6c6;
+  --fg:#1e2b3e; --muted:#5b6678;
+  --blue:#3a5270; --blue-ink:#ffffff; --blue-soft:#e5e9ec; --link:#3a5270;
+  --gold:#7f6514; --gold-soft:#f3e7c4; --gilt:#d4af37;
   --ok:#2c7a4b; --ok-soft:#e1f1e7; --warn:#9a6a09; --warn-soft:#fbefd3;
-  --tile-a:#546c84; --tile-b:#eef1f4;
-  --top-bg:#ffffff; --top-fg:#1f3042; --top-muted:#4f6377; --top-line:#d9e0e7; --top-card:#ffffff;
+  --tile-a:#3a5270; --tile-b:#f9f5ec;
+  --top-bg:#f9f5ec; --top-fg:#1e2b3e; --top-muted:#4d5a6d; --top-line:#ddd6c6; --top-card:#fffdf8;
   --display:"Montserrat", "Gill Sans", "Trebuchet MS", system-ui, sans-serif;
   --body:"Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
   --mono:"IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
@@ -15,21 +16,21 @@
   --floor:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='36' height='36'%3E%3Cpath d='M18 0L36 18L18 36L0 18Z' fill='%234e6a83' fill-opacity='.06'/%3E%3C/svg%3E");
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
-  --bg:#132131; --surface:#192a3b; --sunk:#1f3346; --line:#2d4359;
-  --fg:#e9eef3; --muted:#a0b0c1;
-  --blue:#546c84; --blue-ink:#ffffff; --blue-soft:#22374c; --link:#a3bbd2;
-  --gold:#d4b25e; --gold-soft:#372d17; --gilt:#c9a54e;
+  --bg:#1e2b3e; --surface:#243348; --sunk:#2a3b52; --line:#364a63;
+  --fg:#f9f5ec; --muted:#b4bcc6;
+  --blue:#3a5270; --blue-ink:#ffffff; --blue-soft:#2a3b52; --link:#a9bdd3;
+  --gold:#d4af37; --gold-soft:#3b3218; --gilt:#d4af37;
   --ok:#6cc890; --ok-soft:#173326; --warn:#e7b65a; --warn-soft:#3a2d12;
-  --tile-a:#546c84; --tile-b:#132131;
-  --top-bg:#192a3b; --top-fg:#eef2f6; --top-muted:#a9b8c7; --top-line:#2d4359; --top-card:#192a3b; color-scheme:dark;}}
+  --tile-a:#3a5270; --tile-b:#1e2b3e;
+  --top-bg:#1e2b3e; --top-fg:#f9f5ec; --top-muted:#b4bcc6; --top-line:#364a63; --top-card:#243348; color-scheme:dark;}}
 :root[data-theme="dark"]{
-  --bg:#132131; --surface:#192a3b; --sunk:#1f3346; --line:#2d4359;
-  --fg:#e9eef3; --muted:#a0b0c1;
-  --blue:#546c84; --blue-ink:#ffffff; --blue-soft:#22374c; --link:#a3bbd2;
-  --gold:#d4b25e; --gold-soft:#372d17; --gilt:#c9a54e;
+  --bg:#1e2b3e; --surface:#243348; --sunk:#2a3b52; --line:#364a63;
+  --fg:#f9f5ec; --muted:#b4bcc6;
+  --blue:#3a5270; --blue-ink:#ffffff; --blue-soft:#2a3b52; --link:#a9bdd3;
+  --gold:#d4af37; --gold-soft:#3b3218; --gilt:#d4af37;
   --ok:#6cc890; --ok-soft:#173326; --warn:#e7b65a; --warn-soft:#3a2d12;
-  --tile-a:#546c84; --tile-b:#132131;
-  --top-bg:#192a3b; --top-fg:#eef2f6; --top-muted:#a9b8c7; --top-line:#2d4359; --top-card:#192a3b; color-scheme:dark;}
+  --tile-a:#3a5270; --tile-b:#1e2b3e;
+  --top-bg:#1e2b3e; --top-fg:#f9f5ec; --top-muted:#b4bcc6; --top-line:#364a63; --top-card:#243348; color-scheme:dark;}
 
 *{box-sizing:border-box}
 body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:16px;line-height:1.55}
@@ -81,7 +82,7 @@ button,input,select,textarea{font:inherit;color:inherit}
 .cta{display:flex;flex-wrap:wrap;gap:12px;margin-top:28px}
 .btn{display:inline-flex;align-items:center;gap:8px;border:1px solid transparent;border-radius:0;padding:10px 18px;font-weight:600;font-size:15px;cursor:pointer;text-decoration:none;background:var(--blue);color:var(--blue-ink)}
 .btn:hover{filter:brightness(1.08)}
-.btn.gold{background:var(--gilt);color:#1d2b3a}
+.btn.gold{background:var(--gilt);color:#1e2b3e}
 .btn.ghost{background:transparent;border-color:var(--top-line);color:var(--top-fg)}
 .btn.line{background:transparent;border-color:var(--line);color:var(--fg)}
 .btn.sm{padding:6px 12px;font-size:13px}
@@ -159,7 +160,7 @@ section.band{padding-block:72px}
 .site-foot{display:grid;grid-template-columns:1fr 1fr;gap:20px;padding:16px 24px 20px;background:#f2f4f8;border-top:1px solid #e3e6ee;font-size:13px}
 .site-foot h5{font-family:var(--display);font-size:13px;margin:0 0 8px;color:var(--site);letter-spacing:.04em}
 .socials{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
-.socials a{font-size:12px;font-weight:600;padding:3px 9px;border-radius:0;border:1px solid #cfd5e2;color:var(--site);text-decoration:none;background:#fff}
+.socials a{font-size:12px;font-weight:600;padding:3px 9px;border-radius:0;border:1px solid #e5e9ec;color:var(--site);text-decoration:none;background:#fff}
 .paybtns{display:flex;flex-wrap:wrap;gap:6px}
 .paybtn{border:0;border-radius:0;padding:7px 12px;font-size:13px;font-weight:700;cursor:pointer;color:#fff}
 .paybtn.paypal{background:#003087}.paybtn.venmo{background:#008cff}.paybtn.cashapp{background:#00b33c;color:#06240f}
@@ -363,7 +364,7 @@ section.band{padding-block:72px}
 .tier.free-tier .incl ul{display:flex;flex-wrap:wrap;gap:6px 22px}
 .tier .btn{justify-content:center;text-align:center}
 .tiers-note{margin:18px 0 0;text-align:center;font-size:13px;color:var(--muted)}
-footer{background:var(--side-bg,#26394d);color:#c3cfdb;font-size:13px;border-top:3px solid var(--gilt)}
+footer{background:var(--side-bg,#1e2b3e);color:#e5e9ec;font-size:13px;border-top:3px solid var(--gilt)}
 footer .wrap{padding-block:28px;display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px}
 
 /* sign-in */
@@ -434,7 +435,7 @@ footer .wrap{padding-block:28px;display:flex;flex-wrap:wrap;justify-content:spac
 @media (min-width:901px){.panel-grid > .browser{align-self:start;position:sticky;top:16px}}
 
 /* executive lodge dashboard (lodge.html): slate sidebar of sections, key figures on top, the section's tools below */
-:root{--side-bg:#26394d;--side-fg:#c5d0dc;--side-hi:#ffffff;--side-line:rgba(255,255,255,.1)}
+:root{--side-bg:#1e2b3e;--side-fg:#e5e9ec;--side-hi:#f9f5ec;--side-line:rgba(255,255,255,.1)}
 body.app{background:var(--bg)}
 .auth-wait .app-shell{visibility:hidden}
 .app-shell{display:grid;grid-template-columns:248px minmax(0,1fr);min-height:100vh;min-height:100dvh}
@@ -594,5 +595,5 @@ body.app{background:var(--bg)}
 .dtable th,.roster th{font-family:var(--mono);font-size:11px;font-weight:500;letter-spacing:.08em}
 .roster th{background:none;border-bottom:1px solid var(--line)}
 .btn{letter-spacing:.01em}
-.btn.gold{background:var(--gilt);color:#1f3042}
-.btn.gold:hover{background:#b8933f}
+.btn.gold{background:var(--gilt);color:#1e2b3e}
+.btn.gold:hover{background:#c29f2c}
