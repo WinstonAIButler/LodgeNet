@@ -40,8 +40,8 @@
     </nav>
     <div class="page-head">
       <div class="eyebrow">Lodge accounts</div>
-      <h1 id="head-title">Sign in to your lodge</h1>
-      <p id="head-text">Officers and brethren sign in with the email their lodge invited. Your lodge's website, calendar, members and minutes are the same on every device.</p>
+      <h1 id="head-title">Login</h1>
+      <p id="head-text">Sign in with your email and password.</p>
     </div>
   </div>
   <div class="pavement" aria-hidden="true"></div>
@@ -60,26 +60,16 @@
       </div>
 
       <!-- signed out -->
-      <div class="auth-wrap" id="v-out" hidden>
-        <div class="card auth-card">
-          <div class="auth-switch" role="tablist" aria-label="Sign in or create an account">
-            <button class="tab" role="tab" type="button" id="m-in" aria-selected="true">Sign in</button>
-            <button class="tab" role="tab" type="button" id="m-up" aria-selected="false">Create account</button>
-          </div>
-          <form id="f-auth" novalidate>
-            <div class="field"><label for="a-email">Email</label><input id="a-email" type="email" autocomplete="email" required></div>
-            <div class="field"><label for="a-pass">Password</label><input id="a-pass" type="password" autocomplete="current-password" minlength="8" required></div>
-            <p class="hint" id="a-pass-hint" hidden>At least 8 characters. Use the email your lodge invited, and you'll join your lodge as soon as you confirm it.</p>
-            <button class="btn" type="submit" id="a-go">Sign in</button>
-          </form>
-          <button class="link-btn" type="button" id="a-forgot">Forgot your password?</button>
-          <p class="auth-msg" id="a-msg" role="status" aria-live="polite"></p>
-        </div>
-        <div class="card">
-          <h4>New to LodgeNet?</h4>
-          <p class="hint">Your lodge's account owner, usually the Secretary, invites each brother by email. Choose Create account with that email and set your own password. If your lodge isn't on LodgeNet yet, pick a plan to get started.</p>
-          <a class="btn line sm" href="/pricing" style="justify-self:start">See plans</a>
-        </div>
+      <div class="card auth-card" id="v-out" hidden style="max-width:420px">
+        <h3 id="a-title">Sign in</h3>
+        <form id="f-auth" novalidate>
+          <div class="field"><label for="a-email">Email</label><input id="a-email" type="email" autocomplete="email" required></div>
+          <div class="field"><label for="a-pass">Password</label><input id="a-pass" type="password" autocomplete="current-password" minlength="8" required></div>
+          <p class="hint" id="a-pass-hint" hidden>At least 8 characters. You'll get an email to confirm your address.</p>
+          <button class="btn" type="submit" id="a-go">Sign in</button>
+        </form>
+        <button class="link-btn" type="button" id="a-forgot">Forgot your password?</button>
+        <p class="auth-msg" id="a-msg" role="status" aria-live="polite"></p>
       </div>
 
       <!-- arriving from a password reset email -->
