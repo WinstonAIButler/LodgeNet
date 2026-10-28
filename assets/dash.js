@@ -208,7 +208,8 @@
   const CONTACT=[["email","Has an email",c=>!!c.email],["phone","Has a phone",c=>!!c.phone],["by","Recommended by a brother",c=>!!c.by]];
   D.plists=CFG.plists||[];D.ptasks=CFG.ptasks||[];
   /* Find businesses: the last AI search (api/business-search.js) is kept with the lodge's records so other officers see it too */
-  D.bsearch=CFG.bsearch||{what:"",where:"",purpose:"Sponsor",count:10,results:[],notes:"",at:""};
+  D.bsearch=CFG.bsearch||{what:"",zip:"",radius:10,purpose:"Sponsor",count:10,results:[],notes:"",at:""};
+  const RADII=[5,10,25,50];
   const PURPOSES=["Sponsor","Fundraiser partner","Event venue","Vendor or supplier","In-kind donor"];
   const BS={busy:false,msg:""};
   const SCORE_DIMS=[["giving","Community giving",30],["local","Local roots",20],["ties","Veteran, fraternal and civic ties",15],["capacity","Capacity to give",15],["relevance","Fit for this ask",10],["reach","Reachable decision-maker",10]];
@@ -333,20 +334,21 @@
         <form class="row-acts" id="pl-dtask"><input id="pl-dt" placeholder="New follow-up" class="amt-in" style="width:auto;flex:1"><input id="pl-dd" type="date" class="amt-in" style="width:auto"><button class="btn line sm" type="submit">Add</button></form></div></div>`;
   }
   function bizSearch(){
-    const B=D.bsearch,town=[($("#f-city")||{}).value,($("#f-state")||{}).value].filter(Boolean).join(", ");
+    const B=D.bsearch;
     const added=r=>D.sponsors.some(s=>s.name.toLowerCase()===r.name.toLowerCase());
-    return `<form class="biz-form" id="biz-form">
-        <div><h4>Find businesses</h4><p class="hint" style="margin:4px 0 0">Say where to look, and the kind of business if you have one in mind. Claude searches the web for real ones nearby, scores how likely each is to help, and says why. Add the good ones to Sponsors.</p></div>
+    return `<form class="biz-form" id="biz-form" novalidate>
+        <div><h4>Find businesses</h4><p class="hint" style="margin:4px 0 0">Enter a ZIP code and how far around it to look, and the kind of business if you have one in mind. Claude searches the web for real ones nearby, scores how likely each is to help, and says why. Add the good ones to Sponsors.</p></div>
         <div class="inline-form">
           <div class="field grow"><label for="bz-w">Type of business <span class="hint">(optional)</span></label><input id="bz-w" placeholder="Any kind, or e.g. restaurants, banks, contractors" value="${esc(B.what)}"></div>
-          <div class="field"><label for="bz-a">Near</label><input id="bz-a" required placeholder="Murrells Inlet, SC" value="${esc(B.where||town)}"></div>
+          <div class="field"><label for="bz-z">ZIP code</label><input id="bz-z" inputmode="numeric" autocomplete="postal-code" maxlength="5" placeholder="29576" value="${esc(B.zip||"")}" style="max-width:7em"></div>
+          <div class="field"><label for="bz-r">Within</label><select id="bz-r">${RADII.map(n=>`<option value="${n}"${+(B.radius||10)===n?" selected":""}>${n} miles</option>`).join("")}</select></div>
           <div class="field"><label for="bz-p">To be a</label><select id="bz-p">${opts(PURPOSES,B.purpose)}</select></div>
           <div class="field"><label for="bz-n">How many</label><select id="bz-n">${[10,15,20].map(n=>`<option${+B.count===n?" selected":""}>${n}</option>`).join("")}</select></div>
           <button class="btn" type="submit"${BS.busy?" disabled":""}>${BS.busy?"Searching…":"Search"}</button>
         </div>
         ${BS.msg?`<p class="hint biz-msg" role="status">${esc(BS.msg)}</p>`:""}
       </form>
-      ${B.results.length?`<div class="pl-bar"><b>${many(B.results.length,"business","businesses")}</b><span class="hint">${esc(B.what||"Any kind of business")} near ${esc(B.where)} · ${esc(B.purpose)}${B.at?" · searched "+day(B.at):""}</span><button type="button" class="btn line sm" id="bz-csv">Export CSV</button></div>
+      ${B.results.length?`<div class="pl-bar"><b>${many(B.results.length,"business","businesses")}</b><span class="hint">${esc(B.what||"Any kind of business")} within ${B.radius||10} miles of ${esc(B.zip||B.where||"")} · ${esc(B.purpose)}${B.at?" · searched "+day(B.at):""}</span><button type="button" class="btn line sm" id="bz-csv">Export CSV</button></div>
       <div class="table-scroll"><table class="dtable biz-table"><thead><tr><th>Business</th><th>Contact</th><th>Fit</th><th>Why, and how to ask</th><th><span class="sr">Actions</span></th></tr></thead><tbody>
       ${B.results.map((r,i)=>{const [tk,tl]=tier(r.fit);return `<tr data-bz="${i}">
         <td><b>${esc(r.name)}</b><br><span class="hint">${esc(r.category)}</span><br><span class="hint">${esc([r.address,r.city].filter(Boolean).join(", "))}</span></td>
@@ -363,23 +365,26 @@
       :`<div class="empty">No search yet. Try "family restaurants" or "local banks and credit unions" near your lodge.</div>`}`;
   }
   async function runBizSearch(){
-    const B=D.bsearch;B.what=$("#bz-w").value.trim();B.where=$("#bz-a").value.trim();B.purpose=$("#bz-p").value;B.count=+$("#bz-n").value;
+    const B=D.bsearch;B.what=$("#bz-w").value.trim();B.zip=$("#bz-z").value.replace(/\D/g,"").slice(0,5);B.radius=+$("#bz-r").value;B.purpose=$("#bz-p").value;B.count=+$("#bz-n").value;
     const C=window.LODGENET_CLOUD,say=m=>{BS.msg=m;renderPipe()};
+    /* phone browsers can block a submit silently on an empty required field, so the form checks itself and says what's missing */
+    if(!/^\d{5}$/.test(B.zip)){say("Enter the 5-digit ZIP code to search around, then press Search.");return $("#bz-z").focus()}
     if(!C||!C.lodgeId)return say("Business search runs in a signed-in lodge account. Here you can add sponsors by hand on the Sponsors tab.");
     if(!C.canEdit)return say("Only the lodge's officers can search for businesses.");
     const session=window.LodgeNetAuth&&await window.LodgeNetAuth.session();
     if(!session)return say("Your sign-in has expired. Sign in again.");
     BS.busy=true;say("Searching the web. This usually takes a minute or two.");
+    const t0=Date.now(),tick=setInterval(()=>{const m=$(".biz-msg");if(m&&BS.busy)m.textContent=`Searching the web… ${Math.round((Date.now()-t0)/1000)}s. This usually takes a minute or two.`},1000);
     try{
       const r=await fetch("/api/business-search",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+session.access_token},
-        body:JSON.stringify({lodge_id:C.lodgeId,lodge:($("#lodge-title")||{}).textContent||"",what:B.what,where:B.where,purpose:B.purpose,count:B.count,
+        body:JSON.stringify({lodge_id:C.lodgeId,lodge:($("#lodge-title")||{}).textContent||"",what:B.what,zip:B.zip,radius:B.radius,purpose:B.purpose,count:B.count,
           exclude:D.sponsors.map(x=>x.name)})});
       const d=await r.json().catch(()=>({error:"The search didn't finish just now. Try again."}));
       if(!r.ok)throw new Error(d.error||"The search didn't finish just now.");
       B.results=d.results||[];B.notes=d.notes||"";B.at=TODAY;
       BS.msg=B.results.length?"":"No matching businesses turned up. Try a wider area or different wording.";changed();
-    }catch(err){BS.msg=err.message}
-    BS.busy=false;renderPipe();
+    }catch(err){BS.msg=err instanceof TypeError?"The connection dropped before the search finished. Try again.":err.message||"The search didn't finish just now. Try again."}
+    clearInterval(tick);BS.busy=false;renderPipe();
   }
   function wirePipe(){
     const P=$("#p-pipe"),re=()=>{renderPipe();changed()};

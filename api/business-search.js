@@ -1,6 +1,6 @@
 // Business search for the Pipelines tab. An officer describes the kind of business and the area, and Claude searches the web
 // for real local businesses that could sponsor the lodge, partner on a fundraiser, host an event or supply it, with a fit score
-// and the reason for each. POST /api/business-search {lodge_id, lodge, what (optional), where, purpose, count, exclude} with an officer's Supabase
+// and the reason for each. POST /api/business-search {lodge_id, lodge, what (optional), zip, radius, purpose, count, exclude} with an officer's Supabase
 // access token. Returns {results:[{name,category,address,city,phone,website,email,contact,role,score,fit,signals,why,pitch}], notes}. Nothing is saved here:
 // the officer picks which results to keep. Needs an Anthropic API key in Vercel's environment variables (see api/_anthropic.js).
 const e=process.env;
@@ -9,6 +9,7 @@ const anthropicKey=require("./_anthropic");
 const SB_URL=e.SUPABASE_URL||e.NEXT_PUBLIC_SUPABASE_URL||PUBLIC.url;
 const SB_ANON=e.SUPABASE_ANON_KEY||e.NEXT_PUBLIC_SUPABASE_ANON_KEY||e.SUPABASE_PUBLISHABLE_KEY||e.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY||(SB_URL===PUBLIC.url?PUBLIC.key:"");
 const MODEL="claude-opus-5-5";
+const RADII=[5,10,25,50];   /* miles */
 const PURPOSES=["Sponsor","Fundraiser partner","Event venue","Vendor or supplier","In-kind donor"];
 const MAX_CONTINUES=4;   /* the server's search loop pauses after 10 steps; resume it a few times at most */
 
@@ -55,7 +56,7 @@ const REPORT={name:"report_businesses",strict:true,
 const SYSTEM=`You find real local businesses for a Masonic lodge's officers, who want to approach them as sponsors, fundraiser partners, event venues, suppliers or in-kind donors.
 
 Work in four steps:
-1. Discover. Search the web for businesses that match what the officers describe, in or near the area they name. Widen to closely related kinds of business when that helps (for "restaurants", also diners, cafes and caterers). Skip businesses that look closed and any the officers already have as sponsors.
+1. Discover. Search the web for businesses that match what the officers describe, inside the radius around the ZIP code they give. Widen to closely related kinds of business when that helps (for "restaurants", also diners, cafes and caterers). Skip businesses that look closed and any the officers already have as sponsors.
 2. Research. For the most promising ones, look at the business's own site and local news for community giving, sponsorships, local ownership, ties to veterans or fraternal and civic groups, and who runs it.
 3. Score. Give points on each dimension, never above its maximum:
 ${DIMS.map(([k,max,desc])=>`- ${k} (0-${max}): ${desc}`).join("\n")}
@@ -83,14 +84,15 @@ module.exports=async(req,res)=>{
     const [mem]=await sb(`/rest/v1/lodge_members?select=role&lodge_id=eq.${lid}&user_id=eq.${user.id}`,token);
     if(!mem||!["owner","officer"].includes(mem.role))return send(403,{error:"Only the lodge's officers can search for businesses."});
 
-    const what=str(body.what,200).trim(),where=str(body.where,120).trim();
-    if(!where)return send(400,{error:"Say which town or area to search."});
+    const what=str(body.what,200).trim(),zip=String(body.zip||"").trim(),radius=RADII.includes(+body.radius)?+body.radius:10;
+    if(!/^\d{5}$/.test(zip))return send(400,{error:"Enter a 5-digit ZIP code to search around."});
     const purpose=PURPOSES.includes(body.purpose)?body.purpose:PURPOSES[0];
     const count=Math.min(20,Math.max(5,+body.count||10));
 
     const have=(Array.isArray(body.exclude)?body.exclude:[]).slice(0,150).map(n=>str(n,120)).filter(Boolean);
     const tools=[{type:"web_search_20260209",name:"web_search",max_uses:12},REPORT];
-    const messages=[{role:"user",content:`Lodge: ${str(body.lodge,120)||"a Masonic lodge"}, near ${where}.
+    const messages=[{role:"user",content:`Lodge: ${str(body.lodge,120)||"a Masonic lodge"}.
+Search area: within ${radius} miles of ZIP code ${zip} (US). Work out which towns that covers, and leave out businesses farther away.
 Looking for: ${what||"any kind of local business; pick the ones most likely to help, across a mix of kinds (restaurants, banks and credit unions, insurance and real estate offices, contractors, car dealers, funeral homes, and the like)"}
 They'd ask these businesses to be a: ${purpose}
 Find up to ${count} businesses.
