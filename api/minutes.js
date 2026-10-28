@@ -2,9 +2,10 @@
 // (nothing is recorded as audio), and this sends that text to Claude, which fills in the short form for the Secretary to check.
 // POST /api/minutes {lodge_id, date, transcript, fields:[[key,label,type,options?]], roll:[names]} with an officer's Supabase access token.
 // Returns {values:{key:value}, notes}. Nothing is saved here: the draft stays a draft until the Secretary saves and approves it.
-// Needs ANTHROPIC_API_KEY in Vercel's environment variables (server-side only, never sent to the browser).
+// Needs an Anthropic API key in Vercel's environment variables (see api/_anthropic.js; server-side only, never sent to the browser).
 const e=process.env;
 const PUBLIC=require("./_public");
+const anthropicKey=require("./_anthropic");
 const SB_URL=e.SUPABASE_URL||e.NEXT_PUBLIC_SUPABASE_URL||PUBLIC.url;
 const SB_ANON=e.SUPABASE_ANON_KEY||e.NEXT_PUBLIC_SUPABASE_ANON_KEY||e.SUPABASE_PUBLISHABLE_KEY||e.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY||(SB_URL===PUBLIC.url?PUBLIC.key:"");
 const MODEL="claude-opus-5-5";
@@ -75,7 +76,8 @@ module.exports=async(req,res)=>{
   const send=(status,d)=>{res.statusCode=status;res.setHeader("Content-Type","application/json");res.setHeader("Cache-Control","no-store");res.end(JSON.stringify(d))};
   if(req.method!=="POST")return send(405,{error:"Use POST."});
   try{
-    if(!e.ANTHROPIC_API_KEY)return send(503,{error:"Meeting summaries aren't switched on for this site yet."});
+    const KEY=anthropicKey();
+    if(!KEY)return send(503,{error:"Meeting summaries aren't switched on for this site yet."});
     if(!SB_URL||!SB_ANON)return send(503,{error:"Lodge accounts aren't switched on for this site yet."});
     const body=req.body&&typeof req.body==="object"?req.body:JSON.parse(await readBody(req)||"{}");
     const token=(req.headers.authorization||"").replace(/^Bearer\s+/i,"");
@@ -94,7 +96,7 @@ module.exports=async(req,res)=>{
     const roll=(Array.isArray(body.roll)?body.roll:[]).slice(0,400).map(n=>str(n,80)).filter(Boolean);
 
     const r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{
-        "Content-Type":"application/json","x-api-key":e.ANTHROPIC_API_KEY,"anthropic-version":"2026-10-21",
+        "Content-Type":"application/json","x-api-key":KEY,"anthropic-version":"2026-10-21",
         /* if Claude's safety checks decline a request, the API re-runs it on Anthropic's recommended fallback model */
         "anthropic-beta":"server-side-fallback-2026-07-01"},
       body:JSON.stringify({
