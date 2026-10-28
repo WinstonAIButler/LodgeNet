@@ -1,6 +1,5 @@
 /* LodgeNet sign-in. Accounts and lodge data live in Supabase (Auth + Postgres) once the deployment has it:
    /api/config hands over the project URL and public key, and without them the site stays browser-only.
-   Every page loads this to turn the header's Login link into "My lodges" when someone is signed in.
    A lodge page loads it with data-app="/assets/demo.js": the dashboard then opens only for that lodge's
    members and reads and saves the lodge's data in the account (window.LODGENET_CLOUD). */
 (function(){
@@ -31,11 +30,6 @@
   }
   window.LodgeNetAuth={client,session,myLodges};
 
-  async function markNav(){
-    const s=await session();if(!s)return;
-    document.querySelectorAll('.nav a[href="/login"]').forEach(a=>a.textContent="My lodges");
-  }
-
   function gate(title,body,cta){
     const band=document.querySelector("#demo .wrap")||document.querySelector("main");
     band.innerHTML=`<div class="card auth-gate"><h3>${esc(title)}</h3><p class="hint">${esc(body)}</p>${cta?`<a class="btn" href="${esc(cta[1])}">${esc(cta[0])}</a>`:""}</div>`;
@@ -58,7 +52,7 @@
     try{await sb.rpc("claim_invites")}catch(e){}
     const {data:row,error}=await sb.from("lodges").select("id,name,number,city,state,plan,comped,billing_status,data,updated_at").eq("slug",slug).maybeSingle();
     if(error)return gate("Couldn't reach the lodge's account",error.message,["Try again",location.pathname]);
-    if(!row)return gate("You're not on this lodge's roll yet",`You're signed in as ${s.user.email}. Ask the lodge's account owner to invite that email, then sign in again.`,["My lodges","/login"]);
+    if(!row)return gate("You're not on this lodge's roll yet",`You're signed in as ${s.user.email}. Ask the lodge's account owner to invite that email, then sign in again.`,["Your account","/login"]);
     const {data:mem}=await sb.from("lodge_members").select("role").eq("lodge_id",row.id).eq("user_id",s.user.id).maybeSingle();
     const role=mem?mem.role:"member";
     if(window.LODGE.fromAccount)fromAccount(row);
@@ -75,5 +69,5 @@
   }
 
   const ready=f=>document.readyState==="loading"?document.addEventListener("DOMContentLoaded",f):f();
-  ready(()=>{markNav();if(app)bootLodge()});
+  ready(()=>{if(app)bootLodge()});
 })();

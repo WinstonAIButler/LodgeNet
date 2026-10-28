@@ -26,7 +26,7 @@
   async function signedIn(session){
     try{await sb.rpc("claim_invites")}catch(e){}
     if(next){location.replace(next);return}
-    $("#head-title").textContent="My lodges";
+    $("#head-title").textContent="Your lodge account";
     $("#head-text").textContent="Open your lodge's dashboard. Edits there save to the lodge account, so every officer sees the same website, calendar, members and minutes.";
     $("#who").textContent="Signed in as "+session.user.email;
     show("v-in");
