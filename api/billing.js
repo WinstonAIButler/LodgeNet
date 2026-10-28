@@ -79,6 +79,7 @@ module.exports=async(req,res)=>{
         subscription_data:{metadata:{lodge_id:lid,lodge:`${lodge.name}${lodge.number?" No. "+lodge.number:""}`}},
         ...(lodge.stripe_customer_id?{customer:lodge.stripe_customer_id}:{customer_email:user.email}),
         allow_promotion_codes:true,
+        payment_method_collection:"if_required",   /* a 100%-off promo code needs no card */
         success_url:`${origin}/login?billing=done&lodge=${lid}&session_id={CHECKOUT_SESSION_ID}`,
         cancel_url:`${origin}/login`
       });

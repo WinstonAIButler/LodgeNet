@@ -57,14 +57,9 @@
           :'<button class="btn gold" type="button" data-billing="checkout">Subscribe · $19 / month</button>'):""}
       </span>
       <p class="auth-msg bill-msg" role="status" aria-live="polite"></p>
-      ${role==="owner"?`<form class="invite code-form" novalidate style="grid-template-columns:minmax(0,1fr) auto">
-        <div class="field"><label>Have a plan code?<input name="code" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="LODGE-XXXX-XXXX"></label></div>
-        <button class="btn line sm" type="submit">Redeem</button>
-      </form><p class="auth-msg code-msg" role="status" aria-live="polite"></p>
-      <div class="roll-box" style="display:grid;gap:10px;margin-top:8px"><p class="hint">Loading the lodge roll…</p></div>`:""}
+      ${role==="owner"?`<div class="roll-box" style="display:grid;gap:10px;margin-top:8px"><p class="hint">Loading the lodge roll…</p></div>`:""}
     </div>`).join("");
-    rows.filter(r=>r.role==="owner").forEach(r=>{renderRoll(r.lodge.id,session.user.id);codeForm(r.lodge.id,session);billingButtons(r.lodge.id,session)});
-    if(location.hash==="#code"){const f=box.querySelector(".code-form input");if(f){f.scrollIntoView({block:"center"});f.focus()}}
+    rows.filter(r=>r.role==="owner").forEach(r=>{renderRoll(r.lodge.id,session.user.id);billingButtons(r.lodge.id,session)});
   }
 
   /* account owners: subscribe through Stripe Checkout, or manage the subscription in Stripe's Customer Portal */
@@ -97,20 +92,6 @@
     catch(err){note="Couldn't check billing with Stripe ("+err.message+")."}
     await renderLodges(session);
     const out=document.querySelector(`[data-lodge="${lodgeId}"] .bill-msg`);if(out)msg(out,note);
-  }
-
-  /* account owners: a plan code puts the lodge on that plan at no charge */
-  function codeForm(lodgeId,session){
-    const card=document.querySelector(`[data-lodge="${lodgeId}"]`),f=card.querySelector(".code-form"),out=card.querySelector(".code-msg");
-    f.addEventListener("submit",async e=>{
-      e.preventDefault();
-      const code=f.code.value.trim();
-      if(!code)return msg(out,"Enter the code.",true);
-      const {data,error}=await sb.rpc("redeem_plan_code",{lid:lodgeId,c:code});
-      if(error)return msg(out,error.message,true);
-      await renderLodges(session);
-      msg(document.querySelector(`[data-lodge="${lodgeId}"] .code-msg`),`Code accepted. This lodge is on the ${PLAN[data]||data} at no charge.`);
-    });
   }
 
   /* account owners: who can sign in to this lodge, and invites waiting to be claimed */

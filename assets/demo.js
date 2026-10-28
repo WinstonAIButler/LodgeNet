@@ -198,7 +198,7 @@
     gmail=!gmail;renderGmail();
   });
   $("#f-email").addEventListener("input",()=>{if(gmail)renderGmail()});
-  const LOCKED='<span class="pill">Not published</span> Publishing unlocks once the lodge\'s plan is paid for. <a href="/login">Subscribe or enter a plan code</a>';
+  const LOCKED='<span class="pill">Not published</span> Publishing unlocks once the lodge\'s plan is paid for. <a href="/login">Subscribe on My lodges</a>';
   if(CLOUD&&!CLOUD.paid)$("#site-status").innerHTML=LOCKED;
   $("#site-form").addEventListener("submit",e=>{e.preventDefault();if(CLOUD&&!CLOUD.paid)return $("#site-status").innerHTML=LOCKED;$("#site-status").innerHTML='<span class="pill ok">Published</span> Live at '+esc($("#pv-url").textContent)+" (demo)"});
 

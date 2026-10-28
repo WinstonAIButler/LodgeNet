@@ -94,10 +94,7 @@
               <li>Billed monthly by card through Stripe. Cancel any time.</li>
             </ul>
             <button class="btn" type="button" data-pick="lodge">Choose Lodge · $19 / month</button>
-            <form class="invite code-form" id="f-code" novalidate style="grid-template-columns:minmax(0,1fr) auto">
-              <div class="field"><label>Have a plan code? It replaces the payment.<input name="code" id="code" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="LODGE-XXXX-XXXX"></label></div>
-              <button class="btn line sm" type="submit">Use code</button>
-            </form>
+            <p class="hint">Have a promo code? Enter it on Stripe's checkout page. A full-discount code needs no card.</p>
             <p class="auth-msg" id="pick-msg" role="status" aria-live="polite"></p></div>
           <div class="tier"><h3>District / Grand Lodge</h3><div class="amt">Let's talk</div>
             <ul><li>Every constituent lodge on one account</li><li>District calendar and visitation schedule</li><li>Shared store and roll-up reporting</li></ul>
@@ -125,7 +122,7 @@
         </div>
       </div>
 
-      <!-- after creating: payment didn't open, or the code didn't take -->
+      <!-- after creating: payment didn't open -->
       <div class="card auth-card" id="v-done" hidden style="max-width:560px">
         <h3 id="made-title">Your lodge is set up</h3>
         <p class="auth-msg" id="d-msg" role="status" aria-live="polite"></p>
