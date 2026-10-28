@@ -1,6 +1,6 @@
 /* LodgeNet sign-in. Accounts and lodge data live in Supabase (Auth + Postgres) once the deployment has it:
    /api/config hands over the project URL and public key, and without them the site stays browser-only.
-   A lodge page loads it with data-app="/assets/demo.js": the dashboard then opens only for that lodge's
+   A lodge page loads it with data-app="/assets/demo.js /assets/dash.js" (scripts run in that order): the dashboard then opens only for that lodge's
    members and reads and saves the lodge's data in the account (window.LODGENET_CLOUD). */
 (function(){
   const me=document.currentScript,app=me&&me.dataset.app;
@@ -31,8 +31,9 @@
   window.LodgeNetAuth={client,session,myLodges};
 
   function gate(title,body,cta){
-    const band=document.querySelector("#demo .wrap")||document.querySelector("main");
-    band.innerHTML=`<div class="card auth-gate"><h3>${esc(title)}</h3><p class="hint">${esc(body)}</p>${cta?`<a class="btn" href="${esc(cta[1])}">${esc(cta[0])}</a>`:""}</div>`;
+    const shell=document.querySelector("[data-gate]"),band=shell||document.querySelector("#demo .wrap")||document.querySelector("main");
+    if(shell)shell.className="gate-wrap";
+    band.innerHTML=(shell?'<a class="side-brand" href="/"><img src="/assets/brand/lodgenet-crest.webp" alt="" width="34" height="37"><span>LodgeNet</span></a>':"")+`<div class="card auth-gate"><h3>${esc(title)}</h3><p class="hint">${esc(body)}</p>${cta?`<a class="btn" href="${esc(cta[1])}">${esc(cta[0])}</a>`:""}</div>`;
     document.documentElement.classList.remove("auth-wait");
   }
   /* the shared lodge page (lodge.html) takes its heading, and until the first save its Website fields, from the lodge account */
@@ -45,7 +46,7 @@
   }
   async function bootLodge(){
     const slug=(window.LODGE||{}).slug,sb=await client();
-    const open=()=>loadScript(app).finally(()=>document.documentElement.classList.remove("auth-wait"));
+    const open=()=>app.split(/\s+/).reduce((p,src)=>p.then(()=>loadScript(src)),Promise.resolve()).finally(()=>document.documentElement.classList.remove("auth-wait"));
     if(!sb||!slug){window.LODGENET_CLOUD=null;return open()}
     const s=await session(),login="/login?next="+encodeURIComponent(location.pathname+location.hash);
     if(!s)return gate("Sign in to open this lodge","This dashboard is for the lodge's brethren. Sign in with the email your lodge invited.",["Sign in",login]);
@@ -56,7 +57,7 @@
     const {data:mem}=await sb.from("lodge_members").select("role").eq("lodge_id",row.id).eq("user_id",s.user.id).maybeSingle();
     const role=mem?mem.role:"member";
     if(window.LODGE.fromAccount)fromAccount(row);
-    window.LODGENET_CLOUD={role,canEdit:role==="owner"||role==="officer",plan:row.plan,
+    window.LODGENET_CLOUD={role,lodgeId:row.id,canEdit:role==="owner"||role==="officer",plan:row.plan,
       /* the site can be published only once the plan is paid for, or comped with a plan code */
       paid:!!row.comped||["active","trialing","past_due"].includes(row.billing_status),data:row.data,updatedAt:row.updated_at,email:s.user.email,
       async save(snap){
