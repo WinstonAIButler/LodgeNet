@@ -128,6 +128,13 @@
   const member=id=>members.find(m=>m.id===+id);
   const fullName=id=>{const m=member(id);return m?pre(m)+m.name:""};
   const eligible=()=>members.filter(m=>m.active&&m.deg==="Master Mason").sort((a,b)=>a.name.split(" ").pop().localeCompare(b.name.split(" ").pop()));
+  /* the Members page lays the chairs out in rows: the three principal officers, then the line officers, then the stewards and Tiler */
+  const SEAT_ROWS=[["WM","SW","JW"],["SEC","TREAS","SD","JD"],["STW1","STW2","TILER","CHAP"]];
+  const SEAT_LABEL={WM:"Worshipful Master",SW:"Sr. Warden",JW:"Jr. Warden",SEC:"Secretary",TREAS:"Treasurer",SD:"Sr. Deacon",JD:"Jr. Deacon",STW1:"Steward 1",STW2:"Steward 2",TILER:"Tiler",CHAP:"Chaplain"};
+  function renderSeatDefaults(){
+    $("#seat-defaults").innerHTML=SEAT_ROWS.map(r=>`<div class="seat-line">${r.map(k=>{const x=SEATS.find(s=>s.k===k);
+      return `<div class="seat-row"><label for="sd-${k}">${SEAT_LABEL[k]}</label>${seatSelect("data-sdef",x,officers[k]).replace("<select ",`<select id="sd-${k}" `)}</div>`}).join("")}</div>`).join("");
+  }
   function seatSelect(attr,seat,cur,cls){
     const opts=eligible();
     if(cur&&!opts.some(m=>m.id===+cur)&&member(cur))opts.unshift(member(cur));
@@ -135,7 +142,7 @@
   }
   function renderMembers(){
     const act=members.filter(m=>m.active);
-    if(!act.length){$("#mem-count").textContent="No members yet";$("#mem-rows").innerHTML='<tr><td colspan="6" class="hint">Add your first brother below. Officers are picked from Master Masons on this list.</td></tr>';$("#seat-defaults").innerHTML=SEATS.map(x=>`<div class="seat-row"><label for="sd-${x.k}" title="${x.t}">${x.ab}</label>${seatSelect("data-sdef",x,officers[x.k]).replace("<select ",`<select id="sd-${x.k}" `)}</div>`).join("");return}
+    if(!act.length){$("#mem-count").textContent="No members yet";$("#mem-rows").innerHTML='<tr><td colspan="6" class="hint">Add your first brother below. Officers are picked from Master Masons on this list.</td></tr>';renderSeatDefaults();return}
     $("#mem-count").textContent=`${act.length} members · ${act.filter(m=>m.deg==="Master Mason").length} Master Masons`;
     const seatOf=id=>SEATS.filter(x=>+officers[x.k]===id).map(x=>x.ab).join(", ");
     const contact=m=>[m.email,m.phone].filter(Boolean).map(esc).join(" · ");
@@ -146,7 +153,7 @@
       <td>${seatOf(m.id)?`<span class="pill gold">${seatOf(m.id)}</span>`:'<span class="hint">None</span>'}</td>
       <td><select data-mdues="${m.id}" class="dues ${m.dues.startsWith("Paid")?"ok":m.dues.startsWith("Owes")?"warn":""}" aria-label="Dues for ${esc(m.name)}">${[...new Set([m.dues,"Paid "+DUES_YEAR,"Owes "+DUES_YEAR,"Not recorded"])].map(d=>`<option${d===m.dues?" selected":""}>${esc(d)}</option>`).join("")}</select></td>
       <td class="mem-acts"><button type="button" class="btn line sm" data-medit="${m.id}" aria-expanded="${+editing===m.id}">Edit</button> <button type="button" class="btn line sm" data-mrm="${m.id}">Remove</button></td></tr>${+editing===m.id?editRow(m):""}`).join("");
-    $("#seat-defaults").innerHTML=SEATS.map(x=>`<div class="seat-row"><label for="sd-${x.k}" title="${x.t}">${x.ab}</label>${seatSelect("data-sdef",x,officers[x.k]).replace("<select ",`<select id="sd-${x.k}" `)}</div>`).join("");
+    renderSeatDefaults();
   }
   /* Edit opens the brother's details under his row: name, title, degree and how to reach him */
   let editing=null;
