@@ -595,7 +595,7 @@ body.app{background:var(--bg)}
 .hero-card{background:none;border:0;border-top:2px solid var(--blue);padding:18px 0 0}
 .product{border:0}
 .product .pbody{padding:12px 0}
-.table-scroll{border:0}
+.table-scroll{border:0;position:relative} /* keeps the screen-reader labels inside wide tables from widening the page on phones */
 .empty{border:0;border-top:1px solid var(--line);padding:18px 0;text-align:left}
 .min-list{gap:0}
 .min-item{background:none;border:0;border-bottom:1px solid var(--line);padding:12px 0 12px 12px}
