@@ -379,7 +379,7 @@
       const r=await fetch("/api/business-search",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+session.access_token},
         body:JSON.stringify({lodge_id:C.lodgeId,lodge:($("#lodge-title")||{}).textContent||"",what:B.what,zip:B.zip,radius:B.radius,purpose:B.purpose,count:B.count,
           exclude:D.sponsors.map(x=>x.name)})});
-      const d=await r.json().catch(()=>({error:"The search didn't finish just now. Try again."}));
+      const d=await r.json().catch(()=>({error:`The search didn't finish (the server answered ${r.status}${r.status===504?", it ran out of time":""}). Try again.`}));
       if(!r.ok)throw new Error(d.error||"The search didn't finish just now.");
       B.results=d.results||[];B.notes=d.notes||"";B.at=TODAY;
       BS.msg=B.results.length?"":"No matching businesses turned up. Try a wider area or different wording.";changed();

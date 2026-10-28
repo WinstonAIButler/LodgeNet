@@ -107,7 +107,12 @@ Already sponsors or prospects (leave these out): ${have.join("; ")||"none"}`}];
           output_config:{effort:"medium"},tool_choice:{type:"auto"},system:SYSTEM,tools,messages})});
       d=await r.json().catch(()=>null);
       if(!r.ok){console.error("business-search: Claude API",r.status,d&&d.error);
-        return send(502,{error:r.status===429||r.status===529?"Claude is busy right now. Try again in a minute.":"The search didn't finish just now. Try again."})}
+        if(r.status===429||r.status===529)return send(502,{error:"Claude is busy right now. Try again in a minute."});
+        /* pass Claude's own reason through (it names the setting or field at fault, never the key), so officers can report it */
+        const why=str(d&&d.error&&d.error.message,300);
+        if(/web[ _]?(search|fetch)/i.test(why)&&/(disabled|not enabled|enable|permission|not allowed)/i.test(why))
+          return send(502,{error:"Web search is switched off for the Claude account this site uses. An admin can turn it on in the Claude Console's organization settings, then try again.",detail:why});
+        return send(502,{error:`Claude turned the search down (error ${r.status})${why?": "+why:"."}`,detail:why})}
       if(d.stop_reason==="refusal")return send(422,{error:"Claude declined this search. Try describing the businesses differently."});
       const call=(d.content||[]).find(b=>b.type==="tool_use"&&b.name===REPORT.name);
       if(call){results=call.input;break}
@@ -129,6 +134,6 @@ Already sponsors or prospects (leave these out): ${have.join("; ")||"none"}`}];
     return send(200,{results:list,notes:str(results.notes,1000)});
   }catch(err){
     console.error("business-search:",err.message);
-    return send(err.status||500,{error:err.status?err.message:"Something went wrong with the search. Try again."});
+    return send(err.status||500,{error:err.status?err.message:"Something went wrong with the search ("+str(err.message,200)+"). Try again."});
   }
 };
