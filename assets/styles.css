@@ -591,9 +591,44 @@ body.app{background:var(--bg)}
 @media (max-width:1100px){.kpi:nth-child(odd){border-left:0}.kpi:nth-child(n+3){border-top:1px solid var(--line)}}
 :root[data-theme="dark"] .kpi-v{color:var(--fg)}
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .kpi-v{color:var(--fg)}}
-.sec{border-top:2px solid var(--blue)}
 .dtable th,.roster th{font-family:var(--mono);font-size:11px;font-weight:500;letter-spacing:.08em}
 .roster th{background:none;border-bottom:1px solid var(--line)}
 .btn{letter-spacing:.01em}
 .btn.gold{background:var(--gilt);color:#1e2b3e}
 .btn.gold:hover{background:#c29f2c}
+
+/* no boxes (Justin, 2026-10-28): sections, cards, figures and lists sit on the page, separated by whitespace and thin rules; only form inputs keep an outline */
+.sec,.console{background:none;border:0}
+.sec > .panel,.console .panel,.sec > .panel-grid{padding-inline:0}
+.sec .sub-tabs{margin-inline:0}
+.console-bar,.data-bar{padding-inline:0;background:none}
+.kpis{background:none;border:0;border-bottom:1px solid var(--line)}
+.kpi{padding:4px 20px 18px}
+.kpi:first-child{padding-left:0}
+.card,.cart,.sf-sec,.tier,.doc{background:none;border:0;border-top:1px solid var(--line);padding:16px 0 0}
+.card.pl-detail,.card.rec-panel,.tier.feat-tier{border-top:2px solid var(--gilt)}
+.tier{padding-top:22px}
+.tier.free-tier{padding:20px 0 0}
+.hub-add{background:none}
+.gate-wrap .auth-gate{background:none;color:var(--side-hi);border-top-color:var(--side-line)}
+.gate-wrap .auth-gate .hint{color:var(--side-fg)}
+.hero-card{background:none;border:0;border-top:2px solid var(--blue);padding:18px 0 0}
+.product{border:0}
+.product .pbody{padding:12px 0}
+.table-scroll{border:0}
+.empty{border:0;border-top:1px solid var(--line);padding:18px 0;text-align:left}
+.min-list{gap:0}
+.min-item{background:none;border:0;border-bottom:1px solid var(--line);padding:12px 0 12px 12px}
+.min-item[aria-current="true"]{box-shadow:inset 3px 0 0 var(--gilt)}
+.sf-row{border:0;border-bottom:1px solid var(--line);padding:8px 0}
+.board .col{background:none;border-top:2px solid var(--blue);padding:10px 0}
+.pcard{background:none;border:0;border-bottom:1px solid var(--line);padding:10px 0}
+.notice{background:none;border-left:2px solid var(--gilt);padding:4px 0 4px 12px}
+.rec-notes{border:0;border-left:2px solid var(--line);padding:4px 0 4px 12px}
+.rec-warn{background:none}
+/* plan crests: transparent artwork, shown larger */
+.tier .crest{width:132px;height:auto}
+.tier.free-tier .crest{width:96px}
+/* the plan crests' slate wordmark needs a faint cream edge on the navy background */
+:root[data-theme="dark"] .tier .crest{filter:drop-shadow(0 0 1px rgba(249,245,236,.6))}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .tier .crest{filter:drop-shadow(0 0 1px rgba(249,245,236,.6))}}
