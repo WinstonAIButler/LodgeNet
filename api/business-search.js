@@ -1,6 +1,6 @@
 // Business search for the Pipelines tab. An officer describes the kind of business and the area, and Claude searches the web
 // for real local businesses that could sponsor the lodge, partner on a fundraiser, host an event or supply it, with a fit score
-// and the reason for each. POST /api/business-search {lodge_id, lodge, what, where, purpose, count, exclude} with an officer's Supabase
+// and the reason for each. POST /api/business-search {lodge_id, lodge, what (optional), where, purpose, count, exclude} with an officer's Supabase
 // access token. Returns {results:[{name,category,address,city,phone,website,email,contact,role,score,fit,signals,why,pitch}], notes}. Nothing is saved here:
 // the officer picks which results to keep. Needs an Anthropic API key in Vercel's environment variables (see api/_anthropic.js).
 const e=process.env;
@@ -84,7 +84,6 @@ module.exports=async(req,res)=>{
     if(!mem||!["owner","officer"].includes(mem.role))return send(403,{error:"Only the lodge's officers can search for businesses."});
 
     const what=str(body.what,200).trim(),where=str(body.where,120).trim();
-    if(!what)return send(400,{error:"Say what kind of business to look for."});
     if(!where)return send(400,{error:"Say which town or area to search."});
     const purpose=PURPOSES.includes(body.purpose)?body.purpose:PURPOSES[0];
     const count=Math.min(20,Math.max(5,+body.count||10));
@@ -92,7 +91,7 @@ module.exports=async(req,res)=>{
     const have=(Array.isArray(body.exclude)?body.exclude:[]).slice(0,150).map(n=>str(n,120)).filter(Boolean);
     const tools=[{type:"web_search_20260209",name:"web_search",max_uses:12},REPORT];
     const messages=[{role:"user",content:`Lodge: ${str(body.lodge,120)||"a Masonic lodge"}, near ${where}.
-Looking for: ${what}
+Looking for: ${what||"any kind of local business; pick the ones most likely to help, across a mix of kinds (restaurants, banks and credit unions, insurance and real estate offices, contractors, car dealers, funeral homes, and the like)"}
 They'd ask these businesses to be a: ${purpose}
 Find up to ${count} businesses.
 Already sponsors or prospects (leave these out): ${have.join("; ")||"none"}`}];
