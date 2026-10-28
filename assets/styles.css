@@ -1,13 +1,13 @@
 /* Palette (Justin, 2026-10-28), light only so Danish Cream is the main color on every device: Deep Navy #1E2B3E, Steel Blue #3A5270, Gold/Ochre #D4AF37, Muted White #E5E9EC, Danish Cream #F9F5EC as the page background.
    Layout: a pale masthead with the LodgeNet crest over a checkered-pavement band on every page, in the crest's slate blue and gold; Home, Features, Live demo and Pricing are separate pages sharing this sheet. */
 :root{
-  --bg:#f9f5ec; --surface:#fffdf8; --sunk:#e5e9ec; --line:#ddd6c6;
+  --bg:#f9f5ec; --surface:#f9f5ec; --sunk:#e5e9ec; --line:#ddd6c6;
   --fg:#1e2b3e; --muted:#5b6678;
   --blue:#3a5270; --blue-ink:#ffffff; --blue-soft:#e5e9ec; --link:#3a5270;
   --gold:#7f6514; --gold-soft:#f3e7c4; --gilt:#d4af37;
   --ok:#2c7a4b; --ok-soft:#e1f1e7; --warn:#9a6a09; --warn-soft:#fbefd3;
   --tile-a:#3a5270; --tile-b:#f9f5ec;
-  --top-bg:#f9f5ec; --top-fg:#1e2b3e; --top-muted:#4d5a6d; --top-line:#ddd6c6; --top-card:#fffdf8;
+  --top-bg:#f9f5ec; --top-fg:#1e2b3e; --top-muted:#4d5a6d; --top-line:#ddd6c6; --top-card:#f9f5ec;
   --display:"Montserrat", "Gill Sans", "Trebuchet MS", system-ui, sans-serif;
   --body:"Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
   --mono:"IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
@@ -633,3 +633,33 @@ select:not(.paper *):focus-visible{outline:2px solid var(--gilt);outline-offset:
 .sf-f.ai select{box-shadow:none;color:var(--gold)}
 .btn.line,.btn.ghost{background:none;border-color:transparent;padding-inline:0;color:var(--fg);font-weight:500}
 .btn.line:hover,.btn.ghost:hover{filter:none;color:var(--blue);text-decoration:underline;text-decoration-color:var(--gilt);text-underline-offset:4px}
+
+/* text fields match the dropdowns (Justin, 2026-10-28): no white fill and no box, just a hairline to write on; the minutes paper keeps its own fill */
+input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]):not([type=file]):not(.paper *),textarea:not(.paper *){background:transparent;border:0;border-bottom:1px solid var(--line);border-radius:0;box-shadow:none;padding-inline:0}
+textarea:not(.paper *){border:0;border-left:1px solid var(--line);padding-left:10px}
+input:not(.paper *):focus,textarea:not(.paper *):focus{outline:none;border-color:var(--gilt)}
+.pre{background:transparent;border:0;border-bottom:1px solid var(--line)}
+.pre > input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]):not([type=file]){border-bottom:0}
+.sf-f.ai input,.sf-f.ai textarea,.sf-f.ai .sf-row{box-shadow:none;border-color:var(--gold)}
+.pre span{background:none;border-right:0;padding-left:0}
+
+/* Pipelines › Find businesses: the AI business search */
+.biz-form{display:grid;gap:12px;padding-bottom:18px;margin-bottom:6px;border-bottom:1px solid var(--line)}
+.biz-msg{margin:0}
+.biz-table td{vertical-align:top}
+.biz-why{max-width:34em;font-size:13px;line-height:1.5}
+.biz-table a[href^="tel:"],.biz-table td.r{white-space:nowrap}
+.field select:not(.paper *){padding-block:9px}
+.biz-more{margin-top:6px}
+.biz-more summary{cursor:pointer;color:var(--blue);font-size:12px}
+.biz-sig{margin:8px 0;padding-left:18px}
+.biz-score{display:grid;grid-template-columns:auto auto;justify-content:start;gap:2px 14px;margin:8px 0;font-size:12px}
+.biz-score dt{color:var(--muted)}
+.biz-score dd{margin:0;font-family:var(--mono)}
+.biz-pitch{margin:8px 0;padding:2px 0 2px 12px;border-left:2px solid var(--gilt);font-style:italic}
+/* the remaining little boxes: the short form / write-up switch reads as two text choices, the dictation buttons as bare icons */
+.seg{border:0;gap:14px}
+.seg button{padding:4px 0;border-bottom:2px solid transparent}
+.seg button + button{border-left:0}
+.seg button[aria-pressed="true"]{background:none;color:var(--fg);border-bottom-color:var(--gilt)}
+.mic:not([aria-pressed="true"]){border-color:transparent;background:none}
