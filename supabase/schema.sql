@@ -133,3 +133,8 @@ begin
 end $$;
 revoke execute on function public.redeem_plan_code(uuid,text) from public, anon;
 grant execute on function public.redeem_plan_code(uuid,text) to authenticated;
+
+-- Lodge plan billing (api/billing.js keeps these in step with Stripe using the service role; the site can only read them)
+alter table public.lodges add column if not exists stripe_customer_id text;
+alter table public.lodges add column if not exists stripe_subscription_id text;
+alter table public.lodges add column if not exists billing_status text;   -- Stripe subscription status, null before Checkout

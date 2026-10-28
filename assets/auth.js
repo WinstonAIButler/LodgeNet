@@ -15,16 +15,17 @@
       let cfg=null;
       try{const r=await fetch("/api/config",{cache:"no-store"});if(r.ok)cfg=await r.json()}catch(e){}
       if(!cfg||!cfg.url||!cfg.key)return null;
+      window.LodgeNetAuth.billing=!!cfg.billing;
       if(!window.supabase)await loadScript("/assets/vendor/supabase.umd.min.js");
       return window.supabase.createClient(cfg.url,cfg.key);
     })().catch(()=>null);
     return clientP;
   }
   async function session(){const sb=await client();if(!sb)return null;const {data}=await sb.auth.getSession();return data.session}
-  /* [{role, lodge:{id,slug,name,number,city,state,plan,comped}}] for the signed-in user */
+  /* [{role, lodge:{id,slug,name,number,city,state,plan,comped,billing_status}}] for the signed-in user */
   async function myLodges(){
     const sb=await client(),s=await session();if(!sb||!s)return [];
-    const {data,error}=await sb.from("lodge_members").select("role,lodges(id,slug,name,number,city,state,plan,comped)").eq("user_id",s.user.id);
+    const {data,error}=await sb.from("lodge_members").select("role,lodges(id,slug,name,number,city,state,plan,comped,billing_status)").eq("user_id",s.user.id);
     if(error)throw error;
     return (data||[]).filter(r=>r.lodges).map(r=>({role:r.role,lodge:r.lodges}));
   }
