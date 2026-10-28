@@ -10,5 +10,6 @@ module.exports=(req,res)=>{
   res.setHeader("Cache-Control","no-store");
   /* billing: api/billing.js can run (it also needs a Stripe key, from Vercel or the owner's hub) */
   const billing=!!(e.SUPABASE_SERVICE_ROLE_KEY||e.SUPABASE_SECRET_KEY);
-  res.end(JSON.stringify(url&&key?{url,key,billing}:{}));
+  /* ai: api/minutes.js can have Claude fill in the minutes from a recorded meeting */
+  res.end(JSON.stringify(url&&key?{url,key,billing,ai:!!e.ANTHROPIC_API_KEY}:{}));
 };
