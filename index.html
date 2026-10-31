@@ -3,22 +3,103 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>LodgeNet</title>
-<meta name="description" content="LodgeNet runs the whole Masonic lodge from one dashboard: website, members, minutes you can speak, treasury, fundraisers, an AI sponsor search, merchandise and charities.">
+<title>LodgeNet · Masonic Lodge Management Software</title>
+<meta name="description" content="Masonic lodge management software. One dashboard runs the lodge website, member roster, minutes you can speak, the Treasurer's ledger, fundraisers, an AI sponsor search, merchandise and charities. Free to start.">
+<link rel="canonical" href="https://lodgenet.vercel.app/">
+<script type="application/ld+json">
+{
+ "@context": "https://schema.org",
+ "@graph": [
+  {
+   "@type": "Organization",
+   "@id": "https://lodgenet.vercel.app/#org",
+   "name": "LodgeNet",
+   "url": "https://lodgenet.vercel.app/",
+   "logo": "https://lodgenet.vercel.app/assets/brand/icon-192.png",
+   "description": "Masonic lodge management software: one dashboard for the lodge website, members, minutes, treasury, fundraisers, sponsors, merchandise and charities."
+  },
+  {
+   "@type": "WebSite",
+   "@id": "https://lodgenet.vercel.app/#site",
+   "name": "LodgeNet",
+   "url": "https://lodgenet.vercel.app/",
+   "publisher": {
+    "@id": "https://lodgenet.vercel.app/#org"
+   }
+  },
+  {
+   "@type": "SoftwareApplication",
+   "@id": "https://lodgenet.vercel.app/#app",
+   "name": "LodgeNet",
+   "applicationCategory": "BusinessApplication",
+   "applicationSubCategory": "Masonic lodge management",
+   "operatingSystem": "Web browser",
+   "url": "https://lodgenet.vercel.app/",
+   "image": "https://lodgenet.vercel.app/og-image.png",
+   "publisher": {
+    "@id": "https://lodgenet.vercel.app/#org"
+   },
+   "description": "One dashboard and one login for every lodge officer: a published lodge website, member roster and officer chairs, meeting minutes you can speak, the Treasurer's ledger, fundraisers, an AI sponsor search, a merchandise store and charity funds.",
+   "audience": {
+    "@type": "Audience",
+    "audienceType": "Masonic Blue Lodges, Districts, Scottish Rite Valleys and Grand Lodges"
+   },
+   "featureList": [
+    "Published lodge website",
+    "Member roster, Masonic titles and officer chairs",
+    "Meeting minutes by voice, with full write-up and PDF",
+    "Treasurer's ledger with dues and fund balances",
+    "Fundraisers with goals and donations",
+    "AI sponsor search by ZIP code and radius",
+    "Sponsor tracking",
+    "Merchandise store",
+    "Charity funds",
+    "Lodge calendar"
+   ],
+   "offers": [
+    {
+     "@type": "Offer",
+     "name": "Lodge Starter",
+     "price": "0",
+     "priceCurrency": "USD",
+     "url": "https://lodgenet.vercel.app/start?plan=starter"
+    },
+    {
+     "@type": "Offer",
+     "name": "Lodge Level",
+     "price": "49.99",
+     "priceCurrency": "USD",
+     "url": "https://lodgenet.vercel.app/start?plan=lodge",
+     "priceSpecification": {
+      "@type": "UnitPriceSpecification",
+      "price": "49.99",
+      "priceCurrency": "USD",
+      "billingDuration": "P1M",
+      "unitText": "month"
+     }
+    }
+   ]
+  }
+ ]
+}
+</script>
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="icon" type="image/png" href="/assets/brand/icon-192.png" sizes="192x192">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <meta name="theme-color" content="#f9f5ec">
 <meta property="og:site_name" content="LodgeNet">
 <meta property="og:type" content="website">
-<meta property="og:title" content="LodgeNet">
-<meta property="og:description" content="LodgeNet runs the whole Masonic lodge from one dashboard: website, members, minutes you can speak, treasury, fundraisers, an AI sponsor search, merchandise and charities.">
-<meta property="og:image" content="/og-image.png">
+<meta property="og:title" content="LodgeNet · Masonic Lodge Management Software">
+<meta property="og:description" content="Masonic lodge management software. One dashboard runs the lodge website, member roster, minutes you can speak, the Treasurer's ledger, fundraisers, an AI sponsor search, merchandise and charities. Free to start.">
+<meta property="og:url" content="https://lodgenet.vercel.app/">
+<meta property="og:image" content="https://lodgenet.vercel.app/og-image.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="LodgeNet crest: square and compasses with a G over a checkered floor, in slate blue and gold">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:image" content="/og-image.png">
+<meta name="twitter:title" content="LodgeNet · Masonic Lodge Management Software">
+<meta name="twitter:description" content="Masonic lodge management software. One dashboard runs the lodge website, member roster, minutes you can speak, the Treasurer's ledger, fundraisers, an AI sponsor search, merchandise and charities. Free to start.">
+<meta name="twitter:image" content="https://lodgenet.vercel.app/og-image.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <link rel="stylesheet" href="/assets/styles.css">
@@ -26,6 +107,7 @@
 <style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
 </head>
 <body>
+<a class="skip" href="#main">Skip to content</a>
 <header class="top">
   <div class="wrap">
     <nav class="nav" aria-label="Main">
@@ -48,19 +130,19 @@
           <a class="btn ghost" href="/demo">Open the live demo</a>
         </div>
       </div>
-      <aside class="hero-sum" aria-label="What it costs" data-value-sum>
+      <div class="hero-sum" role="group" aria-label="What it costs" data-value-sum>
         <span class="eyebrow">What it would cost separately</span>
         <div class="line strike"><span><span data-v="count">9</span> standalone tools</span><b><span data-v="them">$248</span><small>/mo</small></b></div>
         <div class="line ours"><span>LodgeNet, Lodge Level</span><b><span data-v="ours">$49.99</span><small>/mo</small></b></div>
         <div class="save">About <span data-v="save">$2,380</span> back in the lodge's treasury every year</div>
         <a href="#value">See the comparison →</a>
-      </aside>
+      </div>
     </div>
   </div>
   <div class="pavement" aria-hidden="true"></div>
 </header>
 
-<main>
+<main id="main">
   <div class="wrap">
     <div class="facts">
       <div><b>10</b><span>sections in one lodge dashboard</span></div>
@@ -178,9 +260,9 @@
     </div>
   </section>
 </main>
-<section class="cta-band">
+<section class="cta-band" aria-labelledby="cta-h">
   <div class="wrap">
-    <div><h2>See it working with a sample lodge</h2><p>Build a lodge site, seat the officers, speak a set of minutes and sell a shirt in a few minutes.</p></div>
+    <div><h2 id="cta-h">See it working with a sample lodge</h2><p>Build a lodge site, seat the officers, speak a set of minutes and sell a shirt in a few minutes.</p></div>
     <a class="btn gold" href="/demo">Open the live demo</a>
   </div>
 </section>

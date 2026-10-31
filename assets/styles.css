@@ -22,7 +22,10 @@ h1,h2,h3{text-wrap:balance;margin:0}
 p{margin:0}
 a{color:var(--link)}
 button,input,select,textarea{font:inherit;color:inherit}
-:focus-visible{outline:2px solid var(--gilt);outline-offset:2px}
+:focus-visible{outline:2px solid var(--fg);outline-offset:2px}
+.skip{position:absolute;left:16px;top:-60px;z-index:100;background:var(--fg);color:var(--bg);padding:10px 16px;font-weight:600;text-decoration:none}
+.skip:focus{top:8px}
+.visually-hidden{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
 .wrap{max-width:1120px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 .eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--gold)}
 .mono{font-family:var(--mono)}
@@ -147,7 +150,7 @@ section.band{padding-block:72px}
 .socials a{font-size:12px;font-weight:600;padding:3px 9px;border-radius:0;border:1px solid #e5e9ec;color:var(--site);text-decoration:none;background:#fff}
 .paybtns{display:flex;flex-wrap:wrap;gap:6px}
 .paybtn{border:0;border-radius:0;padding:7px 12px;font-size:13px;font-weight:700;cursor:pointer;color:#fff}
-.paybtn.paypal{background:#003087}.paybtn.venmo{background:#008cff}.paybtn.cashapp{background:#00b33c;color:#06240f}
+.paybtn.paypal{background:#003087}.paybtn.venmo{background:#0070cc}.paybtn.cashapp{background:#00b33c;color:#06240f}
 .paybtn:disabled{opacity:.4;cursor:not-allowed}
 .paylink{font-family:var(--mono);font-size:12px;word-break:break-all}
 
@@ -628,7 +631,7 @@ body.app{background:var(--bg)}
 /* dropdowns read as plain text on the page color with only a chevron, and outline buttons as plain text (Justin, 2026-10-28); the minutes paper keeps its own fill */
 select:not(.paper *){-webkit-appearance:none;appearance:none;background:transparent url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%233a5270' stroke-width='1.6'/%3E%3C/svg%3E") no-repeat right 2px center/11px 8px;border:0;border-radius:0;box-shadow:none;padding:4px 20px 4px 0;color:var(--fg);cursor:pointer;width:auto;max-width:100%}
 select:not(.paper *):hover{color:var(--blue)}
-select:not(.paper *):focus-visible{outline:2px solid var(--gilt);outline-offset:2px}
+select:not(.paper *):focus-visible{outline:2px solid var(--fg);outline-offset:2px}
 .roster select.dues.ok,.roster select.dues.warn{background-color:transparent}
 .sf-f.ai select{box-shadow:none;color:var(--gold)}
 .btn.line,.btn.ghost{background:none;border-color:transparent;padding-inline:0;color:var(--fg);font-weight:500}
