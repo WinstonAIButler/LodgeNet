@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /owner
+Disallow: /lodge
+Disallow: /lodges/
+Disallow: /api/
+
+Sitemap: https://lodgenet.vercel.app/sitemap.xml

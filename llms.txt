@@ -1,0 +1,31 @@
+# LodgeNet
+
+> LodgeNet is Masonic lodge management software. One web dashboard, with a login for every officer, runs a lodge's website, member roster, meeting minutes, Treasurer's ledger, fundraisers, sponsor search, merchandise store and charity funds. It is built for Blue Lodges, Districts, Scottish Rite Valleys and Grand Lodges.
+
+LodgeNet records lodge business only. There is nowhere to store ritual or degree work, and recorded meetings keep no audio. Store sales, dues and donations are paid straight into the lodge's own PayPal, Venmo or Cash App; LodgeNet never holds the money.
+
+## What the dashboard does
+
+- Website: a published lodge website filled in from the lodge's name, number, Grand Lodge and meeting night, with officers, calendar, store and a "Become a Mason" page, on a lodgenet.org address or the lodge's own domain.
+- Members: roster with each brother's degree, Masonic title (B., WB., RWB.) and dues, plus officer chairs that pre-fill every set of minutes.
+- Communications: minutes by voice (talk to type, or record the business portion and Claude fills in the short form for the Secretary to check), with a full write-up and PDF in the lodge's Stated Communication wording; calendar and announcements.
+- Treasury: one ledger for dues, donations and bills, with a balance for every fund.
+- Fundraiser: fundraisers with a goal, tied to a charity, with donations logged as they come in.
+- Pipelines: an AI sponsor search that finds local businesses by ZIP code and radius, scores each 0 to 100 on how likely it is to sponsor a lodge, shows the evidence and drafts the ask.
+- Sponsors: Gold, Silver, Bronze and in-kind sponsors with yearly giving and renewal dates.
+- Merchandise: a store for shirts, pins, caps and coins, with paid orders posted to Treasury.
+- Charities: each cause becomes a fund in Treasury, a fundraiser choice and a store option.
+
+## Pricing
+
+- Lodge Starter: free. Website builder in preview, calendar, members and officer chairs, minutes, 2 officer logins.
+- Lodge Level: $49.99 per month, billed by card through Stripe and cancellable any time. Adds publishing, the store, fundraisers, payments to the lodge's own accounts and unlimited officer logins.
+- District, Valley and Grand Lodge levels are also offered; see the pricing page.
+
+## Pages
+
+- [Home](https://lodgenet.vercel.app/): overview and value comparison
+- [Features](https://lodgenet.vercel.app/features): every dashboard section in detail
+- [Pricing](https://lodgenet.vercel.app/pricing): plans and common questions from lodge officers
+- [Live demo](https://lodgenet.vercel.app/demo): try the dashboard with a sample lodge
+- [Start your lodge](https://lodgenet.vercel.app/start): create an account
