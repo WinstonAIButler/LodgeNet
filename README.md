@@ -62,7 +62,7 @@ Run `npx serve .` from the repo root (it also serves clean URLs). Opening the fi
 
 The page calls `api/jarvis.mjs`; the engine is `api/_jarvis-core.mjs`, an identical copy in every Joslin Enterprises repo, so change it there and copy it across. Set these in Vercel → Settings → Environment Variables, then redeploy:
 
-- `JARVIS_ACCESS_CODE` (required): the passphrase the page asks for. Jarvis stays locked until it's set.
+- `JARVIS_ACCESS_CODE` (optional): leave it empty and Jarvis opens for anyone with the link; set it to require a passphrase.
 - `ANTHROPIC_API_KEY`: Claude, for briefings and questions.
 - `JARVIS_STRIPE_KEY`: a restricted Stripe key with Read on Balance, Charges, Subscriptions and Invoices. Without it, Jarvis reads with the same key as billing (`STRIPE_SECRET_KEY`, or the one saved in the owner's hub).
 - `GITHUB_TOKEN`: a fine-grained token with read-only Contents, Pull requests and Deployments on this repo.
