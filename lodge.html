@@ -115,13 +115,6 @@
                 <div class="field"><label for="f-yt">YouTube</label><div class="pre"><span>youtube.com/@</span><input id="f-yt" value=""></div></div>
                 <div class="field"><label for="f-tt">TikTok</label><div class="pre"><span>tiktok.com/@</span><input id="f-tt" value=""></div></div>
               </details>
-              <details class="group" open>
-                <summary>Payments</summary>
-                <p class="hint">Store sales, dues and fundraiser donations are paid straight to these lodge accounts.</p>
-                <div class="field"><label for="f-pp">PayPal</label><div class="pre"><span>paypal.me/</span><input id="f-pp" value=""></div></div>
-                <div class="field"><label for="f-venmo">Venmo</label><div class="pre"><span>@</span><input id="f-venmo" value=""></div></div>
-                <div class="field"><label for="f-cash">Cash App</label><div class="pre"><span>$</span><input id="f-cash" value=""></div></div>
-              </details>
               <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
                 <button class="btn" type="submit">Publish site</button>
                 <span class="hint" id="site-status">Draft · last saved just now</span>
@@ -299,9 +292,22 @@
             <a class="btn line sm" href="/login?account" style="justify-self:start">Invite officers and brethren</a>
             <button type="button" class="link-btn" id="set-out">Sign out</button>
           </div>
+          <div class="card pay-card">
+            <h4>Payment options</h4>
+            <p class="hint">Where brethren and buyers send money. Each one you fill in becomes a pay button on the store order form, fundraiser donations and the lodge website. PayPal, Venmo and Cash App buttons open the app with the amount filled in.</p>
+            <form id="pay-form" autocomplete="off">
+              <div class="field"><label for="f-cash">Cash App</label><div class="pre"><span>$</span><input id="f-cash" value="" placeholder="cashtag"></div><a class="pay-test" data-test="cashapp" target="_blank" rel="noopener" hidden></a></div>
+              <div class="field"><label for="f-pp">PayPal</label><div class="pre"><span>paypal.me/</span><input id="f-pp" value="" placeholder="name"></div><a class="pay-test" data-test="paypal" target="_blank" rel="noopener" hidden></a></div>
+              <div class="field"><label for="f-venmo">Venmo</label><div class="pre"><span>@</span><input id="f-venmo" value="" placeholder="username"></div><a class="pay-test" data-test="venmo" target="_blank" rel="noopener" hidden></a></div>
+              <div class="field"><label for="f-zelle">Zelle</label><input id="f-zelle" value="" placeholder="Email or phone the lodge's bank account uses"></div>
+              <div class="field"><label for="f-link">Other online payment link</label><input id="f-link" type="url" value="" placeholder="https://square.link/… or a Stripe, Givebutter or bank pay link"><a class="pay-test" data-test="link" target="_blank" rel="noopener" hidden></a></div>
+              <div class="field"><label for="f-link-label">Button name for that link</label><input id="f-link-label" value="" placeholder="Square, Stripe, Pay online…"></div>
+              <div class="field wide"><label for="f-check">Checks</label><input id="f-check" value="" placeholder="Payable to Murrells Inlet Lodge No. 368, mail to PO Box …"></div>
+            </form>
+          </div>
           <div class="card">
             <h4>Lodge details</h4>
-            <p class="hint">Name, number, Grand Lodge, meeting schedule, lodge email, social media and payment accounts are on the Website tab.</p>
+            <p class="hint">Name, number, Grand Lodge, meeting schedule, lodge email and social media are on the Website tab.</p>
             <a class="btn line sm" href="#website" style="justify-self:start">Edit lodge details</a>
           </div>
           <div class="card data-card">

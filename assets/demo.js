@@ -67,16 +67,39 @@
     document.getElementById("f-week").value=r.week;document.getElementById("f-day").value=r.day;document.getElementById("f-time").value=r.time;};
   Object.entries(CFG.form||{}).forEach(([id,v])=>{const el=document.getElementById(id);if(el)el.value=v});
   applySchedule();document.getElementById("f-sched").value=schedText();document.getElementById("sched-text").textContent=schedText();
-  const handle=id=>$(id).value.trim().replace(/^[@$]/,"").replace(/^https?:\/\/\S+\//,"");
+  const fieldVal=id=>{const el=$(id);return el?el.value.trim():""};
+  const handle=id=>fieldVal(id).replace(/^[@$]/,"").replace(/^https?:\/\/\S+\//,"");
 
-  /* ---------- payment links ---------- */
+  /* ---------- payment links ----------
+     The lodge's payment options live in Settings (on the demo page, the Website tab). Each one filled in becomes a pay button:
+     PayPal, Venmo and Cash App open with the amount filled in, the "other" link (Square, Stripe…) opens as given,
+     and Zelle and checks show the buyer where to send the money. */
+  const safeUrl=u=>/^https:\/\/[^\s"<>]+$/i.test(u)?u:"";
   const PAY=[
-    {k:"paypal",label:"PayPal",field:"#f-pp",url:(u,a,n)=>`https://paypal.me/${encodeURIComponent(u)}/${a.toFixed(2)}USD`},
-    {k:"venmo",label:"Venmo",field:"#f-venmo",url:(u,a,n)=>`https://venmo.com/?txn=pay&recipients=${encodeURIComponent(u)}&amount=${a.toFixed(2)}&note=${encodeURIComponent(n)}`},
-    {k:"cashapp",label:"Cash App",field:"#f-cash",url:(u,a,n)=>`https://cash.app/$${encodeURIComponent(u)}/${a.toFixed(2)}`}
+    {k:"cashapp",label:"Cash App",field:"#f-cash",url:(u,a,n)=>`https://cash.app/$${encodeURIComponent(u)}/${a.toFixed(2)}`,home:u=>`https://cash.app/$${encodeURIComponent(u)}`},
+    {k:"paypal",label:"PayPal",field:"#f-pp",url:(u,a,n)=>`https://paypal.me/${encodeURIComponent(u)}/${a.toFixed(2)}USD`,home:u=>`https://paypal.me/${encodeURIComponent(u)}`},
+    {k:"venmo",label:"Venmo",field:"#f-venmo",url:(u,a,n)=>`https://venmo.com/?txn=pay&recipients=${encodeURIComponent(u)}&amount=${a.toFixed(2)}&note=${encodeURIComponent(n)}`,home:u=>`https://venmo.com/u/${encodeURIComponent(u)}`},
+    {k:"zelle",label:"Zelle",field:"#f-zelle",raw:true,note:(u,a)=>`Send ${money(a)} with Zelle to ${u}`},
+    {k:"link",label:"Pay online",field:"#f-link",raw:true,url:u=>safeUrl(u),home:u=>safeUrl(u)},
+    {k:"check",label:"Check by mail",field:"#f-check",raw:true,note:(u,a)=>`Mail a check for ${money(a)}: ${u}`}
   ];
-  const payButtons=(attr)=>PAY.map(p=>`<button type="button" class="paybtn ${p.k}" ${attr}="${p.k}" ${handle(p.field)?"":"disabled title=\"Add this account on the Website tab\""}>${p.label}</button>`).join("");
-  const payLink=(k,amt,note)=>{const p=PAY.find(x=>x.k===k);return p.url(handle(p.field),amt,note)};
+  const payVal=p=>p.raw?fieldVal(p.field):handle(p.field);
+  const payLabel=p=>p.k==="link"&&fieldVal("#f-link-label")?fieldVal("#f-link-label"):p.label;
+  const payOn=p=>p.k==="link"?!!safeUrl(fieldVal(p.field)):!!payVal(p);
+  const payButtons=(attr)=>{
+    const on=PAY.filter(payOn);
+    return on.length?on.map(p=>`<button type="button" class="paybtn ${p.k}" ${attr}="${p.k}">${esc(payLabel(p))}</button>`).join("")
+      :`<span class="hint">Add the lodge's payment options in ${$("#pay-form")?"Settings":"the Website tab"}.</span>`;
+  };
+  const payLink=(k,amt,note)=>{const p=PAY.find(x=>x.k===k);return p&&p.url?p.url(payVal(p),amt,note):""};
+  /* what the buyer is shown for a payment: a link that opens the app, or where to send the money */
+  const payHow=(k,amt,note)=>{const p=PAY.find(x=>x.k===k);if(!p)return "";
+    if(p.note)return esc(p.note(payVal(p),amt));
+    const url=payLink(k,amt,note);return url?`<a class="paylink" href="${esc(url)}" target="_blank" rel="noopener">${esc(url)}</a>`:""};
+  function renderPayTests(){
+    document.querySelectorAll("[data-test]").forEach(a=>{const p=PAY.find(x=>x.k===a.dataset.test),u=payVal(p),url=u&&p.home(u);
+      a.hidden=!url;if(url){a.href=url;a.textContent="Test link: "+url.replace(/^https:\/\//,"")}});
+  }
 
   /* ---------- tabs ---------- */
   /* each tab list switches only its own panels (the dashboard has one under Communications and one under Merchandise) */
@@ -215,12 +238,14 @@
     const socials=[["Facebook","#f-fb","https://facebook.com/"],["Instagram","#f-ig","https://instagram.com/"],["X","#f-x","https://x.com/"],["YouTube","#f-yt","https://youtube.com/@"],["TikTok","#f-tt","https://tiktok.com/@"]]
       .filter(([,f])=>handle(f)).map(([n,f,base])=>`<a href="${esc(base+handle(f))}" target="_blank" rel="noopener">${n}</a>`).join("");
     $("#pv-social").innerHTML=socials||'<span style="color:#5a6276">No social accounts linked</span>';
-    $("#pv-pay").innerHTML=PAY.some(p=>handle(p.field))?PAY.filter(p=>handle(p.field)).map(p=>`<span class="paybtn ${p.k}">${p.label}</span>`).join(""):'<span style="color:#5a6276">No payment accounts linked</span>';
+    $("#pv-pay").innerHTML=PAY.some(payOn)?PAY.filter(payOn).map(p=>{const h=p.home&&p.home(payVal(p));
+      return h?`<a class="paybtn ${p.k}" href="${esc(h)}" target="_blank" rel="noopener">${esc(payLabel(p))}</a>`:`<span class="paybtn ${p.k}" title="${esc(p.note(payVal(p),0).replace(/ (for )?\$0\.00:?/,""))}">${esc(payLabel(p))}</span>`}).join(""):'<span style="color:#5a6276">No payment options added yet</span>';
+    renderPayTests();
     $("#checkout").innerHTML=payButtons("data-pay")+($("#o-name")?'<button type="button" class="paybtn cash" data-pay="cash">Cash or check</button>':"");
     if(selected&&selected.k==="fund")renderDetail();
     $("#pv-events").innerHTML=up.map(e=>`<li><b>${fmt(parse(e.d),{month:"short",day:"numeric"})}</b> · ${esc(e.t)}</li>`).join("");
   }
-  ["#f-name","#f-num","#f-jur","#f-gl","#f-city","#f-sched","#f-email","#f-fb","#f-ig","#f-x","#f-yt","#f-tt","#f-pp","#f-venmo","#f-cash"].forEach(s=>$(s).addEventListener("input",()=>{renderSite();renderMinutes();$("#site-status").textContent="Draft · unpublished changes"}));
+  ["#f-name","#f-num","#f-jur","#f-gl","#f-city","#f-sched","#f-email","#f-fb","#f-ig","#f-x","#f-yt","#f-tt","#f-pp","#f-venmo","#f-cash","#f-zelle","#f-link","#f-link-label","#f-check"].filter(s=>$(s)).forEach(s=>$(s).addEventListener("input",()=>{renderSite();renderMinutes();$("#site-status").textContent="Draft · unpublished changes"}));
   $("#swatches").addEventListener("click",e=>{const b=e.target.closest(".swatch");if(!b)return;siteColor=b.dataset.c;document.querySelectorAll(".swatch").forEach(s=>s.setAttribute("aria-pressed",s===b));renderSite();$("#site-status").textContent="Draft · unpublished changes"});
   ["#f-state","#f-family"].forEach(id=>$(id).addEventListener("change",()=>{fillGrandLodge();renderSite();renderMinutes();$("#site-status").textContent="Draft · unpublished changes"}));
   ["#f-week","#f-day","#f-time"].forEach(id=>$(id).addEventListener("change",()=>{
@@ -327,7 +352,7 @@
     m.hidden=false;m.className="toast";
     m.innerHTML=b.dataset.pay==="cash"
       ?`Order #${no} saved for ${esc(o.name)}: ${money(total)}, paid in cash or by check. Mark it paid on the Orders tab when the money is in.`
-      :`Order #${no} saved for ${esc(o.name)}: ${money(total)}. ${esc(label)} payment link for the buyer:<br><span class="paylink">${esc(payLink(b.dataset.pay,total,"Lodge store order #"+no))}</span>`;
+      :`Order #${no} saved for ${esc(o.name)}: ${money(total)}. How the buyer pays with ${esc(label)}:<br>${payHow(b.dataset.pay,total,"Lodge store order #"+no)}`;
     cart.length=0;renderCart();
     ["#o-name","#o-contact","#o-addr"].forEach(id=>{const el=$(id);if(el)el.value=""});
     if(window.LodgeNetDash&&LodgeNetDash.orderPlaced)LodgeNetDash.orderPlaced();
@@ -387,8 +412,8 @@
     if(r)r.onclick=()=>{e.rsvp++;renderDetail()};
     const dp=$("#don-pay");
     if(dp)dp.onclick=ev=>{const b=ev.target.closest("[data-don]");if(!b||b.disabled)return;
-      const url=payLink(b.dataset.don,25,e.t);e.raised+=25;renderDetail();
-      const dm=$("#don-msg");dm.hidden=false;dm.innerHTML=`$25 recorded (demo). On the live site, ${esc(b.textContent)} opens:<br><span class="paylink">${esc(url)}</span>`};
+      const how=payHow(b.dataset.don,25,e.t);e.raised+=25;renderDetail();
+      const dm=$("#don-msg");dm.hidden=false;dm.innerHTML=`$25 recorded. ${esc(b.textContent)}:<br>${how}`};
   }
   $("#cal").addEventListener("click",ev=>{const b=ev.target.closest(".ev");if(!b)return;selected=events[+b.dataset.i];renderDetail()});
   $("#cal-prev").onclick=()=>{view=new Date(view.getFullYear(),view.getMonth()-1,1);renderCal()};
@@ -889,7 +914,7 @@
 
   /* ---------- saving ---------- */
   function snapshot(){
-    const form={};document.querySelectorAll("#site-form input[id],#site-form select[id]").forEach(el=>form[el.id]=el.value);
+    const form={};document.querySelectorAll("#site-form input[id],#site-form select[id],#pay-form input[id]").forEach(el=>form[el.id]=el.value);
     return {app:"LodgeNet",version:1,page:STORE_KEY,savedAt:new Date().toISOString(),form,color:siteColor,
       membersFull:members,officers,events,minutes,minuteSections,gmail,nextStated,products,orders,...(plan?{plan}:{}),
       ...(window.LodgeNetDash?window.LodgeNetDash.snapshot():{})};
