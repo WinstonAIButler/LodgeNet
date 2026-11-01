@@ -37,7 +37,9 @@ Lodges sign in with Supabase (Auth for email and password, Postgres for the lodg
 - Billing: `api/billing.js` sends an owner to Stripe Checkout for the $19 / month Lodge plan, opens the Stripe Customer Portal for "Manage billing", and on return reads the subscription back from Stripe into `lodges.billing_status` (no webhook). It needs `SUPABASE_SERVICE_ROLE_KEY` and a Stripe secret key: `STRIPE_SECRET_KEY` from Vercel's Stripe integration, or the one saved in the owner's hub. Save the Customer Portal settings once in the Stripe Dashboard before using Manage billing. Comped lodges never see Subscribe.
 - Saves replace the whole document, so if two officers edit at the same moment the later save wins.
 
-Setup: create a Supabase project (or add the Supabase integration in Vercel, which sets the variables), run `supabase/schema.sql` then the lodge's SQL in the SQL editor, and under Authentication → URL Configuration set the Site URL to the live domain and add `https://*.vercel.app/**` as a redirect URL for previews.
+Setup: create a Supabase project (or add the Supabase integration in Vercel, which sets the variables), run `supabase/schema.sql` then the lodge's SQL in the SQL editor, and under Authentication → URL Configuration set the Site URL to the live domain (`https://www.lodgenet.app`), add `https://www.lodgenet.app/**` and `https://lodgenet.app/**` as redirect URLs, and add `https://*.vercel.app/**` for previews.
+
+Domain: the live site is `https://www.lodgenet.app` (`lodgenet.app` redirects to it, and `vercel.json` sends `lodgenet.vercel.app` there too). Canonicals, JSON-LD, `sitemap.xml`, `robots.txt` and `llms.txt` hard-code it; to move domains run `scripts/set-domain.sh https://new.domain` and update the host redirect in `vercel.json`. Stripe return URLs and Supabase email links use the visiting host, so they follow automatically.
 
 ## Owner's hub
 

@@ -14,7 +14,7 @@ const SB_URL=e.SUPABASE_URL||e.NEXT_PUBLIC_SUPABASE_URL||PUBLIC.url;
 const SB_ANON=e.SUPABASE_ANON_KEY||e.NEXT_PUBLIC_SUPABASE_ANON_KEY||e.SUPABASE_PUBLISHABLE_KEY||e.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY||(SB_URL===PUBLIC.url?PUBLIC.key:"");
 const MODEL="claude-opus-5-5";
 const MAX_PAGES=6,MAX_HTML=1500000,MAX_TEXT_PER_PAGE=30000,MAX_IMG=1500000,MAX_IMAGES=8;
-const UA="Mozilla/5.0 (compatible; LodgeNetImporter/1.0; +https://lodgenet.vercel.app)";
+const UA="Mozilla/5.0 (compatible; LodgeNetImporter/1.0; +https://www.lodgenet.app)";
 
 async function sb(path,token){
   const r=await fetch(SB_URL+path,{headers:{apikey:SB_ANON,Authorization:"Bearer "+token}});

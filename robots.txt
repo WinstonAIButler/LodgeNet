@@ -5,4 +5,4 @@ Disallow: /lodge
 Disallow: /lodges/
 Disallow: /api/
 
-Sitemap: https://lodgenet.vercel.app/sitemap.xml
+Sitemap: https://www.lodgenet.app/sitemap.xml
