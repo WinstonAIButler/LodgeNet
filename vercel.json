@@ -1,5 +1,18 @@
 {
   "cleanUrls": true,
+  "redirects": [
+    {
+      "source": "/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "lodgenet.vercel.app"
+        }
+      ],
+      "destination": "https://www.lodgenet.app/:path*",
+      "permanent": true
+    }
+  ],
   "rewrites": [
     {
       "source": "/lodges/:slug",

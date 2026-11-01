@@ -24,8 +24,8 @@ LodgeNet records lodge business only. There is nowhere to store ritual or degree
 
 ## Pages
 
-- [Home](https://lodgenet.vercel.app/): overview and value comparison
-- [Features](https://lodgenet.vercel.app/features): every dashboard section in detail
-- [Pricing](https://lodgenet.vercel.app/pricing): plans and common questions from lodge officers
-- [Live demo](https://lodgenet.vercel.app/demo): try the dashboard with a sample lodge
-- [Start your lodge](https://lodgenet.vercel.app/start): create an account
+- [Home](https://www.lodgenet.app/): overview and value comparison
+- [Features](https://www.lodgenet.app/features): every dashboard section in detail
+- [Pricing](https://www.lodgenet.app/pricing): plans and common questions from lodge officers
+- [Live demo](https://www.lodgenet.app/demo): try the dashboard with a sample lodge
+- [Start your lodge](https://www.lodgenet.app/start): create an account
