@@ -124,11 +124,23 @@
       <p class="hint">Officers can change the dashboard; members can read it. Invite a brother by email, then let them know: they choose Create account here with that email and join the lodge once they confirm it.</p>
       <table class="roll"><tbody>${rows.join("")}</tbody></table>
       <form class="invite" novalidate>
-        <div class="field"><label>Invite by email<input type="email" name="email" required placeholder="brother@example.com"></label></div>
-        <div class="field"><label>Role<select name="role"><option value="officer">Officer</option><option value="member" selected>Member</option></select></label></div>
+        <div class="field"><label><span>Invite by email</span><input type="email" name="email" required placeholder="brother@example.com"></label></div>
+        <div class="field"><label><span>Role</span><select name="role"><option value="officer">Officer</option><option value="member" selected>Member</option></select></label></div>
         <button class="btn sm" type="submit">Invite</button>
       </form>
-      <p class="auth-msg" role="status" aria-live="polite"></p>`;
+      <p class="auth-msg" role="status" aria-live="polite"></p>
+      <details class="handover">
+        <summary><b>Hand over this lodge</b> <span class="hint">for when a new Worshipful Master or Secretary takes over the account</span></summary>
+        <p class="hint">The new account owner can invite and remove brethren, change roles, manage billing and hand the lodge on next year. The lodge's dashboard, roll and subscription stay as they are.</p>
+        <form class="invite ho-form" novalidate>
+          <div class="field"><label><span>New account owner's email</span><input type="email" name="email" required list="ho-list-${esc(lodgeId)}" placeholder="worshipfulmaster@example.com"></label>
+            <datalist id="ho-list-${esc(lodgeId)}">${m.data.filter(x=>x.user_id!==myId&&x.email).map(x=>`<option value="${esc(x.email)}">`).join("")}</datalist></div>
+          <div class="field"><label><span>Then you become</span><select name="step"><option value="officer" selected>Officer</option><option value="member">Member</option><option value="remove">Off the roll</option></select></label></div>
+          <button class="btn sm" type="submit">Hand over</button>
+        </form>
+        <p class="hint">If they aren't on the roll yet, they get an owner invite and you stay the account owner until they create their account with that email.</p>
+        <p class="auth-msg ho-msg" role="status" aria-live="polite"></p>
+      </details>`;
     const out=box.querySelector(".auth-msg"),again=()=>renderRoll(lodgeId,myId);
     const done=(r,ok)=>{if(r.error)msg(out,r.error.message,true);else again().then(()=>msg(box.querySelector(".auth-msg"),ok))};
     box.querySelectorAll("select[data-uid]").forEach(s=>s.addEventListener("change",async()=>
@@ -144,6 +156,18 @@
       const f=e.target,email=f.email.value.trim().toLowerCase();
       if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))return msg(out,"Enter the brother's email address.",true);
       done(await sb.from("lodge_invites").upsert({lodge_id:lodgeId,email,role:f.role.value}),`Invited ${email}. Let them know to create an account at ${location.host}/login.`);
+    });
+    /* hand the account to the next Worshipful Master: hand_over_lodge() in supabase/handover.sql */
+    box.querySelector(".ho-form").addEventListener("submit",async e=>{
+      e.preventDefault();
+      const f=e.target,email=f.email.value.trim().toLowerCase(),step=f.step.value,hout=box.querySelector(".ho-msg");
+      if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))return msg(hout,"Enter the new account owner's email address.",true);
+      const you={officer:"an officer",member:"a member",remove:"off the roll"}[step];
+      if(!confirm(`Hand this lodge to ${email}? They become the account owner and you become ${you}${step==="remove"?"":" on this lodge"}.`))return;
+      const {data,error}=await sb.rpc("hand_over_lodge",{lid:lodgeId,new_email:email,step_down:step});
+      if(error)return msg(hout,/function .*hand_over_lodge|Could not find the function/i.test(error.message)?"Handing over isn't switched on yet. The LodgeNet owner needs to run supabase/handover.sql.":error.message,true);
+      if(data==="invited"){await again();msg(box.querySelector(".handover").querySelector(".ho-msg"),`Sent ${email} an owner invite. Once they create an account at ${location.host}/login with that email, they become the account owner and you become ${you}.`);box.querySelector(".handover").open=true;return}
+      box.innerHTML=`<h4>Lodge handed over</h4><p class="hint">${esc(email)} is now the account owner, and you're ${esc(you)}. Thank you for your service to the lodge.</p>`;
     });
   }
 

@@ -193,6 +193,12 @@
         <div class="field"><label><span>Role</span><select name="role">${roleOpts("member")}</select></label></div>
         <button class="btn sm" type="submit">Invite</button>
       </form>
+      <form class="invite d-handover" novalidate>
+        <div class="field"><label><span>Change account owner to</span><input type="email" name="email" required list="ho-${esc(l.id)}" placeholder="new.worshipful.master@example.com"></label>
+          <datalist id="ho-${esc(l.id)}">${roll.filter(r=>r.email&&r.role!=="owner").map(r=>`<option value="${esc(r.email)}">`).join("")}</datalist></div>
+        <div class="field"><label><span>Current owners become</span><select name="step"><option value="officer" selected>Officers</option><option value="member">Members</option><option value="remove">Off the roll</option><option value="keep">Stay owners too</option></select></label></div>
+        <button class="btn sm" type="submit">Change owner</button>
+      </form>
       <p class="auth-msg d-msg" role="status" aria-live="polite"></p>
       <div class="hub-danger-zone">
         <span class="hint">Deleting removes this lodge's dashboard, roll and invites for good. Accounts stay.${PAYING.concat(OWED).includes(l.billing_status)?" It has a Stripe subscription, so cancel that in Stripe first.":""}</span>
@@ -212,6 +218,11 @@
     box.querySelector(".d-invite").addEventListener("submit",e=>{e.preventDefault();const f=e.target,em=f.email.value.trim().toLowerCase();
       if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em))return msg(out,"Enter the brother's email address.",true);
       act("admin_invite",{lid:l.id,e:em,r:f.role.value},`Invited ${em}. They choose Create account at ${location.host}/login with that email.`)});
+    box.querySelector(".d-handover").addEventListener("submit",async e=>{e.preventDefault();const f=e.target,em=f.email.value.trim().toLowerCase();
+      if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em))return msg(out,"Enter the new account owner's email address.",true);
+      try{const r=await call("hand_over_lodge",{lid:l.id,new_email:em,step_down:f.step.value});await refresh();
+        msg($("#lodge-msg"),lodgeName(l)+": "+(r==="invited"?`${em} has an owner invite. The change happens when they create their account with that email.`:`${em} is now the account owner.`))}
+      catch(err){msg(out,/hand_over_lodge|Could not find the function/i.test(err.message)?"Run supabase/handover.sql in Supabase first.":err.message,true)}});
     box.querySelector(".d-delete").addEventListener("click",()=>askDelete({
       title:`Delete ${lodgeName(l)}?`,
       body:"This permanently deletes the lodge's dashboard (website, calendar, members, minutes, store), its roll and its invites. It can't be undone.",
