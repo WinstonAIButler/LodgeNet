@@ -57,7 +57,7 @@
     const live=D.sponsors.filter(s=>s.status==="Active");
     const soon=iso(new Date(NOW.getTime()+60*864e5));
     const F={
-      website:[["Website",CLOUD&&!CLOUD.paid?"Preview only":"Ready to publish",CLOUD&&!CLOUD.paid?"Publishing comes with a paid level":"Publish from the Website form"],
+      website:[["Website",CLOUD&&!CLOUD.paid?"Preview only":A.published?"Published":"Ready to publish",CLOUD&&!CLOUD.paid?"Publishing comes with a paid level":A.published&&A.CFG.slug?"/site/"+A.CFG.slug:"Publish from the Website form"],
         ["Plan",($("#plan-line").textContent.split(" · ")[0]||"Lodge Starter"),"Change it under Settings"],
         ["Upcoming events",up.length,"On the calendar"],["Officer chairs",`${seats} of ${A.SEATS.length}`,"Filled on Members"]],
       members:[["Members",act.length,"On the roll"],["Master Masons",act.filter(m=>m.deg==="Master Mason").length,"Eligible for office"],

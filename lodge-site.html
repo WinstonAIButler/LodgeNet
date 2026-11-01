@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Lodge website</title>
+<meta name="description" content="A Masonic lodge's website on LodgeNet: meetings, upcoming events, officers, contact and giving.">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&family=Public+Sans:wght@400;500;600;700&display=swap">
+<style>
+:root{--site:#1c3a75;--ink:#1d2433;--muted:#5a6276;--line:#e4dfd3;--bg:#fbf9f4;--card:#fff;--gold:#b8923a}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 "Public Sans",system-ui,sans-serif}
+a{color:var(--site)}
+h1,h2,h3{font-family:Montserrat,system-ui,sans-serif;line-height:1.2;margin:0}
+[hidden]{display:none!important}
+.wrap{max-width:1040px;margin:0 auto;padding:0 20px}
+.hero{background:var(--site);color:#fff;padding:56px 0 48px;text-align:center}
+.hero svg{width:64px;height:64px;color:var(--gold)}
+.hero h1{font-size:clamp(26px,5vw,40px);font-weight:800;margin:14px 0 8px}
+.hero p{margin:4px 0;opacity:.88}
+.nav{background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:2}
+.nav .wrap{display:flex;gap:22px;overflow-x:auto;padding-top:12px;padding-bottom:12px}
+.nav a{text-decoration:none;color:var(--ink);font-weight:600;font-size:14px;white-space:nowrap}
+main.wrap{padding-top:36px;padding-bottom:48px}
+.grid{display:grid;grid-template-columns:3fr 2fr;gap:24px}
+@media (max-width:760px){.grid{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:24px;margin-bottom:24px}
+.card h2{font-size:15px;letter-spacing:.08em;text-transform:uppercase;color:var(--site);margin-bottom:14px}
+.ev{list-style:none;margin:0;padding:0}
+.ev li{display:flex;gap:16px;padding:12px 0;border-top:1px solid var(--line)}
+.ev li:first-child{border-top:0;padding-top:0}
+.date{flex:0 0 54px;text-align:center;border-radius:8px;background:color-mix(in srgb,var(--site) 10%,#fff);padding:6px 0;font-family:Montserrat,sans-serif}
+.date b{display:block;font-size:20px;color:var(--site)}
+.date span{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.ev .t{font-weight:600}
+.ev .s{color:var(--muted);font-size:14px}
+.tag{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--gold);margin-left:6px}
+dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:8px 16px}
+dt{color:var(--muted);font-size:14px}
+dd{margin:0;font-weight:600}
+.links{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px}
+.btn{display:inline-block;padding:10px 16px;border-radius:8px;background:var(--site);color:#fff;text-decoration:none;font-weight:600;font-size:14px}
+.btn.line{background:#fff;color:var(--site);border:1px solid var(--site)}
+.note{color:var(--muted);font-size:14px;margin:8px 0 0}
+.empty{color:var(--muted)}
+footer{border-top:1px solid var(--line);padding:24px 0;color:var(--muted);font-size:13px;text-align:center}
+footer a{color:var(--muted)}
+.state{max-width:520px;margin:80px auto;text-align:center;padding:0 20px}
+.state h1{font-size:26px;margin-bottom:10px}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="sc" viewBox="0 0 64 64"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M32 6 12 46M32 6l20 40"/><path d="M8 34l24 22 24-22"/><path d="M20 46h24"/></g><text x="32" y="38" text-anchor="middle" font-family="Montserrat,sans-serif" font-weight="800" font-size="13" fill="currentColor">G</text></symbol></svg>
+<div id="state" class="state"><p class="empty">Loading the lodge's website…</p></div>
+<div id="site" hidden>
+  <header class="hero">
+    <div class="wrap">
+      <svg><use href="#sc"/></svg>
+      <h1 id="s-title"></h1>
+      <p id="s-place"></p>
+      <p id="s-sched"></p>
+    </div>
+  </header>
+  <nav class="nav" aria-label="Sections"><div class="wrap"><a href="#events">Upcoming</a><a href="#officers">Officers</a><a href="#contact">Contact</a><a href="#give" id="nav-give">Give</a></div></nav>
+  <main class="wrap">
+    <div class="grid">
+      <div>
+        <section class="card" id="events"><h2>Upcoming</h2><ul class="ev" id="s-events"></ul></section>
+      </div>
+      <div>
+        <section class="card" id="officers"><h2>Officers</h2><dl id="s-officers"></dl></section>
+        <section class="card" id="contact"><h2>Contact</h2><div id="s-contact"></div></section>
+        <section class="card" id="give"><h2>Give to the lodge</h2><div id="s-give"></div></section>
+      </div>
+    </div>
+  </main>
+  <footer><span id="s-foot"></span> · Website by <a href="/">LodgeNet</a></footer>
+</div>
+<script src="/assets/lodge-site.js"></script>
+</body>
+</html>

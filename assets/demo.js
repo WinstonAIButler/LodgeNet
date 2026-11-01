@@ -228,6 +228,7 @@
     const town=[$("#f-city").value.trim(),$("#f-state").value].filter(Boolean).join(", ");
     $("#pv-sub").textContent=[town,"Stated Communications "+$("#f-sched").value.trim()].filter(Boolean).join(" · ");
     $("#pv-url").textContent=(name==="Your Lodge"&&!num)?"yourlodge.lodgenet.org":(name.toLowerCase().replace(/lodge/g,"").replace(/[^a-z0-9]/g,"")+num)+".lodgenet.org";
+    if(CLOUD&&(window.LODGE||{}).slug)$("#pv-url").textContent=location.host+"/site/"+window.LODGE.slug;
     $("#cb-name").textContent=full;
     $("#pv-officers").innerHTML=["WM","SW","JW","TREAS","SEC"].map(k=>{const x=SEATS.find(s=>s.k===k),m=member(officers[k]);
       return `<dt>${x.t}</dt><dd>${m?esc(m.name+(m.pm&&k!=="WM"?", PM":"")):"Vacant"}</dd>`}).join("");
@@ -245,11 +246,11 @@
     if(selected&&selected.k==="fund")renderDetail();
     $("#pv-events").innerHTML=up.map(e=>`<li><b>${fmt(parse(e.d),{month:"short",day:"numeric"})}</b> · ${esc(e.t)}</li>`).join("");
   }
-  ["#f-name","#f-num","#f-jur","#f-gl","#f-city","#f-sched","#f-email","#f-fb","#f-ig","#f-x","#f-yt","#f-tt","#f-pp","#f-venmo","#f-cash","#f-zelle","#f-link","#f-link-label","#f-check"].filter(s=>$(s)).forEach(s=>$(s).addEventListener("input",()=>{renderSite();renderMinutes();$("#site-status").textContent="Draft · unpublished changes"}));
-  $("#swatches").addEventListener("click",e=>{const b=e.target.closest(".swatch");if(!b)return;siteColor=b.dataset.c;document.querySelectorAll(".swatch").forEach(s=>s.setAttribute("aria-pressed",s===b));renderSite();$("#site-status").textContent="Draft · unpublished changes"});
-  ["#f-state","#f-family"].forEach(id=>$(id).addEventListener("change",()=>{fillGrandLodge();renderSite();renderMinutes();$("#site-status").textContent="Draft · unpublished changes"}));
+  ["#f-name","#f-num","#f-jur","#f-gl","#f-city","#f-sched","#f-email","#f-fb","#f-ig","#f-x","#f-yt","#f-tt","#f-pp","#f-venmo","#f-cash","#f-zelle","#f-link","#f-link-label","#f-check"].filter(s=>$(s)).forEach(s=>$(s).addEventListener("input",()=>{renderSite();renderMinutes()}));
+  $("#swatches").addEventListener("click",e=>{const b=e.target.closest(".swatch");if(!b)return;siteColor=b.dataset.c;document.querySelectorAll(".swatch").forEach(s=>s.setAttribute("aria-pressed",s===b));renderSite()});
+  ["#f-state","#f-family"].forEach(id=>$(id).addEventListener("change",()=>{fillGrandLodge();renderSite();renderMinutes()}));
   ["#f-week","#f-day","#f-time"].forEach(id=>$(id).addEventListener("change",()=>{
-    $("#f-sched").value=schedText();$("#sched-text").textContent=schedText();regenStated();renderCal();renderMinutes();$("#site-status").textContent="Draft · unpublished changes"}));
+    $("#f-sched").value=schedText();$("#sched-text").textContent=schedText();regenStated();renderCal();renderMinutes()}));
   let gmail=!!CFG.gmail;
   function renderGmail(){
     const st=$("#gmail-state");st.textContent=gmail?"Connected":"Not connected";st.className="pill"+(gmail?" ok":"");
@@ -262,9 +263,51 @@
     gmail=!gmail;renderGmail();
   });
   $("#f-email").addEventListener("input",()=>{if(gmail)renderGmail()});
+  /* ---------- publishing ----------
+     Publish copies the public parts of the Website form (never the roster, dues, minutes or treasury) into the lodge's saved data as
+     `published`. The public page /site/<slug> (lodge-site.html) reads only that copy, through published_site() in supabase/public-site.sql,
+     which also checks the plan is paid, so editing the form changes nothing live until the next Publish. */
+  let published=CFG.published||null;
+  const SLUG=(window.LODGE||{}).slug||"";
+  const liveUrl=()=>location.origin+"/site/"+encodeURIComponent(SLUG);
+  const isoDay=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+  function publicSite(){
+    const name=fieldVal("#f-name")||"Your Lodge",num=fieldVal("#f-num"),now=isoDay(new Date());
+    return {name,number:num,full:name+(num?" No. "+num:""),jur:fieldVal("#f-jur"),grandLodge:fieldVal("#f-gl"),
+      city:fieldVal("#f-city"),state:fieldVal("#f-state"),schedule:fieldVal("#f-sched"),color:siteColor,email:fieldVal("#f-email"),
+      officers:SEATS.map(x=>{const m=member(officers[x.k]);return m?{seat:x.t,name:m.name+(m.pm&&x.k!=="WM"?", PM":"")}:null}).filter(Boolean),
+      events:events.filter(e=>e.d>=now).sort((a,b)=>a.d<b.d?-1:1).slice(0,12).map(e=>({d:e.d,t:e.t,time:e.time||"",fund:e.k==="fund"})),
+      social:[["Facebook","#f-fb","https://facebook.com/"],["Instagram","#f-ig","https://instagram.com/"],["X","#f-x","https://x.com/"],["YouTube","#f-yt","https://youtube.com/@"],["TikTok","#f-tt","https://tiktok.com/@"]]
+        .filter(([,f])=>handle(f)).map(([n,f,base])=>({name:n,url:base+handle(f)})),
+      give:PAY.filter(payOn).map(p=>{const h=p.home&&p.home(payVal(p));return h?{k:p.k,label:payLabel(p),url:h}:{k:p.k,label:payLabel(p),note:payVal(p)}})};
+  }
+  const sameSite=()=>!!published&&JSON.stringify(publicSite())===JSON.stringify(published.site);
   const LOCKED='<span class="pill">Not published</span> Publishing unlocks once the lodge\'s plan is paid for. <a href="/login?account">Subscribe from your account</a>';
-  if(CLOUD&&!CLOUD.paid)$("#site-status").innerHTML=LOCKED;
-  $("#site-form").addEventListener("submit",e=>{e.preventDefault();if(CLOUD&&!CLOUD.paid)return $("#site-status").innerHTML=LOCKED;$("#site-status").innerHTML='<span class="pill ok">Published</span> Live at '+esc($("#pv-url").textContent)+" (demo)"});
+  const liveLink=()=>`<a href="${esc(liveUrl())}" target="_blank" rel="noopener">View the live site</a>`;
+  function siteState(){
+    const st=$("#site-status"),un=$("#site-unpub");if(!st)return;
+    if(un)un.hidden=!(CLOUD&&CLOUD.canEdit&&published);
+    if(!CLOUD)return;
+    if(!CLOUD.paid)return st.innerHTML=LOCKED;
+    if(!published)return st.innerHTML=CLOUD.canEdit?'<span class="pill">Not published</span> Press Publish site to put this on the web.':'<span class="pill">Not published</span>';
+    st.innerHTML=(sameSite()?'<span class="pill ok">Published</span> Live since '+esc(stamp(published.at)):'<span class="pill">Unpublished changes</span> Publish again to update the live site')+" · "+liveLink();
+  }
+  $("#site-form").addEventListener("submit",async e=>{
+    e.preventDefault();const st=$("#site-status");
+    if(!CLOUD)return st.innerHTML='<span class="pill ok">Published</span> Live at '+esc($("#pv-url").textContent)+" (demo)";
+    if(!CLOUD.canEdit)return st.textContent=VIEW_ONLY;
+    if(!CLOUD.paid)return st.innerHTML=LOCKED;
+    const prev=published;published={at:new Date().toISOString(),site:publicSite()};
+    st.textContent="Publishing…";clearTimeout(saveTimer);
+    if(await save())siteState();
+    else{published=prev;st.innerHTML='<span class="pill">Not published</span> Couldn\'t reach the lodge account. Check your connection and press Publish site again.'}
+  });
+  $("#site-unpub").addEventListener("click",async()=>{
+    if(!CLOUD||!CLOUD.canEdit||!published)return;
+    if(!confirm("Take the lodge's website off the web? You can publish it again any time."))return;
+    const prev=published;published=null;clearTimeout(saveTimer);
+    if(await save())siteState();else{published=prev;$("#site-status").textContent="Couldn't reach the lodge account, so the site is still live."}
+  });
 
   /* ---------- store ---------- */
   const products=CFG.products||[
@@ -916,7 +959,7 @@
   function snapshot(){
     const form={};document.querySelectorAll("#site-form input[id],#site-form select[id],#pay-form input[id]").forEach(el=>form[el.id]=el.value);
     return {app:"LodgeNet",version:1,page:STORE_KEY,savedAt:new Date().toISOString(),form,color:siteColor,
-      membersFull:members,officers,events,minutes,minuteSections,gmail,nextStated,products,orders,...(plan?{plan}:{}),
+      membersFull:members,officers,events,minutes,minuteSections,gmail,nextStated,products,orders,published,...(plan?{plan}:{}),
       ...(window.LodgeNetDash?window.LodgeNetDash.snapshot():{})};
   }
   const stamp=d=>new Date(d).toLocaleString("en-US",{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"});
@@ -935,7 +978,7 @@
     try{localStorage.setItem(STORE_KEY,JSON.stringify(snap));setState("Saved in this browser · "+stamp(snap.savedAt))}
     catch(e){setState("Couldn't save in this browser. Use Export to keep a copy.")}
   }
-  const queueSave=()=>{clearTimeout(saveTimer);saveTimer=setTimeout(save,400)};
+  const queueSave=()=>{clearTimeout(saveTimer);saveTimer=setTimeout(save,400);siteState()};
   ["input","change"].forEach(t=>$(".console").addEventListener(t,queueSave));
   $(".console").addEventListener("click",e=>{if(e.target.closest("button"))queueSave()});
   if(DEMO)setState("Demo · try anything; changes clear when you leave this page");
@@ -972,11 +1015,11 @@
     location.reload();
   });
 
-  renderMembers();renderGmail();regenStated();
+  renderMembers();renderGmail();regenStated();siteState();
   renderCal();renderCart();renderMinutes();
   /* the signed-in dashboard (assets/dash.js) builds its other sections on the same lodge data and saves through queueSave */
   window.LodgeNetApp={CFG,CLOUD,TODAY,money,esc,parse,fmt,members,officers,products,SEATS,member,minutes,
-    get events(){return events},get plan(){return plan},get nextStated(){return nextStated},
+    get events(){return events},get plan(){return plan},get published(){return published},get nextStated(){return nextStated},
     addMember(name,deg){const m=M(name,deg,false,"Not recorded");members.push(m);refreshPeople();return m},
     select(e){selected=e;view=new Date(parse(e.d).getFullYear(),parse(e.d).getMonth(),1);renderCal()},
     addEvent(e){events.push(e);renderCal();return e},
