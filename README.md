@@ -55,3 +55,15 @@ The site is static, so Vercel serves it with no build step. Import this repo in 
 ## Run locally
 
 Run `npx serve .` from the repo root (it also serves clean URLs). Opening the files directly won't resolve the `/assets/...` paths.
+
+## Jarvis
+
+`/jarvis` is LodgeNet's operations chief of staff: live Stripe revenue (balance, last 30 days, monthly recurring, open and overdue invoices), dev status from GitHub (open pull requests, latest deploys, recent commits), and a Claude-written briefing with today's priorities and sales and marketing moves. You can also ask it questions. It only reads: it can't move money, merge code or email anyone. It's not linked from the site and isn't indexed.
+
+The page calls `api/jarvis.mjs`; the engine is `api/_jarvis-core.mjs`, an identical copy in every Joslin Enterprises repo, so change it there and copy it across. Set these in Vercel → Settings → Environment Variables, then redeploy:
+
+- `JARVIS_ACCESS_CODE` (required): the passphrase the page asks for. Jarvis stays locked until it's set.
+- `ANTHROPIC_API_KEY`: Claude, for briefings and questions.
+- `JARVIS_STRIPE_KEY`: a restricted Stripe key with Read on Balance, Charges, Subscriptions and Invoices. Without it, Jarvis reads with the same key as billing (`STRIPE_SECRET_KEY`, or the one saved in the owner's hub).
+- `GITHUB_TOKEN`: a fine-grained token with read-only Contents, Pull requests and Deployments on this repo.
+- `JARVIS_MODEL` (optional): default `claude-sonnet-5-5`.
