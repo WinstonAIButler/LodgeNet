@@ -6,18 +6,17 @@
   const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
   const A=window.LodgeNetAuth;
   const PLAN={starter:"Lodge Starter",lodge:"Lodge plan",district:"District / Grand Lodge"};
-  const PRICE={starter:0,lodge:19};            // per month, as on /pricing; District is quoted
   const ROLE={owner:"Account owner",officer:"Officer",member:"Member"};
   const day=t=>t?new Date(t).toLocaleDateString(undefined,{year:"numeric",month:"short",day:"numeric"}):"Never";
   let sb=null,meId=null;
 
-  function show(id){["loading","v-off","v-out","v-no","v-in"].forEach(v=>$("#"+v).hidden=v!==id)}
+  /* before sign-in the page is a single card on the gate; after, it's the same sidebar-and-sections layout as a lodge's dashboard */
+  function show(id){["loading","v-off","v-out","v-no","v-in"].forEach(v=>$("#"+v).hidden=v!==id);$("#gate").hidden=id==="v-in"}
   function msg(el,t,err){el.textContent=t;el.classList.toggle("err",!!err)}
   const planOpts=cur=>Object.keys(PLAN).map(p=>`<option value="${p}"${p===cur?" selected":""}>${PLAN[p]}</option>`).join("");
   async function call(fn,args){const {data,error}=await sb.rpc(fn,args);if(error)throw error;return data}
 
   async function signedIn(s){
-    $("#sign-out").hidden=false;
     let ok=false;
     try{ok=await call("is_platform_admin")}catch(e){}
     if(!ok){
@@ -25,8 +24,8 @@
       return show("v-no");
     }
     meId=s.user.id;
-    $("#who").textContent="Signed in as "+s.user.email;
-    show("v-in");
+    $("#who-email").textContent=s.user.email;
+    show("v-in");route();
     refresh();renderStripe();
   }
 
@@ -35,26 +34,69 @@
     try{
       const [lodges,users,codes]=await Promise.all([call("admin_lodges"),call("admin_users"),call("admin_codes")]);
       data={lodges,users,codes};
-      renderStats();renderAttention();renderLodges();renderCodes(codes);renderUsers();
-    }catch(e){msg($("#lodge-msg"),"Couldn't load the dashboard ("+e.message+"). Reload to try again.",true)}
+      kpis();renderAttention();renderFeed();renderJump();renderLodges();renderCodes(codes);renderUsers();renderSubs();
+    }catch(e){$("#attention").innerHTML=`<li>Couldn't load the dashboard (${esc(e.message)}). Reload to try again.</li>`;msg($("#lodge-msg"),"Couldn't load the dashboard ("+e.message+"). Reload to try again.",true)}
   }
 
   const live=c=>(!c.expires_at||new Date(c.expires_at)>new Date())&&(c.max_uses==null||c.uses<c.max_uses);
   const PAYING=["active","trialing"],OWED=["past_due","unpaid"];
   const BILL={active:"Paid",trialing:"Trial",past_due:"Payment due",unpaid:"Unpaid",canceled:"Cancelled",incomplete:"Incomplete",incomplete_expired:"Expired"};
   const lodgeName=l=>l.name+(l.number?" No. "+l.number:"");
-  function renderStats(){
-    const {lodges,users,codes}=data;
-    const paying=lodges.filter(l=>!l.comped&&PAYING.includes(l.billing_status));
-    const week=Date.now()-7*864e5;
-    const stat=(n,label,sub)=>`<div class="card hub-stat"><span class="hint">${esc(label)}</span><b class="num">${esc(n)}</b>${sub?`<span class="hint">${esc(sub)}</span>`:""}</div>`;
-    $("#stats").innerHTML=[
-      stat(lodges.length,"Lodges",lodges.filter(l=>l.has_dashboard).length+" with a saved dashboard"),
-      stat(paying.length,"Paying lodges",lodges.filter(l=>l.comped).length+" at no charge"),
-      stat("$"+paying.reduce((n,l)=>n+(PRICE[l.plan]||0),0),"Monthly, at list price",paying.length?"From Stripe subscriptions":"No paid subscriptions yet"),
-      stat(users.length,"Accounts",users.filter(u=>new Date(u.created_at)>week).length+" new this week"),
-      stat(users.filter(u=>u.last_sign_in_at&&new Date(u.last_sign_in_at)>week).length,"Signed in this week",users.filter(u=>!u.last_sign_in_at).length+" never signed in"),
-      stat(codes.filter(live).length,"Live plan codes",codes.reduce((n,c)=>n+c.uses,0)+" redeemed")].join("");
+  /* ---------- sections, as on a lodge's dashboard: sidebar links switch them by the address's #hash ---------- */
+  const TITLES={overview:"Overview",lodges:"Lodges",accounts:"Accounts",codes:"Plan codes",billing:"Billing"};
+  let cur="overview";
+  function go(sec){
+    if(!TITLES[sec])sec="overview";cur=sec;
+    document.querySelectorAll(".sec").forEach(x=>x.hidden=x.dataset.sec!==sec);
+    document.querySelectorAll(".nav-i").forEach(x=>x.toggleAttribute("aria-current",x.dataset.sec===sec));
+    $("#sec-title").textContent=TITLES[sec];document.title=TITLES[sec]+" · LodgeNet master dashboard";
+    kpis();
+  }
+  const route=()=>go(location.hash.slice(1));
+  window.addEventListener("hashchange",route);
+
+  /* key figures on top of each section */
+  let keyInfo=null;
+  function kpis(){
+    const {lodges,users,codes}=data,week=Date.now()-7*864e5;
+    const paying=lodges.filter(l=>!l.comped&&PAYING.includes(l.billing_status)),owed=lodges.filter(l=>OWED.includes(l.billing_status));
+    const newU=users.filter(u=>new Date(u.created_at)>week).length,active=users.filter(u=>u.last_sign_in_at&&new Date(u.last_sign_in_at)>week).length;
+    const F={
+      overview:[["Lodges",lodges.length,lodges.filter(l=>l.has_dashboard).length+" with a saved dashboard"],["Paying lodges",paying.length,lodges.filter(l=>l.comped).length+" at no charge"],
+        ["Accounts",users.length,newU+" new this week"],["Signed in this week",active,users.filter(u=>!u.last_sign_in_at).length+" never signed in"]],
+      lodges:[["Lodges",lodges.length,""],["Saved dashboards",lodges.filter(l=>l.has_dashboard).length,"Have saved at least once"],
+        ["No account owner",lodges.filter(l=>!l.owners.length).length,"Invite one under Manage"],["Brethren",lodges.reduce((n,l)=>n+(+l.members||0),0),lodges.reduce((n,l)=>n+(+l.invites||0),0)+" invited"]],
+      accounts:[["Accounts",users.length,newU+" new this week"],["Signed in this week",active,""],
+        ["Unconfirmed",users.filter(u=>!u.confirmed).length,"Haven't confirmed their email"],["Blocked",users.filter(u=>u.blocked).length,""]],
+      codes:[["Live codes",codes.filter(live).length,""],["Redeemed",codes.reduce((n,c)=>n+c.uses,0),"Times a code was used"],
+        ["Ended",codes.filter(c=>!live(c)).length,"Used up, expired or ended"],["Lodges at no charge",lodges.filter(l=>l.comped).length,""]],
+      billing:[["Stripe key",keyInfo?(keyInfo.mode==="live"?"Live":"Test mode"):keyInfo===false?"Not saved":"…",keyInfo?"Ends in "+keyInfo.last4:"Vercel's key is used first"],
+        ["Paying lodges",paying.length,"Paid or on a trial"],["Payment due",owed.length,"Past due or unpaid"],["At no charge",lodges.filter(l=>l.comped).length,"Comped by you"]]
+    }[cur];
+    $("#kpis").innerHTML=F.map(([l,v,x])=>`<div class="kpi"><span class="kpi-l">${esc(l)}</span><b class="kpi-v num">${esc(v)}</b>${x?`<span class="kpi-s">${esc(x)}</span>`:""}</div>`).join("");
+  }
+
+  /* the owner's extras on Overview: what happened lately, and a jump into any lodge's own dashboard */
+  function renderFeed(){
+    const ev=[...data.users.map(u=>({t:u.created_at,h:`<b>${esc(u.email)}</b> made an account`})),
+      ...data.lodges.filter(l=>l.has_dashboard&&l.updated_at).map(l=>({t:l.updated_at,h:`<a href="/lodges/${encodeURIComponent(l.slug)}"><b>${esc(lodgeName(l))}</b></a> saved its dashboard`}))]
+      .filter(e=>e.t).sort((a,b)=>a.t<b.t?1:-1).slice(0,8);
+    $("#feed").innerHTML=ev.length?ev.map(e=>`<li>${e.h} <span class="hint">· ${day(e.t)}</span></li>`).join(""):'<li class="hint">Nothing yet.</li>';
+  }
+  function renderJump(){
+    const sel=$("#lodge-jump");
+    sel.innerHTML='<option value="">Open a lodge\'s dashboard…</option>'+[...data.lodges].sort((a,b)=>a.name.localeCompare(b.name))
+      .map(l=>`<option value="${esc(l.slug)}">${esc(lodgeName(l))}</option>`).join("");
+  }
+  $("#lodge-jump").addEventListener("change",e=>{if(e.target.value)location.href="/lodges/"+encodeURIComponent(e.target.value)});
+
+  /* Billing: every lodge Stripe knows about */
+  function renderSubs(){
+    const rows=data.lodges.filter(l=>l.billing_status||l.comped);
+    $("#subs").innerHTML=rows.length?rows.map(l=>`<tr><td class="nm"><a href="/lodges/${encodeURIComponent(l.slug)}">${esc(lodgeName(l))}</a></td><td>${esc(PLAN[l.plan]||l.plan)}</td>
+      <td>${l.comped?'<span class="pill gold">No charge</span>':`<span class="pill ${PAYING.includes(l.billing_status)?"ok":OWED.includes(l.billing_status)?"warn":""}">${esc(BILL[l.billing_status]||l.billing_status)}</span>`}</td>
+      <td>${l.owners.map(esc).join("<br>")||'<span class="hint">None</span>'}</td></tr>`).join("")
+      :'<tr><td colspan="4" class="hint">No lodge has a subscription or a no-charge plan yet.</td></tr>';
   }
 
   /* things worth a look: lodges nobody can run, unpaid bills, accounts stuck before confirming */
@@ -64,8 +106,7 @@
     lodges.filter(l=>OWED.includes(l.billing_status)).forEach(l=>items.push(`<b>${esc(lodgeName(l))}</b>: Stripe says ${esc(BILL[l.billing_status].toLowerCase())}.`));
     users.filter(u=>!u.confirmed).forEach(u=>items.push(`<b>${esc(u.email)}</b> hasn't confirmed their email. You can confirm it for them under Accounts.`));
     users.filter(u=>u.blocked).forEach(u=>items.push(`<b>${esc(u.email)}</b> is blocked from signing in.`));
-    $("#attention-sec").hidden=!items.length;
-    $("#attention").innerHTML=items.map(t=>`<li>${t}</li>`).join("");
+    $("#attention").innerHTML=items.length?items.map(t=>`<li>${t}</li>`).join(""):'<li class="hint">Nothing needs you right now.</li>';
   }
 
   const query=()=>$("#q").value.trim().toLowerCase();
@@ -228,13 +269,14 @@
     try{await pending.run(typed);$("#cf-dialog").close();pending.done();await refresh()}
     catch(err){msg($("#cf-msg"),err.message,true);$("#cf-go").disabled=false}
   });
-  $("#q").addEventListener("input",()=>{renderLodges();renderUsers()});
+  $("#q").addEventListener("input",()=>{renderLodges();renderUsers();if(cur!=="lodges"&&cur!=="accounts"&&query())location.hash="lodges"});
 
   /* the Stripe key goes in and never comes back out: the server only reports its kind, mode and last four */
   async function renderStripe(){
     const out=$("#stripe-status");
     try{
       const [k]=await call("admin_stripe_key_status");
+      keyInfo=k||false;kpis();
       $("#s-clear").hidden=!k;$("#s-go").textContent=k?"Replace key":"Save key";
       out.innerHTML=k?`<span class="pill ${k.mode==="live"?"ok":"warn"}">${k.mode==="live"?"Live":"Test mode"}</span> ${k.kind==="restricted"?"Restricted":"Secret"} key ending in <b class="mono">${esc(k.last4)}</b> <span class="hint">· saved ${day(k.updated_at)}</span>`
         :'<span class="pill">Not set</span> <span class="hint">No Stripe key saved yet.</span>';
@@ -310,7 +352,7 @@
     const {error}=await sb.auth.resetPasswordForEmail(email,{redirectTo:location.origin+"/login?next=/owner"});
     msg(out,error?error.message:`If ${email} has an account, a reset link is on its way.`,!!error);
   });
-  $("#sign-out").addEventListener("click",async()=>{await sb.auth.signOut();location.reload()});
+  $("#sign-out").addEventListener("click",async()=>{await sb.auth.signOut();location.replace("/owner")});
 
   (async()=>{
     sb=await A.client();

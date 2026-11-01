@@ -689,3 +689,44 @@ input:not(.paper *):focus,textarea:not(.paper *):focus{outline:none;border-color
 .pay-test{display:block;margin-top:4px;font-size:12px;color:var(--link);word-break:break-all}
 a.paybtn{text-decoration:none;display:inline-block}
 .paybtn.zelle{background:#6d1ed4}.paybtn.link{background:var(--blue);color:var(--blue-ink)}.paybtn.check{background:#5a6276}
+
+/* Dark mode (Justin, 2026-11-01): an opt-in switch on every dashboard, set by assets/theme.js as <html data-theme="dark">.
+   Light stays the default and the device's own dark setting is ignored. Deep Navy becomes the page, Danish Cream the text,
+   gold the accent. The lodge-site preview and the minutes paper stay white because they show the printed or public page. */
+:root[data-theme="dark"]{
+  --bg:#141d2a; --surface:#141d2a; --sunk:#1e2b3e; --line:#2e3c50;
+  --fg:#f3ede0; --muted:#a4adba;
+  --blue:#a9c1de; --blue-ink:#141d2a; --blue-soft:#1e2b3e; --link:#a9c1de;
+  --gold:#d9b84a; --gold-soft:#3a3218; --gilt:#d4af37;
+  --ok:#6cc893; --ok-soft:#163222; --warn:#e6b450; --warn-soft:#3a2e12;
+  --tile-a:#a9c1de; --tile-b:#141d2a;
+  --top-bg:#141d2a; --top-fg:#f3ede0; --top-muted:#a4adba; --top-line:#2e3c50; --top-card:#141d2a;
+  --side-bg:#111925; --side-fg:#a4adba; --side-hi:#f3ede0; --side-line:#2e3c50;
+  --floor:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='36' height='36'%3E%3Cpath d='M18 0L36 18L18 36L0 18Z' fill='%23a9c1de' fill-opacity='.05'/%3E%3C/svg%3E");
+  color-scheme:dark;
+}
+:root[data-theme="dark"] .nav-i:hover{background:rgba(243,237,224,.05)}
+:root[data-theme="dark"] .nav-i[aria-current]{background:rgba(243,237,224,.07)}
+:root[data-theme="dark"] select:not(.paper *){background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%23a9c1de' stroke-width='1.6'/%3E%3C/svg%3E")}
+:root[data-theme="dark"] select:not(.paper *) option{background:#141d2a;color:#f3ede0}
+:root[data-theme="dark"] .cal .day.today .d{color:#141d2a}
+:root[data-theme="dark"] .btn.gold:hover{background:#e0bd4a}
+:root[data-theme="dark"] .hub .btn.hub-danger,:root[data-theme="dark"] .hub-dialog .btn.hub-danger{background:#d0574e}
+:root[data-theme="dark"] .hub .btn.hub-danger-line{color:#f08a80}
+:root[data-theme="dark"] .hub-dialog::backdrop{background:rgba(0,0,0,.6)}
+:root[data-theme="dark"] .brand img,:root[data-theme="dark"] .side-brand img{filter:drop-shadow(0 0 1px rgba(243,237,224,.35))}
+.theme-btn{display:inline-flex;align-items:center;gap:7px;color:var(--gold);font-size:13px;justify-self:start;background:none;border:0;padding:0;cursor:pointer;text-decoration:none;white-space:nowrap}
+.theme-btn svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linejoin:round}
+.theme-btn[aria-pressed="true"] svg{fill:currentColor}
+.theme-btn:hover{text-decoration:underline;text-underline-offset:3px}
+.app-top-r{display:flex;align-items:center;gap:8px 18px;flex-wrap:wrap}
+
+/* owner's master dashboard (/owner) in the lodge dashboard's layout */
+.hub-ov{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:28px 48px}
+.hub-feed{margin:0;padding:0;list-style:none;display:grid;gap:8px;font-size:14px}
+.hub-feed li{padding-bottom:8px;border-bottom:1px solid var(--line)}
+.hub-feed a{color:var(--fg);text-decoration:none}
+.app-top .hub-search{min-width:min(280px,100%)}
+.app-top .hub-search input{width:100%}
+.hub-sec .mem-head{margin-bottom:10px}
+.gate-wrap .theme-btn{justify-self:center}
