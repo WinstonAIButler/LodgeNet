@@ -43,6 +43,8 @@ Setup: create a Supabase project (or add the Supabase integration in Vercel, whi
 
 `/owner` is the LodgeNet owner's view of every lodge (plan, no-charge flag, brethren, account owner), every account, the plan codes, and the Stripe API key. Run `supabase/owner-hub.sql` after `schema.sql`, with the owner's email in place of `ADMIN_EMAIL`, then sign in at `/owner` with that account (create it at `/login` first and confirm the email).
 
+Handing a lodge to a new account owner (a new Worshipful Master or Secretary): run `supabase/handover.sql` once. The account owner then uses **Hand over this lodge** under My lodges (`/login?account`), and the LodgeNet owner uses **Change owner** under Manage on `/owner`. Someone not yet on the roll gets an owner invite, and the outgoing owner steps down only when it is claimed.
+
 - Privacy is enforced in the database: the hub calls `admin_*` functions that refuse anyone whose confirmed email isn't in `platform_admins`. That table can't be read or changed from the site; add another owner in the SQL editor.
 - The hub can change a lodge's plan and no-charge flag, add a lodge with its owner's invite (the page at `lodges/<slug>.html` is still added in the repo), and create or end plan codes.
 - The Stripe key is write-only: it's kept in `platform_secrets` (row `stripe_secret_key`), which only the service role can read; the hub sees just test/live and the last four characters. Server code should use Vercel's `STRIPE_SECRET_KEY` when it's set and this row otherwise.
