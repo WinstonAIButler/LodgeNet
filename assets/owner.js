@@ -7,6 +7,17 @@
   const A=window.LodgeNetAuth;
   const PLAN={starter:"Lodge Starter",lodge:"Lodge plan",district:"District / Grand Lodge"};
   const ROLE={owner:"Account owner",officer:"Officer",member:"Member"};
+  /* a lodge's Grand Lodge from its state, worded as on the lodge dashboard (assets/demo.js); filled in when it's blank */
+  const GL_STYLE={F:"Free and Accepted Masons",A:"Ancient Free and Accepted Masons",AFM:"Ancient Free Masons"};
+  const GL_STATES={AL:["Alabama","F"],AK:["Alaska","F"],AZ:["Arizona","F"],AR:["Arkansas","F"],CA:["California","F"],CO:["Colorado","A"],CT:["Connecticut","A"],
+    DE:["Delaware","A"],DC:["the District of Columbia","F"],FL:["Florida","F"],GA:["Georgia","F"],HI:["Hawaii","F"],ID:["Idaho","A"],IL:["Illinois","A"],
+    IN:["Indiana","F"],IA:["Iowa","A"],KS:["Kansas","A"],KY:["Kentucky","F"],LA:["Louisiana","F"],ME:["Maine","A"],MD:["Maryland","A"],MI:["Michigan","F"],
+    MN:["Minnesota","A"],MS:["Mississippi","F"],MO:["Missouri","A"],MT:["Montana","A"],NE:["Nebraska","A"],NV:["Nevada","F"],NH:["New Hampshire","F"],
+    NJ:["New Jersey","F"],NM:["New Mexico","A"],NY:["New York","F"],NC:["North Carolina","A"],ND:["North Dakota","A"],OH:["Ohio","F"],OK:["Oklahoma","A"],
+    OR:["Oregon","A"],PA:["Pennsylvania","F"],RI:["Rhode Island","F"],SC:["South Carolina","AFM"],SD:["South Dakota","A"],TN:["Tennessee","F"],
+    TX:["Texas","A"],UT:["Utah","F"],VT:["Vermont","F"],VA:["Virginia","A"],WA:["Washington","F"],WV:["West Virginia","A"],WI:["Wisconsin","F"],WY:["Wyoming","A"]};
+  const glFor=st=>{st=String(st||"").trim().toUpperCase();if(st==="MA")return "Grand Lodge of Masons in Massachusetts";
+    const x=GL_STATES[st];return x?`Grand Lodge of ${GL_STYLE[x[1]]} of ${x[0]}`:""};
   const day=t=>t?new Date(t).toLocaleDateString(undefined,{year:"numeric",month:"short",day:"numeric"}):"Never";
   let sb=null,meId=null;
 
@@ -14,7 +25,21 @@
   function show(id){["loading","v-off","v-out","v-no","v-in"].forEach(v=>$("#"+v).hidden=v!==id);$("#gate").hidden=id==="v-in"}
   function msg(el,t,err){el.textContent=t;el.classList.toggle("err",!!err)}
   const planOpts=cur=>Object.keys(PLAN).map(p=>`<option value="${p}"${p===cur?" selected":""}>${PLAN[p]}</option>`).join("");
-  async function call(fn,args){const {data,error}=await sb.rpc(fn,args);if(error)throw error;return data}
+  async function call(fn,args){
+    const {data,error}=await sb.rpc(fn,args);
+    if(error){if(/LodgeNet owner only/.test(error.message))await accountChanged();throw error}
+    return data;
+  }
+  /* sign-in is shared by every LodgeNet tab in this browser, so signing in to a lodge or My lodges as another email
+     quietly turns this page into that account. Say so plainly instead of "owner only". */
+  async function accountChanged(){
+    const s=await A.session(),email=s?s.user.email:null;
+    if(s&&s.user.id===meId)return;
+    meId=null;
+    if(!s){msg($("#a-msg"),"You were signed out. Sign in again with the LodgeNet owner's email.",true);return show("v-out")}
+    $("#no-text").textContent=`This browser is now signed in as ${email}, probably from another LodgeNet tab, and that account can't use the master dashboard. Sign out, then sign in with the LodgeNet owner's email.`;
+    show("v-no");
+  }
 
   async function signedIn(s){
     let ok=false;
@@ -149,12 +174,13 @@
     try{roll=await call("admin_lodge_roll",{lid:l.id})}catch(e){box.innerHTML=`<p class="hint">Couldn't load this lodge (${esc(e.message)}).</p>`;return}
     const roleOpts=cur=>Object.keys(ROLE).map(r=>`<option value="${r}"${r===cur?" selected":""}>${ROLE[r]}</option>`).join("");
     box.innerHTML=`
+      ${l.grand_lodge?"":'<p class="hint">Grand Lodge was blank, so it\'s filled in from the state. Save details to keep it.</p>'}
       <form class="hub-form d-edit" novalidate>
-        <div class="field"><label>Lodge name<input name="n" value="${esc(l.name)}" required></label></div>
-        <div class="field"><label>No.<input name="num" value="${esc(l.number||"")}"></label></div>
-        <div class="field"><label>City<input name="ci" value="${esc(l.city||"")}"></label></div>
-        <div class="field"><label>State<input name="st" maxlength="2" value="${esc(l.state||"")}"></label></div>
-        <div class="field"><label>Grand Lodge<input name="gl" value="${esc(l.grand_lodge||"")}"></label></div>
+        <div class="field"><label><span>Lodge name</span><input name="n" value="${esc(l.name)}" required></label></div>
+        <div class="field"><label><span>No.</span><input name="num" value="${esc(l.number||"")}"></label></div>
+        <div class="field"><label><span>City</span><input name="ci" value="${esc(l.city||"")}"></label></div>
+        <div class="field"><label><span>State</span><input name="st" maxlength="2" value="${esc(l.state||"")}"></label></div>
+        <div class="field"><label><span>Grand Lodge</span><input name="gl" value="${esc(l.grand_lodge||glFor(l.state))}" placeholder="Filled in from the state"></label></div>
         <button class="btn sm" type="submit">Save details</button>
       </form>
       <h4>Roll</h4>
@@ -163,8 +189,8 @@
         :`<tr><td class="who">${esc(r.email||"Brother")}</td><td><select data-uid="${esc(r.user_id)}" aria-label="Role for ${esc(r.email||"brother")}">${roleOpts(r.role)}</select> <button class="btn line sm" type="button" data-remove="${esc(r.user_id)}">Remove</button></td></tr>`).join("")}</tbody></table>`
         :'<p class="hint">Nobody on this lodge yet.</p>'}
       <form class="invite d-invite" novalidate>
-        <div class="field"><label>Invite by email<input type="email" name="email" required placeholder="brother@example.com"></label></div>
-        <div class="field"><label>Role<select name="role">${roleOpts("member")}</select></label></div>
+        <div class="field"><label><span>Invite by email</span><input type="email" name="email" required placeholder="brother@example.com"></label></div>
+        <div class="field"><label><span>Role</span><select name="role">${roleOpts("member")}</select></label></div>
         <button class="btn sm" type="submit">Invite</button>
       </form>
       <p class="auth-msg d-msg" role="status" aria-live="polite"></p>
@@ -174,6 +200,8 @@
       </div>`;
     const out=box.querySelector(".d-msg");
     const act=async(fn,args,ok)=>{try{await call(fn,args);await refresh();msg($("#lodge-msg"),lodgeName(l)+": "+ok)}catch(e){msg(out,e.message,true)}};
+    box.querySelector('.d-edit [name="st"]').addEventListener("input",e=>{const gl=e.target.form.gl,was=glFor(e.target.dataset.was||l.state);
+      if(!gl.value.trim()||gl.value===was)gl.value=glFor(e.target.value);e.target.dataset.was=e.target.value});
     box.querySelector(".d-edit").addEventListener("submit",e=>{e.preventDefault();const f=e.target;
       if(!f.n.value.trim())return msg(out,"Enter the lodge's name.",true);
       act("admin_update_lodge",{lid:l.id,n:f.n.value,num:f.num.value,ci:f.ci.value,st:f.st.value,gl:f.gl.value},"Details saved.")});
@@ -307,6 +335,7 @@
   $("#c-code").value=newCode("lodge");
   $("#c-plan").addEventListener("change",()=>{$("#c-code").value=newCode($("#c-plan").value)});
   const slugify=()=>[$("#l-name").value.replace(/\blodge\b/i,""),$("#l-num").value].join(" ").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
+  $("#l-state").addEventListener("input",()=>{const gl=$("#l-gl");if(!gl.value.trim()||gl.dataset.auto===gl.value){gl.value=glFor($("#l-state").value);gl.dataset.auto=gl.value}});
   let slugTouched=false;
   $("#l-slug").addEventListener("input",()=>{slugTouched=true});
   ["#l-name","#l-num"].forEach(s=>$(s).addEventListener("input",()=>{if(!slugTouched)$("#l-slug").value=slugify()}));
@@ -352,11 +381,13 @@
     const {error}=await sb.auth.resetPasswordForEmail(email,{redirectTo:location.origin+"/login?next=/owner"});
     msg(out,error?error.message:`If ${email} has an account, a reset link is on its way.`,!!error);
   });
+  $("#no-out").addEventListener("click",async()=>{await sb.auth.signOut();meId=null;msg($("#a-msg"),"");show("v-out")});
   $("#sign-out").addEventListener("click",async()=>{await sb.auth.signOut();location.replace("/owner")});
 
   (async()=>{
     sb=await A.client();
     if(!sb)return show("v-off");
+    sb.auth.onAuthStateChange((ev,s)=>{if(meId&&(!s||s.user.id!==meId))setTimeout(accountChanged,0)});
     const s=await A.session();
     if(s)return signedIn(s);
     show("v-out");
