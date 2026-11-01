@@ -23,6 +23,9 @@
     },
     "api/business-search.js": {
       "maxDuration": 300
+    },
+    "api/jarvis.mjs": {
+      "maxDuration": 120
     }
   }
 }
