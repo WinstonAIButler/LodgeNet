@@ -48,6 +48,27 @@ dd{margin:0;font-weight:600}
 .empty{color:var(--muted)}
 footer{border-top:1px solid var(--line);padding:24px 0;color:var(--muted);font-size:13px;text-align:center}
 footer a{color:var(--muted)}
+.hero.has-img{background-size:cover;background-position:center;padding:96px 0 80px}
+.hero img.logo{width:96px;height:96px;object-fit:contain}
+.about p{margin:0 0 12px}.about p:last-child{margin:0}
+.gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px}
+.gallery button{padding:0;border:0;background:none;cursor:zoom-in}
+.gallery img{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:8px;display:block}
+.store{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px}
+.item{border:1px solid var(--line);border-radius:10px;overflow:hidden;display:grid;background:#fff}
+.item .pic{aspect-ratio:4/3;background:color-mix(in srgb,var(--site) 8%,#fff) center/cover no-repeat;display:grid;place-items:center;color:var(--site)}
+.item .pic svg{width:56px;height:56px;opacity:.5}
+.item .body{padding:12px 14px;display:grid;gap:4px}
+.item .price{font-family:Montserrat,sans-serif;font-weight:700;color:var(--site)}
+.item .opts{color:var(--muted);font-size:13px}
+.item .buy{margin-top:8px;display:flex;flex-wrap:wrap;gap:6px}
+.item .buy a,.item .buy button{font-size:13px;padding:7px 10px}
+button.btn{border:0;cursor:pointer;font:inherit;font-weight:600}
+.howpay{font-size:13px;color:var(--muted);margin:6px 0 0}
+dialog{border:0;padding:0;background:transparent;max-width:min(92vw,1100px)}
+dialog::backdrop{background:rgba(0,0,0,.8)}
+dialog img{max-width:100%;max-height:86vh;display:block;border-radius:8px}
+.full{grid-column:1/-1}
 .state{max-width:520px;margin:80px auto;text-align:center;padding:0 20px}
 .state h1{font-size:26px;margin-bottom:10px}
 </style>
@@ -58,14 +79,15 @@ footer a{color:var(--muted)}
 <div id="site" hidden>
   <header class="hero">
     <div class="wrap">
-      <svg><use href="#sc"/></svg>
+      <svg id="s-crest"><use href="#sc"/></svg>
       <h1 id="s-title"></h1>
       <p id="s-place"></p>
       <p id="s-sched"></p>
     </div>
   </header>
-  <nav class="nav" aria-label="Sections"><div class="wrap"><a href="#events">Upcoming</a><a href="#officers">Officers</a><a href="#contact">Contact</a><a href="#give" id="nav-give">Give</a></div></nav>
+  <nav class="nav" aria-label="Sections"><div class="wrap"><a href="#about" id="nav-about">About</a><a href="#events">Upcoming</a><a href="#store" id="nav-store">Store</a><a href="#photos" id="nav-photos">Photos</a><a href="#officers">Officers</a><a href="#contact">Contact</a><a href="#give" id="nav-give">Give</a></div></nav>
   <main class="wrap">
+    <section class="card about" id="about"><h2>About the lodge</h2><div id="s-about"></div></section>
     <div class="grid">
       <div>
         <section class="card" id="events"><h2>Upcoming</h2><ul class="ev" id="s-events"></ul></section>
@@ -76,7 +98,10 @@ footer a{color:var(--muted)}
         <section class="card" id="give"><h2>Give to the lodge</h2><div id="s-give"></div></section>
       </div>
     </div>
+    <section class="card" id="store"><h2>Lodge store</h2><p class="note" style="margin:0 0 14px">Pay the lodge directly with the button you prefer, and put the item, size and your name in the payment note.</p><div class="store" id="s-store"></div></section>
+    <section class="card" id="photos"><h2>Photos</h2><div class="gallery" id="s-gallery"></div></section>
   </main>
+  <dialog id="zoom"><img alt=""></dialog>
   <footer><span id="s-foot"></span> · Website by <a href="/">LodgeNet</a></footer>
 </div>
 <script src="/assets/lodge-site.js"></script>

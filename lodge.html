@@ -66,6 +66,12 @@
         <div class="panel" id="p-site">
           <div class="panel-grid">
             <form id="site-form" autocomplete="off">
+              <details class="group imp-box" id="imp-box" open>
+                <summary>Start from your current website</summary>
+                <p class="hint">Already have a lodge website? Paste its address and Claude reads it, then fills in this form: name, meetings, officers, events, contact, social links, pictures and your About page. Check what it found before you publish.</p>
+                <div class="imp-row"><input id="imp-url" type="text" inputmode="url" autocapitalize="off" spellcheck="false" placeholder="https://yourlodge.org" aria-label="Current website address"><button type="button" class="btn line sm" id="imp-btn">Build from this site</button></div>
+                <p class="hint" id="imp-msg" aria-live="polite" hidden></p>
+              </details>
               <div class="field"><label for="f-name">Lodge name</label><input id="f-name" value="" placeholder="e.g. Murrells Inlet Lodge"></div>
               <div class="field"><label for="f-num">Lodge number</label><input id="f-num" value="" inputmode="numeric" placeholder="e.g. 368"></div>
               <div class="field"><label for="f-state">State</label>
@@ -99,6 +105,23 @@
                   <button type="button" class="swatch" style="background:#22252c" data-c="#22252c" aria-label="Charcoal" aria-pressed="false"></button>
                 </div>
               </div>
+              <details class="group" open>
+                <summary>Pictures and About</summary>
+                <p class="hint">Photos are resized in your browser before they're saved, so large phone pictures are fine.</p>
+                <div class="pic-grid">
+                  <div class="pic-slot" data-slot="hero"><b>Banner photo</b><div class="pic-prev" data-prev="hero"></div>
+                    <span class="row-acts"><label class="btn line sm">Choose photo<input type="file" accept="image/*" data-pic="hero" hidden></label><button type="button" class="btn line sm" data-unpic="hero" hidden>Remove</button></span></div>
+                  <div class="pic-slot" data-slot="logo"><b>Lodge logo or seal</b><div class="pic-prev logo" data-prev="logo"></div>
+                    <span class="row-acts"><label class="btn line sm">Choose image<input type="file" accept="image/*" data-pic="logo" hidden></label><button type="button" class="btn line sm" data-unpic="logo" hidden>Remove</button></span></div>
+                </div>
+                <div class="field"><label for="f-about">About the lodge</label><textarea id="f-about" rows="5" placeholder="Our history, when we were chartered, what we do in the community, and how to become a Mason."></textarea></div>
+                <div class="field"><label>Photo gallery <span class="hint" id="gal-count"></span></label>
+                  <div class="gal" id="gal"></div>
+                  <label class="btn line sm" style="justify-self:start">Add photos<input type="file" accept="image/*" multiple data-pic="gallery" hidden></label>
+                </div>
+                <label class="check"><input type="checkbox" id="site-store-on" checked> Show the lodge store on the website</label>
+                <p class="hint" id="site-store-hint"></p>
+              </details>
               <details class="group" open>
                 <summary>Lodge email</summary>
                 <div class="gmail" id="gmail-box">
