@@ -49,6 +49,7 @@
 <meta name="twitter:image" content="https://lodgenet.vercel.app/og-image.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<script src="/assets/theme.js"></script>
 <link rel="stylesheet" href="/assets/styles.css">
 <style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
 </head>
@@ -95,6 +96,7 @@
             <button type="button" class="btn line sm" id="data-export">Export</button>
             <button type="button" class="btn line sm" id="data-import">Import</button>
             <button type="button" class="btn line sm" id="data-reset">Start over</button>
+            <span data-theme-slot></span>
             <input type="file" id="data-file" accept="application/json,.json" hidden>
           </span>
         </div>

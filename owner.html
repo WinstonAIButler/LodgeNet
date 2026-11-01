@@ -24,31 +24,15 @@
 <meta name="twitter:image" content="/og-image.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<script src="/assets/theme.js"></script>
 <link rel="stylesheet" href="/assets/styles.css">
 <style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
 </head>
-<body>
-<header class="top">
-  <div class="wrap">
-    <nav class="nav" aria-label="Main">
-      <a class="brand" href="/" aria-label="LodgeNet home"><img src="/assets/brand/lodgenet-crest.webp" alt="" width="52" height="56"><span>LodgeNet<small>Masonic Software</small></span></a>
-      <button class="btn ghost sm" type="button" id="sign-out" hidden>Sign out</button>
-    </nav>
-    <div class="page-head">
-      <div class="eyebrow">Private</div>
-      <h1>Master dashboard</h1>
-      <p id="head-text">Watch and change every lodge and account on LodgeNet. Only the LodgeNet owner's account can open this page.</p>
-    </div>
-  </div>
-  <div class="pavement" aria-hidden="true"></div>
-</header>
-
-<main>
-  <section class="band">
-    <div class="wrap">
-      <p class="hint" id="loading">Checking your sign-in…</p>
-
-      <div class="card auth-gate" id="v-off" hidden>
+<body class="app">
+<div class="gate-wrap" id="gate">
+  <a class="side-brand" href="/" aria-label="LodgeNet home"><img src="/assets/brand/lodgenet-crest.webp" alt="" width="34" height="37"><span>LodgeNet</span></a>
+  <p class="hint" id="loading">Checking your sign-in…</p>
+  <div class="card auth-gate" id="v-off" hidden>
         <h3>Sign-in isn't switched on here yet</h3>
         <p class="hint">This copy of LodgeNet isn't connected to its accounts database, so the owner's hub can't open. Add Supabase to the Vercel project and run supabase/owner-hub.sql.</p>
       </div>
@@ -69,22 +53,58 @@
         <p class="hint" id="no-text">This account can't open the owner's hub.</p>
         <a class="btn line sm" href="/login">Go to My lodges</a>
       </div>
+  <span data-theme-slot></span>
+</div>
 
-      <div id="v-in" class="hub" hidden>
-        <p class="hint" id="who"></p>
+<div class="app-shell" id="v-in" hidden>
+  <aside class="side">
+    <a class="side-brand" href="/" aria-label="LodgeNet home"><img src="/assets/brand/lodgenet-crest.webp" alt="" width="34" height="37"><span>LodgeNet</span></a>
+    <div class="side-lodge">
+      <b>LodgeNet owner</b>
+      <span>Master dashboard</span>
+      <select id="lodge-jump" aria-label="Open a lodge's dashboard"><option value="">Open a lodge's dashboard…</option></select>
+    </div>
+    <nav class="side-nav" aria-label="Master dashboard">
+      <a class="nav-i" href="#overview" data-sec="overview"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="2.5" y="2.5" width="6.5" height="6.5"/><rect x="11" y="2.5" width="6.5" height="4"/><rect x="11" y="8.5" width="6.5" height="9"/><rect x="2.5" y="11" width="6.5" height="6.5"/></svg><span>Overview</span></a>
+      <a class="nav-i" href="#lodges" data-sec="lodges"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 8.5L10 3l7 5.5"/><path d="M4.5 8v8.5h11V8"/><path d="M8.5 16.5v-4h3v4"/></svg><span>Lodges</span></a>
+      <a class="nav-i" href="#accounts" data-sec="accounts"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="7.5" cy="7" r="3"/><path d="M2 17c.6-3 2.8-4.5 5.5-4.5S12.4 14 13 17"/><circle cx="14" cy="6.5" r="2.3"/><path d="M14.5 11.5c1.9.3 3.1 1.7 3.5 4"/></svg><span>Accounts</span></a>
+      <a class="nav-i" href="#codes" data-sec="codes"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10.5 2.5h7v7l-8 8-7-7z"/><circle cx="14" cy="6" r="1.2"/></svg><span>Plan codes</span></a>
+      <a class="nav-i" href="#billing" data-sec="billing"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="2.5" y="5" width="15" height="11" rx="1.5"/><path d="M2.5 8.5h15M13 12.5h2"/></svg><span>Billing</span></a>
+    </nav>
+    <div class="side-foot"><span id="who-email"></span><a class="link-btn" href="/jarvis">Jarvis</a><a class="link-btn" href="/login">My lodges</a><button type="button" class="link-btn" id="sign-out">Sign out</button></div>
+  </aside>
 
-        <div class="hub-stats" id="stats"></div>
+  <main class="app-main console hub">
+    <header class="app-top">
+      <div>
+        <div class="eyebrow">Master dashboard · Private</div>
+        <h1 id="sec-title">Overview</h1>
+      </div>
+      <div class="app-top-r">
+        <div class="field hub-search"><label for="q" class="sr">Search lodges and accounts</label><input id="q" type="search" placeholder="Search lodges and accounts" autocomplete="off"></div>
+        <span data-theme-slot></span>
+      </div>
+    </header>
+    <div class="kpis" id="kpis" aria-label="Key figures"></div>
 
-        <div class="hub-sec" id="attention-sec" hidden>
+    <!-- OVERVIEW -->
+    <section class="sec hub-sec" data-sec="overview">
+      <div class="hub-ov">
+        <div>
           <div class="mem-head"><h2 class="panel-title">Needs attention</h2></div>
           <ul class="hub-attn" id="attention"></ul>
         </div>
+        <div>
+          <div class="mem-head"><h2 class="panel-title">Lately</h2><span class="hint">Newest accounts and the last lodge dashboards saved</span></div>
+          <ul class="hub-feed" id="feed"></ul>
+        </div>
+      </div>
+    </section>
 
-        <div class="field hub-search"><label for="q">Search lodges and accounts</label><input id="q" type="search" placeholder="Name, number, city or email" autocomplete="off"></div>
-
-        <div class="hub-sec">
-          <div class="mem-head"><h2 class="panel-title">Lodges</h2><span class="hint">Plan and no-charge changes save at once. Manage opens a lodge's details, roll and delete.</span></div>
-          <div class="table-scroll"><table class="roster"><thead><tr><th>Lodge</th><th>Plan</th><th>No charge</th><th>Billing</th><th>Brethren</th><th>Account owner</th><th>Last saved</th><th><span class="sr">Actions</span></th></tr></thead><tbody id="lodges"></tbody></table></div>
+    <!-- LODGES -->
+    <section class="sec hub-sec" data-sec="lodges" hidden>
+      <div class="mem-head"><h2 class="panel-title">Every lodge</h2><span class="hint">Plan and no-charge changes save at once. Manage opens a lodge's details, roll and delete.</span></div>
+      <div class="table-scroll"><table class="roster"><thead><tr><th>Lodge</th><th>Plan</th><th>No charge</th><th>Billing</th><th>Brethren</th><th>Account owner</th><th>Last saved</th><th><span class="sr">Actions</span></th></tr></thead><tbody id="lodges"></tbody></table></div>
           <p class="auth-msg" id="lodge-msg" role="status" aria-live="polite"></p>
           <details class="card hub-add">
             <summary><b>Add a lodge</b></summary>
@@ -102,17 +122,19 @@
             <p class="hint">The owner gets an invite: they choose Create account at /login with that email, and the lodge's dashboard opens at /lodges/&lt;address&gt;.</p>
             <p class="auth-msg" id="l-msg" role="status" aria-live="polite"></p>
           </details>
-        </div>
+    </section>
 
-        <div class="hub-sec">
-          <div class="mem-head"><h2 class="panel-title">Accounts</h2><span class="hint" id="acct-count"></span></div>
-          <div class="table-scroll"><table class="roster"><thead><tr><th>Email</th><th>Lodges</th><th>Joined</th><th>Last sign-in</th><th><span class="sr">Actions</span></th></tr></thead><tbody id="users"></tbody></table></div>
+    <!-- ACCOUNTS -->
+    <section class="sec hub-sec" data-sec="accounts" hidden>
+      <div class="mem-head"><h2 class="panel-title">Every account</h2><span class="hint" id="acct-count"></span></div>
+      <div class="table-scroll"><table class="roster"><thead><tr><th>Email</th><th>Lodges</th><th>Joined</th><th>Last sign-in</th><th><span class="sr">Actions</span></th></tr></thead><tbody id="users"></tbody></table></div>
           <p class="auth-msg" id="user-msg" role="status" aria-live="polite"></p>
-        </div>
+    </section>
 
-        <div class="hub-sec">
-          <div class="mem-head"><h2 class="panel-title">Plan codes</h2><span class="hint">A code puts a lodge on its plan at no charge.</span></div>
-          <div class="table-scroll"><table class="roster"><thead><tr><th>Code</th><th>Plan</th><th>Used</th><th>Expires</th><th>Note</th><th></th></tr></thead><tbody id="codes"></tbody></table></div>
+    <!-- PLAN CODES -->
+    <section class="sec hub-sec" data-sec="codes" hidden>
+      <div class="mem-head"><h2 class="panel-title">Plan codes</h2><span class="hint">A code puts a lodge on its plan at no charge.</span></div>
+      <div class="table-scroll"><table class="roster"><thead><tr><th>Code</th><th>Plan</th><th>Used</th><th>Expires</th><th>Note</th><th></th></tr></thead><tbody id="codes"></tbody></table></div>
           <details class="card hub-add">
             <summary><b>New code</b></summary>
             <form id="f-code" class="hub-form" novalidate>
@@ -125,11 +147,12 @@
             </form>
             <p class="auth-msg" id="c-msg" role="status" aria-live="polite"></p>
           </details>
-        </div>
+    </section>
 
-        <div class="hub-sec">
-          <div class="mem-head"><h2 class="panel-title">Stripe</h2><span class="hint">Live revenue and payouts are on <a href="/jarvis">Jarvis</a>.</span></div>
-          <div class="card hub-add" style="margin-top:0">
+    <!-- BILLING -->
+    <section class="sec hub-sec" data-sec="billing" hidden>
+      <div class="mem-head"><h2 class="panel-title">Stripe</h2><span class="hint">Live revenue and payouts are on <a href="/jarvis">Jarvis</a>.</span></div>
+      <div class="card hub-add" style="margin-top:0">
             <p id="stripe-status"><span class="hint">Checking…</span></p>
             <form id="f-stripe" class="hub-form hub-key" novalidate>
               <div class="field"><label for="s-key">Secret or restricted key</label><input id="s-key" type="password" autocomplete="off" spellcheck="false" placeholder="rk_live_… or sk_live_…"></div>
@@ -139,10 +162,13 @@
             <p class="hint">A backup for the key in Vercel, which is used first. Once saved, the key is never shown again; only LodgeNet's server can use it.</p>
             <p class="auth-msg" id="s-msg" role="status" aria-live="polite"></p>
           </div>
-        </div>
-      </div>
+      <div class="mem-head" style="margin-top:28px"><h2 class="panel-title">Subscriptions</h2><span class="hint">Lodges that pay through Stripe or that you've put on a plan at no charge</span></div>
+      <div class="table-scroll"><table class="roster"><thead><tr><th>Lodge</th><th>Plan</th><th>Billing</th><th>Account owner</th></tr></thead><tbody id="subs"></tbody></table></div>
+    </section>
+  </main>
+</div>
 
-      <dialog class="hub-dialog" id="cf-dialog" aria-labelledby="cf-title">
+<dialog class="hub-dialog" id="cf-dialog" aria-labelledby="cf-title">
         <form method="dialog" id="cf-form" novalidate>
           <h3 id="cf-title"></h3>
           <p id="cf-body"></p>
@@ -154,15 +180,6 @@
           </div>
         </form>
       </dialog>
-    </div>
-  </section>
-</main>
-<footer>
-  <div class="wrap">
-    <span><b style="font-family:var(--display);color:var(--fg);letter-spacing:.06em">LodgeNet</b> · Master dashboard</span>
-    <span>Private</span>
-  </div>
-</footer>
 <script src="/assets/auth.js"></script>
 <script src="/assets/owner.js"></script>
 </body>
