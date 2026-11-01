@@ -1,7 +1,7 @@
 // GET/POST /api/jarvis: Jarvis, LodgeNet's operations chief of staff (page at /jarvis).
 // Reads Stripe and GitHub (never writes) and has Claude write the briefing and answer questions.
 // Environment variables (Vercel -> Settings -> Environment Variables):
-//   JARVIS_ACCESS_CODE  required; Jarvis stays locked until it is set
+//   JARVIS_ACCESS_CODE  optional; if set, the page asks for it (Jarvis is open without it)
 //   ANTHROPIC_API_KEY   Claude, for briefings and questions
 //   JARVIS_STRIPE_KEY   a restricted, read-only Stripe key. Without it Jarvis uses the same key as
 //                       billing: STRIPE_SECRET_KEY, or the one saved in the owner's hub
