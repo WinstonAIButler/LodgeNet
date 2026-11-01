@@ -395,6 +395,20 @@ footer .wrap{padding-block:28px;display:flex;flex-wrap:wrap;justify-content:spac
 .hub-add summary{cursor:pointer}
 .hub-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:0 12px;align-items:end;margin-top:6px}
 .hub-form .btn{justify-self:start;margin-bottom:14px}
+.hub-search{max-width:420px;margin:0}
+.hub-attn{margin:0;padding-left:20px;display:grid;gap:6px;font-size:14px}
+.hub-acts{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end}
+.hub-detail > td{background:var(--sunk)}
+.hub-detail-in{display:grid;gap:12px;padding:8px 4px}
+.hub-detail-in h4{margin:4px 0 0}
+.hub-danger-zone{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;border-top:1px solid var(--line);padding-top:12px}
+.hub .btn.hub-danger,.hub-dialog .btn.hub-danger{background:#b4372f;color:#fff}
+.hub .btn.hub-danger-line{color:#b4372f;border-color:#b4372f}
+.hub-dialog{border:1px solid var(--line);background:var(--bg);color:var(--fg);padding:24px;max-width:min(480px,calc(100vw - 32px));width:100%}
+.hub-dialog::backdrop{background:rgba(10,20,40,.45)}
+.hub-dialog form{display:grid;gap:12px}
+.hub-dialog h3{margin:0}
+.hub-dialog-acts{display:flex;gap:8px;justify-content:flex-end}
 
 @media (max-width:900px){
   .hero,.panel-grid,.store-wrap,.cal-wrap,.min-wrap,.mem-wrap{grid-template-columns:1fr}
