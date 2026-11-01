@@ -732,3 +732,22 @@ a.paybtn{text-decoration:none;display:inline-block}
 .gate-wrap .theme-btn{justify-self:center}
 .hub-detail-in .field label{display:grid;gap:6px;font-size:14px;font-weight:400}
 .hub-detail-in .field label > span{font-size:13px;font-weight:600}
+/* website builder: import, pictures, gallery */
+.imp-row{display:flex;gap:8px;flex-wrap:wrap}
+.imp-row input{flex:1 1 220px;min-width:0;background:var(--surface);border:1px solid var(--line);padding:9px 11px;font-size:14px}
+.pic-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+@media (max-width:520px){.pic-grid{grid-template-columns:1fr}}
+.pic-slot{display:grid;gap:8px;align-content:start;font-size:13px}
+.pic-prev{aspect-ratio:16/7;border:1px dashed var(--line);background:var(--surface) center/cover no-repeat;display:grid;place-items:center;color:var(--muted);font-size:12px}
+.pic-prev.logo{aspect-ratio:auto;height:96px;background-size:contain}
+.pic-prev:empty::after{content:"None yet"}
+.pic-prev.has::after{content:none}
+.pic-slot label.btn,.field label.btn{cursor:pointer}
+#f-about{font-family:inherit;font-size:14px}
+.gal{display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:8px;margin-bottom:8px}
+.gal figure{margin:0;position:relative}
+.gal img{width:100%;aspect-ratio:1;object-fit:cover;display:block;border:1px solid var(--line)}
+.gal button{position:absolute;top:4px;right:4px;width:24px;height:24px;border:0;background:rgba(0,0,0,.65);color:#fff;cursor:pointer;line-height:1;font-size:15px}
+label.check{display:flex;gap:8px;align-items:center;font-size:14px;margin-top:4px}
+.browser .site-hero.has-img{background-size:cover;background-position:center}
+.browser .site-hero img.pv-logo{width:56px;height:56px;object-fit:contain}

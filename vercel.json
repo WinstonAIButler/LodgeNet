@@ -30,6 +30,9 @@
     },
     "api/jarvis.mjs": {
       "maxDuration": 120
+    },
+    "api/site-import.js": {
+      "maxDuration": 120
     }
   }
 }

@@ -220,6 +220,8 @@
 
   /* ---------- website builder ---------- */
   let siteColor=CFG.color||"#1c3a75";
+  const pics=Object.assign({hero:"",logo:"",gallery:[]},CFG.siteImages||{});
+  let siteStoreOn=CFG.siteStore!==false;
   document.querySelectorAll(".swatch").forEach(b=>b.setAttribute("aria-pressed",b.dataset.c===siteColor));
   function renderSite(){
     const name=$("#f-name").value.trim()||"Your Lodge", num=$("#f-num").value.trim(), jur=$("#f-jur").value;
@@ -233,6 +235,11 @@
     $("#pv-officers").innerHTML=["WM","SW","JW","TREAS","SEC"].map(k=>{const x=SEATS.find(s=>s.k===k),m=member(officers[k]);
       return `<dt>${x.t}</dt><dd>${m?esc(m.name+(m.pm&&k!=="WM"?", PM":"")):"Vacant"}</dd>`}).join("");
     $("#site-preview").style.setProperty("--site",siteColor);
+    {const h=document.querySelector("#site-preview .site-hero");if(h){
+      h.classList.toggle("has-img",!!pics.hero);h.style.backgroundImage=pics.hero?`linear-gradient(rgba(0,0,0,.45),rgba(0,0,0,.55)),url("${pics.hero}")`:"";
+      const sc=h.querySelector(".sc");let lg=h.querySelector(".pv-logo");
+      if(pics.logo){if(!lg){lg=document.createElement("img");lg.className="pv-logo";lg.alt="";h.prepend(lg)}lg.src=pics.logo}else if(lg)lg.remove();
+      if(sc)sc.style.display=pics.logo?"none":""}}
     const up=events.filter(e=>parse(e.d)>=TODAY).sort((a,b)=>a.d<b.d?-1:1).slice(0,4);
     const email=$("#f-email").value.trim();
     $("#pv-email").textContent=email||"Add the lodge email on the left";
@@ -263,6 +270,110 @@
     gmail=!gmail;renderGmail();
   });
   $("#f-email").addEventListener("input",()=>{if(gmail)renderGmail()});
+  /* ---------- pictures, About and the store switch (lodge.html's Website form) ----------
+     Pictures are shrunk in the browser and kept in the lodge's data as JPEG data URLs, like product photos. */
+  const GAL_MAX=8,PIC_SIZE={hero:[1400,.74],logo:[360,.86],gallery:[900,.72]};
+  function shrinkPic(src,kind){return new Promise((ok,no)=>{const img=new Image(),[max,q]=PIC_SIZE[kind];
+    img.onload=()=>{const k=Math.min(1,max/Math.max(img.width,img.height)),c=document.createElement("canvas");c.width=Math.round(img.width*k);c.height=Math.round(img.height*k);
+      const x=c.getContext("2d");if(kind==="logo"){c.getContext("2d")}else{x.fillStyle="#fff";x.fillRect(0,0,c.width,c.height)}
+      x.drawImage(img,0,0,c.width,c.height);
+      /* the logo keeps a transparent background where the browser can encode WebP; JPEG everywhere else */
+      let out=kind==="logo"?c.toDataURL("image/webp",q):"";if(!/^data:image\/webp/.test(out))out=c.toDataURL(kind==="logo"?"image/png":"image/jpeg",q);
+      if(kind==="logo"&&out.length>400000)out=c.toDataURL("image/jpeg",q);
+      ok(out)};
+    img.onerror=()=>no(new Error("not an image"));img.src=src})}
+  const fileUrl=f=>new Promise((ok,no)=>{const r=new FileReader();r.onload=()=>ok(r.result);r.onerror=no;r.readAsDataURL(f)});
+  function renderPics(){
+    if(!$("#gal"))return;
+    ["hero","logo"].forEach(k=>{const el=document.querySelector(`[data-prev="${k}"]`);el.style.backgroundImage=pics[k]?`url("${pics[k]}")`:"";el.classList.toggle("has",!!pics[k]);
+      document.querySelector(`[data-unpic="${k}"]`).hidden=!pics[k]});
+    $("#gal").innerHTML=pics.gallery.map((u,i)=>`<figure><img src="${esc(u)}" alt=""><button type="button" data-ungal="${i}" aria-label="Remove photo">×</button></figure>`).join("");
+    $("#gal-count").textContent=pics.gallery.length?`${pics.gallery.length} of ${GAL_MAX}`:"";
+    const so=$("#site-store-on");so.checked=siteStoreOn;
+    const starter=(CLOUD?CFG.plan:plan)==="starter";so.disabled=starter;
+    $("#site-store-hint").textContent=starter?"The store comes with a paid level.":"Items marked as showing on Merchandise appear with buttons to pay the lodge.";
+  }
+  function picsChanged(){renderPics();renderSite();queueSave()}
+  async function addPics(kind,srcs){
+    for(const src of srcs){
+      if(kind==="gallery"&&pics.gallery.length>=GAL_MAX)break;
+      const u=await shrinkPic(src,kind);
+      if(kind==="gallery")pics.gallery.push(u);else pics[kind]=u;
+    }
+  }
+  if($("#gal")){
+    $("#site-form").addEventListener("change",async e=>{
+      const k=e.target.dataset&&e.target.dataset.pic;
+      if(k){const files=[...e.target.files];e.target.value="";
+        try{await addPics(k,await Promise.all(files.map(fileUrl)))}catch(err){alert("That file isn't a picture LodgeNet can read.")}
+        return picsChanged()}
+      if(e.target.id==="site-store-on"){siteStoreOn=e.target.checked;renderSite()}
+    });
+    $("#site-form").addEventListener("click",e=>{
+      const u=e.target.closest("[data-unpic]"),g=e.target.closest("[data-ungal]");
+      if(u){pics[u.dataset.unpic]="";picsChanged()}
+      if(g){pics.gallery.splice(+g.dataset.ungal,1);picsChanged()}
+    });
+    $("#f-about").addEventListener("input",()=>siteState());
+  }
+
+  /* ---------- build from the lodge's current website ----------
+     api/site-import.js reads the site and has Claude pull out the lodge's details; this fills the form with them. */
+  function seatKey(title){const t=String(title||"").toLowerCase().replace(/[^a-z ]/g,"");
+    const x=SEATS.find(s=>s.t.toLowerCase()===t)||SEATS.find(s=>t&&(t.includes(s.t.toLowerCase())||s.t.toLowerCase().includes(t)));return x&&x.k}
+  function cleanName(n){return String(n||"").replace(/^(m\.?\s*)?(r\.?\s*)?(w\.?\s*)?(b(ro(ther)?)?\.?)\s+/i,"").replace(/,?\s*P\.?M\.?$/i,"").trim()}
+  function setVal(id,v,ev){const el=$(id);if(!el||v==null||v==="")return false;el.value=v;el.dispatchEvent(new Event(ev||"input",{bubbles:true}));return true}
+  async function applyImport(d){
+    const f=[],L=d.lodge||{};
+    if(setVal("#f-name",L.name))f.push("name");setVal("#f-num",L.number);
+    if(L.state&&STATES.some(x=>x[0]===L.state)){setVal("#f-state",L.state,"change")}
+    setVal("#f-city",L.city);setVal("#f-gl",L.grand_lodge);setVal("#f-jur",L.jurisdiction);
+    if(L.meeting_week||L.meeting_day||L.meeting_time){if(L.meeting_week)setVal("#f-week",String(L.meeting_week),"change");if(L.meeting_day)setVal("#f-day",L.meeting_day,"change");if(L.meeting_time)setVal("#f-time",L.meeting_time,"change");f.push("meeting schedule")}
+    if(setVal("#f-email",L.email))f.push("email");
+    let soc=0;[["#f-fb","facebook"],["#f-ig","instagram"],["#f-x","x"],["#f-yt","youtube"],["#f-tt","tiktok"]].forEach(([id,k])=>{if(setVal(id,L[k]))soc++});if(soc)f.push("social links");
+    let pay=0;[["#f-pp","paypal"],["#f-venmo","venmo"],["#f-cash","cashapp"]].forEach(([id,k])=>{if(setVal(id,L[k]))pay++});if(L.donate_url&&/^https:\/\//.test(L.donate_url)&&setVal("#f-link",L.donate_url))pay++;if(pay)f.push("giving links");
+    if(d.about&&setVal("#f-about",d.about))f.push("About text");
+    let off=0,added=0;
+    for(const o of d.officers||[]){const k=seatKey(o.seat),n=cleanName(o.name);if(!k||!n)continue;
+      let m=members.find(x=>x.name.toLowerCase()===n.toLowerCase());
+      if(!m){m=M(n,"Master Mason",/\bP\.?M\.?\b|W\.?B\.?|Worshipful/i.test(o.name),"Not recorded");if(/^(R\.?\s*)?W\.?\s*B/i.test(o.name))m.title=/^R/i.test(o.name)?"RWB.":"WB.";members.push(m);added++}
+      officers[k]=m.id;off++}
+    if(off)f.push(off+" officers"+(added?` (${added} added to the roster)`:""));
+    let ev=0;for(const e of d.events||[]){if(!/^\d{4}-\d{2}-\d{2}$/.test(e.date||"")||!e.title)continue;
+      if(events.some(x=>x.d===e.date&&x.t.toLowerCase()===e.title.toLowerCase()))continue;
+      events.push({d:e.date,t:e.title,k:/fundrais|raffle|pancake|fish fry|bbq|auction|sale/i.test(e.title)?"fund":"lodge",time:e.time||"",note:e.note||""});ev++}
+    if(ev)f.push(ev+" events");
+    let pr=0;for(const x of d.products||[]){if(!x.name||products.some(p=>p.n.toLowerCase()===x.name.toLowerCase()))continue;
+      products.push({id:"imp"+Date.now().toString(36)+pr,n:x.name,p:+x.price||0,margin:0,kind:"other",sizes:"",colors:""});pr++}
+    if(pr)f.push(pr+" store items");
+    const im=d.images||{};let np=0;
+    try{if(im.logo){await addPics("logo",[im.logo]);np++}}catch(e){}
+    try{if(im.banner){await addPics("hero",[im.banner]);np++}}catch(e){}
+    for(const g of im.gallery||[]){try{const before=pics.gallery.length;await addPics("gallery",[g]);if(pics.gallery.length>before)np++}catch(e){}}
+    if(np)f.push(np+" pictures");
+    refreshPeople();renderCal();renderProducts();renderPics();renderSite();renderMinutes();queueSave();
+    return f;
+  }
+  if($("#imp-btn"))$("#imp-btn").addEventListener("click",async()=>{
+    const msg=$("#imp-msg"),btn=$("#imp-btn"),say=t=>{msg.hidden=false;msg.textContent=t};
+    let url=$("#imp-url").value.trim();if(url&&!/^https?:\/\//i.test(url))url="https://"+url;
+    if(!/^https?:\/\/[^\s/]+\.[^\s]+/i.test(url))return say("Enter the full address of the lodge's current website, like https://yourlodge.org.");
+    if(!CLOUD)return say("Sign in to your lodge to build from a website. This demo can't read other sites.");
+    if(!CLOUD.canEdit)return say(VIEW_ONLY);
+    if(!(window.LodgeNetAuth&&window.LodgeNetAuth.ai))return say("Building from a website needs Claude switched on for LodgeNet (the same setting as AI minutes).");
+    btn.disabled=true;btn.textContent="Reading the site…";say("Reading "+url+" and the pages it links to. This can take up to a minute.");
+    try{
+      const s=await window.LodgeNetAuth.session();
+      const r=await fetch("/api/site-import",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+(s&&s.access_token)},
+        body:JSON.stringify({lodge_id:CLOUD.lodgeId,url,seats:SEATS.map(x=>x.t),today:isoDay(new Date())})});
+      const d=await r.json().catch(()=>({}));
+      if(!r.ok)throw new Error(d.error||"Couldn't read that website.");
+      const got=await applyImport(d);
+      say(got.length?`Filled in from ${d.pages||1} page${d.pages===1?"":"s"}: ${got.join(", ")}. Look it over, then press Publish site.${d.notes?" Note: "+d.notes:""}`:"Claude read the site but didn't find lodge details to fill in."+(d.notes?" "+d.notes:""));
+    }catch(e){say(e.message)}
+    btn.disabled=false;btn.textContent="Build from this site";
+  });
+
   /* ---------- publishing ----------
      Publish copies the public parts of the Website form (never the roster, dues, minutes or treasury) into the lodge's saved data as
      `published`. The public page /site/<slug> (lodge-site.html) reads only that copy, through published_site() in supabase/public-site.sql,
@@ -279,7 +390,10 @@
       events:events.filter(e=>e.d>=now).sort((a,b)=>a.d<b.d?-1:1).slice(0,12).map(e=>({d:e.d,t:e.t,time:e.time||"",fund:e.k==="fund"})),
       social:[["Facebook","#f-fb","https://facebook.com/"],["Instagram","#f-ig","https://instagram.com/"],["X","#f-x","https://x.com/"],["YouTube","#f-yt","https://youtube.com/@"],["TikTok","#f-tt","https://tiktok.com/@"]]
         .filter(([,f])=>handle(f)).map(([n,f,base])=>({name:n,url:base+handle(f)})),
-      give:PAY.filter(payOn).map(p=>{const h=p.home&&p.home(payVal(p));return h?{k:p.k,label:payLabel(p),url:h}:{k:p.k,label:payLabel(p),note:payVal(p)}})};
+      give:PAY.filter(payOn).map(p=>{const h=p.home&&p.home(payVal(p));return h?{k:p.k,label:payLabel(p),url:h}:{k:p.k,label:payLabel(p),note:payVal(p)}}),
+      pay:PAY.filter(payOn).map(p=>({k:p.k,label:payLabel(p),v:payVal(p)})),
+      about:fieldVal("#f-about"),images:{hero:pics.hero,logo:pics.logo,gallery:pics.gallery.slice()},
+      store:siteStoreOn&&(CLOUD?CFG.plan:plan)!=="starter"?products.filter(x=>!x.off).map(x=>({id:x.id,n:x.n,p:+x.p||0,img:x.img||"",tag:x.tag||"",sizes:x.sizes||"",colors:x.colors||"",kind:x.kind||""})):[]};
   }
   const sameSite=()=>!!published&&JSON.stringify(publicSite())===JSON.stringify(published.site);
   const LOCKED='<span class="pill">Not published</span> Publishing unlocks once the lodge\'s plan is paid for. <a href="/login?account">Subscribe from your account</a>';
@@ -957,9 +1071,9 @@
 
   /* ---------- saving ---------- */
   function snapshot(){
-    const form={};document.querySelectorAll("#site-form input[id],#site-form select[id],#pay-form input[id]").forEach(el=>form[el.id]=el.value);
+    const form={};document.querySelectorAll("#site-form input[id]:not([type=checkbox]),#site-form select[id],#site-form textarea[id],#pay-form input[id]").forEach(el=>form[el.id]=el.value);
     return {app:"LodgeNet",version:1,page:STORE_KEY,savedAt:new Date().toISOString(),form,color:siteColor,
-      membersFull:members,officers,events,minutes,minuteSections,gmail,nextStated,products,orders,published,...(plan?{plan}:{}),
+      membersFull:members,officers,events,minutes,minuteSections,gmail,nextStated,products,orders,published,siteImages:pics,siteStore:siteStoreOn,...(plan?{plan}:{}),
       ...(window.LodgeNetDash?window.LodgeNetDash.snapshot():{})};
   }
   const stamp=d=>new Date(d).toLocaleString("en-US",{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"});
@@ -1015,7 +1129,7 @@
     location.reload();
   });
 
-  renderMembers();renderGmail();regenStated();siteState();
+  renderMembers();renderGmail();regenStated();renderPics();renderSite();siteState();
   renderCal();renderCart();renderMinutes();
   /* the signed-in dashboard (assets/dash.js) builds its other sections on the same lodge data and saves through queueSave */
   window.LodgeNetApp={CFG,CLOUD,TODAY,money,esc,parse,fmt,members,officers,products,SEATS,member,minutes,
