@@ -4,6 +4,10 @@
     {
       "source": "/lodges/:slug",
       "destination": "/lodge"
+    },
+    {
+      "source": "/site/:slug",
+      "destination": "/lodge-site"
     }
   ],
   "headers": [
