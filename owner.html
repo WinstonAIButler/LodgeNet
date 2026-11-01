@@ -34,8 +34,8 @@
     </nav>
     <div class="page-head">
       <div class="eyebrow">Private</div>
-      <h1>Owner's hub</h1>
-      <p id="head-text">Every lodge, account and plan code on LodgeNet. Only the LodgeNet owner's account can open this page.</p>
+      <h1>Master dashboard</h1>
+      <p id="head-text">Watch and change every lodge and account on LodgeNet. Only the LodgeNet owner's account can open this page.</p>
     </div>
   </div>
   <div class="pavement" aria-hidden="true"></div>
@@ -73,28 +73,16 @@
 
         <div class="hub-stats" id="stats"></div>
 
-        <div class="hub-sec">
-          <div class="mem-head"><h2 class="panel-title">Revenue</h2></div>
-          <div class="card"><p class="hint">Subscription revenue shows here once Stripe billing is switched on. Lodges on a plan code are listed as no charge below.</p></div>
+        <div class="hub-sec" id="attention-sec" hidden>
+          <div class="mem-head"><h2 class="panel-title">Needs attention</h2></div>
+          <ul class="hub-attn" id="attention"></ul>
         </div>
 
-        <div class="hub-sec">
-          <div class="mem-head"><h2 class="panel-title">Stripe</h2><span class="hint">Your Stripe account's API key, for LodgeNet's billing.</span></div>
-          <div class="card hub-add" style="margin-top:0">
-            <p id="stripe-status"><span class="hint">Checking…</span></p>
-            <form id="f-stripe" class="hub-form hub-key" novalidate>
-              <div class="field"><label for="s-key">Secret or restricted key</label><input id="s-key" type="password" autocomplete="off" spellcheck="false" placeholder="rk_live_… or sk_live_…"></div>
-              <button class="btn sm" type="submit" id="s-go">Save key</button>
-              <button class="btn line sm" type="button" id="s-clear" hidden>Remove key</button>
-            </form>
-            <p class="hint">Find it in the Stripe Dashboard under Developers → API keys. A restricted key (rk_) limited to what LodgeNet needs is safest. Once saved, the key is never shown again, here or anywhere on the site; only LodgeNet's server can use it. If Stripe is connected to the site through Vercel, that key is used first and this box is a backup.</p>
-            <p class="auth-msg" id="s-msg" role="status" aria-live="polite"></p>
-          </div>
-        </div>
+        <div class="field hub-search"><label for="q">Search lodges and accounts</label><input id="q" type="search" placeholder="Name, number, city or email" autocomplete="off"></div>
 
         <div class="hub-sec">
-          <div class="mem-head"><h2 class="panel-title">Lodges</h2><span class="hint">Change a plan or mark it no charge; it saves at once.</span></div>
-          <div class="table-scroll"><table class="roster"><thead><tr><th>Lodge</th><th>Plan</th><th>No charge</th><th>Brethren</th><th>Account owner</th><th>Updated</th></tr></thead><tbody id="lodges"></tbody></table></div>
+          <div class="mem-head"><h2 class="panel-title">Lodges</h2><span class="hint">Plan and no-charge changes save at once. Manage opens a lodge's details, roll and delete.</span></div>
+          <div class="table-scroll"><table class="roster"><thead><tr><th>Lodge</th><th>Plan</th><th>No charge</th><th>Billing</th><th>Brethren</th><th>Account owner</th><th>Last saved</th><th><span class="sr">Actions</span></th></tr></thead><tbody id="lodges"></tbody></table></div>
           <p class="auth-msg" id="lodge-msg" role="status" aria-live="polite"></p>
           <details class="card hub-add">
             <summary><b>Add a lodge</b></summary>
@@ -109,9 +97,15 @@
               <div class="field"><label for="l-owner">Account owner's email</label><input id="l-owner" type="email" placeholder="secretary@example.com"></div>
               <button class="btn sm" type="submit">Add lodge</button>
             </form>
-            <p class="hint">The owner gets an invite: they choose Create account at /login with that email. The lodge's dashboard page (lodges/&lt;address&gt;.html) still needs adding to the site.</p>
+            <p class="hint">The owner gets an invite: they choose Create account at /login with that email, and the lodge's dashboard opens at /lodges/&lt;address&gt;.</p>
             <p class="auth-msg" id="l-msg" role="status" aria-live="polite"></p>
           </details>
+        </div>
+
+        <div class="hub-sec">
+          <div class="mem-head"><h2 class="panel-title">Accounts</h2><span class="hint" id="acct-count"></span></div>
+          <div class="table-scroll"><table class="roster"><thead><tr><th>Email</th><th>Lodges</th><th>Joined</th><th>Last sign-in</th><th><span class="sr">Actions</span></th></tr></thead><tbody id="users"></tbody></table></div>
+          <p class="auth-msg" id="user-msg" role="status" aria-live="polite"></p>
         </div>
 
         <div class="hub-sec">
@@ -132,16 +126,38 @@
         </div>
 
         <div class="hub-sec">
-          <div class="mem-head"><h2 class="panel-title">Accounts</h2><span class="hint" id="acct-count"></span></div>
-          <div class="table-scroll"><table class="roster"><thead><tr><th>Email</th><th>Lodges</th><th>Joined</th><th>Last sign-in</th></tr></thead><tbody id="users"></tbody></table></div>
+          <div class="mem-head"><h2 class="panel-title">Stripe</h2><span class="hint">Live revenue and payouts are on <a href="/jarvis">Jarvis</a>.</span></div>
+          <div class="card hub-add" style="margin-top:0">
+            <p id="stripe-status"><span class="hint">Checking…</span></p>
+            <form id="f-stripe" class="hub-form hub-key" novalidate>
+              <div class="field"><label for="s-key">Secret or restricted key</label><input id="s-key" type="password" autocomplete="off" spellcheck="false" placeholder="rk_live_… or sk_live_…"></div>
+              <button class="btn sm" type="submit" id="s-go">Save key</button>
+              <button class="btn line sm" type="button" id="s-clear" hidden>Remove key</button>
+            </form>
+            <p class="hint">A backup for the key in Vercel, which is used first. Once saved, the key is never shown again; only LodgeNet's server can use it.</p>
+            <p class="auth-msg" id="s-msg" role="status" aria-live="polite"></p>
+          </div>
         </div>
       </div>
+
+      <dialog class="hub-dialog" id="cf-dialog" aria-labelledby="cf-title">
+        <form method="dialog" id="cf-form" novalidate>
+          <h3 id="cf-title"></h3>
+          <p id="cf-body"></p>
+          <div class="field"><label for="cf-input" id="cf-label"></label><input id="cf-input" autocomplete="off" spellcheck="false"></div>
+          <p class="auth-msg" id="cf-msg" role="status" aria-live="polite"></p>
+          <div class="hub-dialog-acts">
+            <button class="btn line sm" value="cancel" type="button" id="cf-cancel">Cancel</button>
+            <button class="btn sm hub-danger" type="submit" id="cf-go">Delete</button>
+          </div>
+        </form>
+      </dialog>
     </div>
   </section>
 </main>
 <footer>
   <div class="wrap">
-    <span><b style="font-family:var(--display);color:var(--fg);letter-spacing:.06em">LodgeNet</b> · Owner's hub</span>
+    <span><b style="font-family:var(--display);color:var(--fg);letter-spacing:.06em">LodgeNet</b> · Master dashboard</span>
     <span>Private</span>
   </div>
 </footer>

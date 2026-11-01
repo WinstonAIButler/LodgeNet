@@ -1,4 +1,4 @@
-/* /owner: the LodgeNet owner's hub. Every lodge, account and plan code, read and changed through the admin_*
+/* /owner: the LodgeNet master dashboard. Every lodge, account and plan code, read, changed and deleted through the admin_*
    functions in supabase/owner-hub.sql. Those functions refuse anyone who isn't in platform_admins, so hiding
    this page is only a courtesy; the database is what keeps it private. */
 (function(){
@@ -9,7 +9,7 @@
   const PRICE={starter:0,lodge:19};            // per month, as on /pricing; District is quoted
   const ROLE={owner:"Account owner",officer:"Officer",member:"Member"};
   const day=t=>t?new Date(t).toLocaleDateString(undefined,{year:"numeric",month:"short",day:"numeric"}):"Never";
-  let sb=null;
+  let sb=null,meId=null;
 
   function show(id){["loading","v-off","v-out","v-no","v-in"].forEach(v=>$("#"+v).hidden=v!==id)}
   function msg(el,t,err){el.textContent=t;el.classList.toggle("err",!!err)}
@@ -24,52 +24,131 @@
       $("#no-text").textContent=`You're signed in as ${s.user.email}, which can't open the owner's hub.`;
       return show("v-no");
     }
+    meId=s.user.id;
     $("#who").textContent="Signed in as "+s.user.email;
     show("v-in");
     refresh();renderStripe();
   }
 
+  let data={lodges:[],users:[],codes:[]},open=new Set();
   async function refresh(){
     try{
       const [lodges,users,codes]=await Promise.all([call("admin_lodges"),call("admin_users"),call("admin_codes")]);
-      renderStats(lodges,users,codes);renderLodges(lodges);renderCodes(codes);renderUsers(users);
-    }catch(e){msg($("#lodge-msg"),"Couldn't load the hub ("+e.message+"). Reload to try again.",true)}
+      data={lodges,users,codes};
+      renderStats();renderAttention();renderLodges();renderCodes(codes);renderUsers();
+    }catch(e){msg($("#lodge-msg"),"Couldn't load the dashboard ("+e.message+"). Reload to try again.",true)}
   }
 
   const live=c=>(!c.expires_at||new Date(c.expires_at)>new Date())&&(c.max_uses==null||c.uses<c.max_uses);
-  function renderStats(lodges,users,codes){
-    const paying=lodges.filter(l=>!l.comped&&PRICE[l.plan]>0);
-    const mrr=paying.reduce((n,l)=>n+PRICE[l.plan],0);
+  const PAYING=["active","trialing"],OWED=["past_due","unpaid"];
+  const BILL={active:"Paid",trialing:"Trial",past_due:"Payment due",unpaid:"Unpaid",canceled:"Cancelled",incomplete:"Incomplete",incomplete_expired:"Expired"};
+  const lodgeName=l=>l.name+(l.number?" No. "+l.number:"");
+  function renderStats(){
+    const {lodges,users,codes}=data;
+    const paying=lodges.filter(l=>!l.comped&&PAYING.includes(l.billing_status));
+    const week=Date.now()-7*864e5;
     const stat=(n,label,sub)=>`<div class="card hub-stat"><span class="hint">${esc(label)}</span><b class="num">${esc(n)}</b>${sub?`<span class="hint">${esc(sub)}</span>`:""}</div>`;
     $("#stats").innerHTML=[
-      stat(lodges.length,"Lodges",lodges.filter(l=>l.plan==="lodge").length+" on the Lodge plan"),
+      stat(lodges.length,"Lodges",lodges.filter(l=>l.has_dashboard).length+" with a saved dashboard"),
       stat(paying.length,"Paying lodges",lodges.filter(l=>l.comped).length+" at no charge"),
-      stat("$"+mrr,"Monthly, at list price","Before Stripe is live"),
-      stat(users.length,"Accounts",users.filter(u=>!u.confirmed).length+" waiting on email confirmation"),
+      stat("$"+paying.reduce((n,l)=>n+(PRICE[l.plan]||0),0),"Monthly, at list price",paying.length?"From Stripe subscriptions":"No paid subscriptions yet"),
+      stat(users.length,"Accounts",users.filter(u=>new Date(u.created_at)>week).length+" new this week"),
+      stat(users.filter(u=>u.last_sign_in_at&&new Date(u.last_sign_in_at)>week).length,"Signed in this week",users.filter(u=>!u.last_sign_in_at).length+" never signed in"),
       stat(codes.filter(live).length,"Live plan codes",codes.reduce((n,c)=>n+c.uses,0)+" redeemed")].join("");
   }
 
-  function renderLodges(rows){
-    const box=$("#lodges");
-    if(!rows.length){box.innerHTML='<tr><td colspan="6" class="hint">No lodges yet.</td></tr>';return}
+  /* things worth a look: lodges nobody can run, unpaid bills, accounts stuck before confirming */
+  function renderAttention(){
+    const {lodges,users}=data,items=[];
+    lodges.filter(l=>!l.owners.length).forEach(l=>items.push(`<b>${esc(lodgeName(l))}</b> has no account owner. Open Manage to invite one.`));
+    lodges.filter(l=>OWED.includes(l.billing_status)).forEach(l=>items.push(`<b>${esc(lodgeName(l))}</b>: Stripe says ${esc(BILL[l.billing_status].toLowerCase())}.`));
+    users.filter(u=>!u.confirmed).forEach(u=>items.push(`<b>${esc(u.email)}</b> hasn't confirmed their email. You can confirm it for them under Accounts.`));
+    users.filter(u=>u.blocked).forEach(u=>items.push(`<b>${esc(u.email)}</b> is blocked from signing in.`));
+    $("#attention-sec").hidden=!items.length;
+    $("#attention").innerHTML=items.map(t=>`<li>${t}</li>`).join("");
+  }
+
+  const query=()=>$("#q").value.trim().toLowerCase();
+  const hit=(q,...xs)=>!q||xs.some(x=>String(x||"").toLowerCase().includes(q));
+
+  function renderLodges(){
+    const box=$("#lodges"),q=query();
+    const rows=data.lodges.filter(l=>hit(q,l.name,l.number,l.city,l.state,l.slug,...l.owners));
+    if(!rows.length){box.innerHTML=`<tr><td colspan="8" class="hint">${data.lodges.length?"No lodge matches that search.":"No lodges yet."}</td></tr>`;return}
     box.innerHTML=rows.map(l=>`<tr data-id="${esc(l.id)}">
-      <td class="nm"><a href="/lodges/${encodeURIComponent(l.slug)}">${esc(l.name)}${l.number?" No. "+esc(l.number):""}</a><br><span class="hint">${esc([l.city,l.state].filter(Boolean).join(", "))}</span></td>
-      <td><select class="l-plan" aria-label="Plan">${planOpts(l.plan)}</select></td>
-      <td><input type="checkbox" class="l-comp" aria-label="No charge"${l.comped?" checked":""}></td>
+      <td class="nm"><a href="/lodges/${encodeURIComponent(l.slug)}">${esc(lodgeName(l))}</a><br><span class="hint">${esc([l.city,l.state].filter(Boolean).join(", "))}</span></td>
+      <td><select class="l-plan" aria-label="Plan for ${esc(lodgeName(l))}">${planOpts(l.plan)}</select></td>
+      <td><input type="checkbox" class="l-comp" aria-label="No charge for ${esc(lodgeName(l))}"${l.comped?" checked":""}></td>
+      <td>${l.billing_status?`<span class="pill ${PAYING.includes(l.billing_status)?"ok":OWED.includes(l.billing_status)?"warn":""}">${esc(BILL[l.billing_status]||l.billing_status)}</span>`:'<span class="hint">None</span>'}</td>
       <td class="num">${l.members}${l.invites?` <span class="hint">+${l.invites} invited</span>`:""}</td>
       <td>${l.owners.length?l.owners.map(esc).join("<br>"):'<span class="pill warn">None</span>'}</td>
-      <td class="hint">${l.updated_at&&l.updated_at!==l.created_at?day(l.updated_at):"Not yet"}</td></tr>`).join("");
+      <td class="hint">${l.has_dashboard?day(l.updated_at):"Not yet"}</td>
+      <td><button class="btn line sm l-manage" type="button" aria-expanded="${open.has(l.id)}">${open.has(l.id)?"Close":"Manage"}</button></td></tr>
+      ${open.has(l.id)?`<tr class="hub-detail" data-detail="${esc(l.id)}"><td colspan="8"><div class="hub-detail-in"><p class="hint">Loading…</p></div></td></tr>`:""}`).join("");
     box.querySelectorAll("tr[data-id]").forEach(tr=>{
+      const id=tr.dataset.id;
       const save=async()=>{
         const out=$("#lodge-msg");
         try{
-          await call("admin_set_plan",{lid:tr.dataset.id,p:tr.querySelector(".l-plan").value,is_comped:tr.querySelector(".l-comp").checked});
+          await call("admin_set_plan",{lid:id,p:tr.querySelector(".l-plan").value,is_comped:tr.querySelector(".l-comp").checked});
           await refresh();msg(out,"Saved.");
         }catch(e){msg(out,e.message,true)}
       };
       tr.querySelector(".l-plan").addEventListener("change",save);
       tr.querySelector(".l-comp").addEventListener("change",save);
+      tr.querySelector(".l-manage").addEventListener("click",()=>{open.has(id)?open.delete(id):open.add(id);renderLodges()});
     });
+    rows.filter(l=>open.has(l.id)).forEach(renderDetail);
+  }
+
+  /* one lodge: its details, its roll and invites, and delete */
+  async function renderDetail(l){
+    const box=document.querySelector(`[data-detail="${l.id}"] .hub-detail-in`);if(!box)return;
+    let roll;
+    try{roll=await call("admin_lodge_roll",{lid:l.id})}catch(e){box.innerHTML=`<p class="hint">Couldn't load this lodge (${esc(e.message)}).</p>`;return}
+    const roleOpts=cur=>Object.keys(ROLE).map(r=>`<option value="${r}"${r===cur?" selected":""}>${ROLE[r]}</option>`).join("");
+    box.innerHTML=`
+      <form class="hub-form d-edit" novalidate>
+        <div class="field"><label>Lodge name<input name="n" value="${esc(l.name)}" required></label></div>
+        <div class="field"><label>No.<input name="num" value="${esc(l.number||"")}"></label></div>
+        <div class="field"><label>City<input name="ci" value="${esc(l.city||"")}"></label></div>
+        <div class="field"><label>State<input name="st" maxlength="2" value="${esc(l.state||"")}"></label></div>
+        <div class="field"><label>Grand Lodge<input name="gl" value="${esc(l.grand_lodge||"")}"></label></div>
+        <button class="btn sm" type="submit">Save details</button>
+      </form>
+      <h4>Roll</h4>
+      ${roll.length?`<table class="roll"><tbody>${roll.map(r=>r.invited
+        ?`<tr><td class="who">${esc(r.email)} <span class="pill">Invited · ${esc(ROLE[r.role]||r.role)}</span></td><td><button class="btn line sm" type="button" data-cancel="${esc(r.email)}">Cancel invite</button></td></tr>`
+        :`<tr><td class="who">${esc(r.email||"Brother")}</td><td><select data-uid="${esc(r.user_id)}" aria-label="Role for ${esc(r.email||"brother")}">${roleOpts(r.role)}</select> <button class="btn line sm" type="button" data-remove="${esc(r.user_id)}">Remove</button></td></tr>`).join("")}</tbody></table>`
+        :'<p class="hint">Nobody on this lodge yet.</p>'}
+      <form class="invite d-invite" novalidate>
+        <div class="field"><label>Invite by email<input type="email" name="email" required placeholder="brother@example.com"></label></div>
+        <div class="field"><label>Role<select name="role">${roleOpts("member")}</select></label></div>
+        <button class="btn sm" type="submit">Invite</button>
+      </form>
+      <p class="auth-msg d-msg" role="status" aria-live="polite"></p>
+      <div class="hub-danger-zone">
+        <span class="hint">Deleting removes this lodge's dashboard, roll and invites for good. Accounts stay.${PAYING.concat(OWED).includes(l.billing_status)?" It has a Stripe subscription, so cancel that in Stripe first.":""}</span>
+        <button class="btn line sm hub-danger-line d-delete" type="button">Delete lodge</button>
+      </div>`;
+    const out=box.querySelector(".d-msg");
+    const act=async(fn,args,ok)=>{try{await call(fn,args);await refresh();msg($("#lodge-msg"),lodgeName(l)+": "+ok)}catch(e){msg(out,e.message,true)}};
+    box.querySelector(".d-edit").addEventListener("submit",e=>{e.preventDefault();const f=e.target;
+      if(!f.n.value.trim())return msg(out,"Enter the lodge's name.",true);
+      act("admin_update_lodge",{lid:l.id,n:f.n.value,num:f.num.value,ci:f.ci.value,st:f.st.value,gl:f.gl.value},"Details saved.")});
+    box.querySelectorAll("select[data-uid]").forEach(s=>s.addEventListener("change",()=>act("admin_set_member_role",{lid:l.id,uid:s.dataset.uid,r:s.value},"Role changed.")));
+    box.querySelectorAll("[data-remove]").forEach(b=>b.addEventListener("click",()=>{
+      if(confirm("Remove this brother from the lodge? Their account stays; they just lose access to this lodge."))act("admin_remove_member",{lid:l.id,uid:b.dataset.remove},"Removed from the lodge.")}));
+    box.querySelectorAll("[data-cancel]").forEach(b=>b.addEventListener("click",()=>act("admin_cancel_invite",{lid:l.id,e:b.dataset.cancel},"Invite cancelled.")));
+    box.querySelector(".d-invite").addEventListener("submit",e=>{e.preventDefault();const f=e.target,em=f.email.value.trim().toLowerCase();
+      if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em))return msg(out,"Enter the brother's email address.",true);
+      act("admin_invite",{lid:l.id,e:em,r:f.role.value},`Invited ${em}. They choose Create account at ${location.host}/login with that email.`)});
+    box.querySelector(".d-delete").addEventListener("click",()=>askDelete({
+      title:`Delete ${lodgeName(l)}?`,
+      body:"This permanently deletes the lodge's dashboard (website, calendar, members, minutes, store), its roll and its invites. It can't be undone.",
+      label:`Type the page address, ${l.slug}, to confirm`,
+      run:typed=>call("admin_delete_lodge",{lid:l.id,confirm_slug:typed}),
+      done:()=>{open.delete(l.id);msg($("#lodge-msg"),`Deleted ${lodgeName(l)}.`)}}));
   }
 
   function renderCodes(rows){
@@ -88,16 +167,68 @@
     }));
   }
 
-  function renderUsers(rows){
-    $("#acct-count").textContent=rows.length+(rows.length===1?" account":" accounts");
+  function renderUsers(){
+    const {users}=data,q=query(),me=meId;
+    $("#acct-count").textContent=users.length+(users.length===1?" account":" accounts");
+    const rows=users.filter(u=>hit(q,u.email,...u.lodges.map(l=>l.name)));
     const box=$("#users");
-    if(!rows.length){box.innerHTML='<tr><td colspan="4" class="hint">No accounts yet.</td></tr>';return}
-    box.innerHTML=rows.map(u=>`<tr>
-      <td class="nm">${esc(u.email)} ${u.confirmed?"":'<span class="pill warn">Unconfirmed</span>'}</td>
+    if(!rows.length){box.innerHTML=`<tr><td colspan="5" class="hint">${users.length?"No account matches that search.":"No accounts yet."}</td></tr>`;return}
+    box.innerHTML=rows.map(u=>{
+      const locked=u.id===me||u.is_admin;
+      return `<tr data-uid="${esc(u.id)}">
+      <td class="nm">${esc(u.email)} ${u.id===me?'<span class="pill gold">You</span>':u.is_admin?'<span class="pill gold">LodgeNet owner</span>':""}${u.confirmed?"":' <span class="pill warn">Unconfirmed</span>'}${u.blocked?' <span class="pill warn">Blocked</span>':""}</td>
       <td>${u.lodges.length?u.lodges.map(l=>`${esc(l.name)}${l.number?" No. "+esc(l.number):""} <span class="hint">${esc(ROLE[l.role]||l.role)}</span>`).join("<br>"):'<span class="hint">None</span>'}</td>
       <td class="hint">${day(u.created_at)}</td>
-      <td class="hint">${day(u.last_sign_in_at)}</td></tr>`).join("");
+      <td class="hint">${day(u.last_sign_in_at)}</td>
+      <td class="hub-acts">
+        ${u.confirmed?"":'<button class="btn line sm" type="button" data-act="confirm">Confirm email</button>'}
+        <button class="btn line sm" type="button" data-act="reset">Send password reset</button>
+        ${locked?"":`<button class="btn line sm" type="button" data-act="block">${u.blocked?"Unblock":"Block"}</button>
+        <button class="btn line sm hub-danger-line" type="button" data-act="delete">Delete</button>`}
+      </td></tr>`}).join("");
+    const out=$("#user-msg");
+    box.querySelectorAll("tr[data-uid]").forEach(tr=>{
+      const u=users.find(x=>x.id===tr.dataset.uid);
+      tr.querySelectorAll("[data-act]").forEach(b=>b.addEventListener("click",async()=>{
+        const a=b.dataset.act;
+        try{
+          if(a==="confirm"){await call("admin_confirm_user",{uid:u.id});await refresh();msg(out,`Confirmed ${u.email}. They can sign in now.`)}
+          if(a==="reset"){const {error}=await sb.auth.resetPasswordForEmail(u.email,{redirectTo:location.origin+"/login"});if(error)throw error;msg(out,`Sent a password reset link to ${u.email}.`)}
+          if(a==="block"){
+            if(!u.blocked&&!confirm(`Block ${u.email}? They're signed out and can't sign in until you unblock them. Nothing is deleted.`))return;
+            await call("admin_block_user",{uid:u.id,blocked:!u.blocked});await refresh();msg(out,u.blocked?`Unblocked ${u.email}.`:`Blocked ${u.email}.`)}
+          if(a==="delete"){
+            const owned=u.lodges.filter(l=>l.role==="owner").map(l=>l.name+(l.number?" No. "+l.number:""));
+            askDelete({
+              title:`Delete ${u.email}?`,
+              body:"This permanently deletes the account and takes it off every lodge. The lodges themselves stay."+(owned.length?` It's the account owner of ${owned.join(", ")}, so invite a new owner there afterwards.`:"")+" It can't be undone.",
+              label:"Type the email to confirm",
+              run:typed=>call("admin_delete_user",{uid:u.id,confirm_email:typed}),
+              done:()=>msg(out,`Deleted ${u.email}.`)});
+          }
+        }catch(e){msg(out,e.message,true)}
+      }));
+    });
   }
+
+  /* deletes go through a dialog that wants the email or page address typed back; the server checks it again */
+  let pending=null;
+  function askDelete(o){
+    pending=o;
+    $("#cf-title").textContent=o.title;$("#cf-body").textContent=o.body;$("#cf-label").textContent=o.label;
+    $("#cf-input").value="";msg($("#cf-msg"),"");$("#cf-go").disabled=false;
+    $("#cf-dialog").showModal();$("#cf-input").focus();
+  }
+  $("#cf-cancel").addEventListener("click",()=>$("#cf-dialog").close());
+  $("#cf-form").addEventListener("submit",async e=>{
+    e.preventDefault();
+    const typed=$("#cf-input").value.trim();
+    if(!typed)return msg($("#cf-msg"),"Type it exactly to confirm.",true);
+    $("#cf-go").disabled=true;msg($("#cf-msg"),"Deleting…");
+    try{await pending.run(typed);$("#cf-dialog").close();pending.done();await refresh()}
+    catch(err){msg($("#cf-msg"),err.message,true);$("#cf-go").disabled=false}
+  });
+  $("#q").addEventListener("input",()=>{renderLodges();renderUsers()});
 
   /* the Stripe key goes in and never comes back out: the server only reports its kind, mode and last four */
   async function renderStripe(){

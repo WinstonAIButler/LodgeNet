@@ -47,6 +47,7 @@ Setup: create a Supabase project (or add the Supabase integration in Vercel, whi
 - The hub can change a lodge's plan and no-charge flag, add a lodge with its owner's invite (the page at `lodges/<slug>.html` is still added in the repo), and create or end plan codes.
 - The Stripe key is write-only: it's kept in `platform_secrets` (row `stripe_secret_key`), which only the service role can read; the hub sees just test/live and the last four characters. Server code should use Vercel's `STRIPE_SECRET_KEY` when it's set and this row otherwise.
 - Revenue figures are at list price from the plans until Stripe billing is live.
+- Master dashboard: search, a Needs attention list (lodges with no owner, unpaid bills, unconfirmed or blocked accounts), and Manage on each lodge to edit its details, change roles, remove brethren, invite and cancel invites. Accounts can be confirmed, sent a password reset, blocked and unblocked, or deleted. Deleting an account or lodge asks for its email or page address typed back, and the database checks it again. A lodge with a running Stripe subscription can't be deleted until it's cancelled in Stripe, and the owner's own account and other platform owners can't be blocked or deleted from the site.
 
 ## Deploy
 
