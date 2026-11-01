@@ -486,15 +486,32 @@
   const givenFor=n=>D.treasury.ledger.filter(x=>x.fund===n&&x.kind==="out").reduce((t,x)=>t+(+x.amt||0),0);
   function syncStore(){const sel=$("#s-charity");if(!sel)return;const v=sel.value;
     sel.innerHTML=opts(D.charities.map(c=>c.name));if(D.charities.some(c=>c.name===v))sel.value=v}
+  let chEdit=null;   /* id of the charity being edited, if any */
+  function charEditCard(c){
+    return `<form class="card ch-edit" data-ch="${esc(c.id)}">
+        <h4>Edit charity</h4>
+        <div class="field"><label for="che-n">Name</label><input id="che-n" required value="${esc(c.name)}"></div>
+        <div class="field"><label for="che-k">Kind</label><select id="che-k">${opts(["Lodge fund","Outside charity"])}</select></div>
+        <div class="field"><label for="che-d">About it</label><input id="che-d" value="${esc(c.note||"")}" placeholder="What the money does"></div>
+        <p class="hint ch-err" hidden></p>
+        <div class="row-acts"><button class="btn sm" type="submit">Save</button><button class="btn line sm" type="button" data-cancel>Cancel</button></div></form>`}
+  /* a renamed charity keeps its history: its ledger entries, fundraisers and store orders move to the new name */
+  function renameCharity(from,to){
+    if(from===to)return;
+    D.treasury.ledger.forEach(x=>{if(x.fund===from)x.fund=to});
+    A.events.forEach(e=>{if(e.charity===from)e.charity=to});
+    A.orders.forEach(o=>{if(o.charity===from)o.charity=to});
+  }
   function renderChar(){
     $("#p-char").innerHTML=`<div class="two-col wide-left">
-      <div class="fund-grid">${D.charities.length?D.charities.map(c=>{const fr=fundraisers().filter(e=>e.charity===c.name);
+      <div class="fund-grid">${D.charities.length?D.charities.map(c=>{if(c.id===chEdit)return charEditCard(c);
+        const fr=fundraisers().filter(e=>e.charity===c.name);
         return `<div class="card" data-ch="${esc(c.id)}"><div class="row-sp"><b>${esc(c.name)}</b><span class="pill${c.kind==="Lodge fund"?"":" gold"}">${esc(c.kind)}</span></div>
           ${c.note?`<span class="hint">${esc(c.note)}</span>`:""}
           <div class="mini-list"><div class="row-sp"><span>Received</span><b class="num">${money(raisedFor(c.name))}</b></div>
             <div class="row-sp"><span>Paid out</span><b class="num">${money(givenFor(c.name))}</b></div>
             <div class="row-sp"><span>Fundraisers</span><b class="num">${fr.length}</b></div></div>
-          <div class="row-acts"><button class="btn line sm" type="button" data-del>Remove</button></div></div>`}).join("")
+          <div class="row-acts"><button class="btn line sm" type="button" data-edit>Edit</button><button class="btn line sm" type="button" data-del>Delete</button></div></div>`}).join("")
         :'<div class="empty">No charities yet. Add the funds and causes your lodge supports.</div>'}</div>
       <form class="card" id="char-form">
         <h4>Add a charity</h4>
@@ -506,10 +523,20 @@
       </form></div>`;
     $("#char-form").addEventListener("submit",e=>{e.preventDefault();const n=$("#ch-n").value.trim();if(!n||funds().includes(n))return;
       D.charities.push({id:uid(),name:n,kind:$("#ch-k").value,note:$("#ch-d").value.trim()});syncStore();renderChar();changed()});
-    $("#p-char").querySelectorAll("[data-ch]").forEach(card=>card.querySelector("[data-del]").addEventListener("click",()=>{
+    $("#p-char").querySelectorAll(".card[data-ch]:not(form)").forEach(card=>{
       const c=D.charities.find(x=>x.id===card.dataset.ch);
-      if(!confirm(`Remove ${c.name}? Ledger entries already recorded for it stay in Treasury.`))return;
-      D.charities=D.charities.filter(x=>x!==c);syncStore();renderChar();changed()}));
+      card.querySelector("[data-edit]").addEventListener("click",()=>{chEdit=c.id;renderChar();const i=$("#che-n");if(i)i.focus()});
+      card.querySelector("[data-del]").addEventListener("click",()=>{
+        if(!confirm(`Delete ${c.name}? Ledger entries already recorded for it stay in Treasury.`))return;
+        D.charities=D.charities.filter(x=>x!==c);syncStore();renderChar();changed()})});
+    const ef=$("#p-char").querySelector("form.ch-edit");
+    if(ef){const c=D.charities.find(x=>x.id===ef.dataset.ch);$("#che-k").value=c.kind;
+      ef.querySelector("[data-cancel]").addEventListener("click",()=>{chEdit=null;renderChar()});
+      ef.addEventListener("submit",e=>{e.preventDefault();const n=$("#che-n").value.trim(),err=ef.querySelector(".ch-err");
+        if(!n)return;
+        if(n!==c.name&&funds().includes(n)){err.textContent=`There's already a fund called ${n}.`;err.hidden=false;return}
+        renameCharity(c.name,n);Object.assign(c,{name:n,kind:$("#che-k").value,note:$("#che-d").value.trim()});
+        chEdit=null;syncStore();renderChar();changed()})}
   }
 
   /* ---------- Settings ---------- */
