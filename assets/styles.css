@@ -732,3 +732,9 @@ a.paybtn{text-decoration:none;display:inline-block}
 .gate-wrap .theme-btn{justify-self:center}
 .hub-detail-in .field label{display:grid;gap:6px;font-size:14px;font-weight:400}
 .hub-detail-in .field label > span{font-size:13px;font-weight:600}
+/* labels that wrap their field (My lodges roll, owner's Manage, hand over) */
+.roll-box .field label,.handover .field label{display:grid;gap:6px;font-size:14px;font-weight:400}
+.roll-box .field label > span,.handover .field label > span{font-size:13px;font-weight:600}
+.handover{border-top:1px solid var(--line);padding-top:12px}
+.handover summary{cursor:pointer}
+.handover > .hint,.handover > form{margin-top:10px}
