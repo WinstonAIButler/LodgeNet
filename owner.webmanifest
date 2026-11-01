@@ -1,0 +1,13 @@
+{
+  "name": "LodgeNet Master Dashboard",
+  "short_name": "LodgeNet Owner",
+  "start_url": "/owner",
+  "scope": "/owner",
+  "display": "standalone",
+  "background_color": "#F9F5EC",
+  "theme_color": "#F9F5EC",
+  "icons": [
+    { "src": "/assets/brand/owner-icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/assets/brand/owner-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}
