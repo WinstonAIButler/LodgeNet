@@ -16,7 +16,10 @@
       if(!cfg||!cfg.url||!cfg.key)return null;
       window.LodgeNetAuth.billing=!!cfg.billing;window.LodgeNetAuth.ai=!!cfg.ai;
       if(!window.supabase)await loadScript("/assets/vendor/supabase.umd.min.js");
-      return window.supabase.createClient(cfg.url,cfg.key);
+      /* the LodgeNet owner's dashboard (<html data-auth="owner">) keeps its own sign-in, apart from the lodge portal's,
+         so signing in on one never signs you in, or switches accounts, on the other */
+      const scope=document.documentElement.dataset.auth;
+      return window.supabase.createClient(cfg.url,cfg.key,scope?{auth:{storageKey:"lodgenet-"+scope+"-auth"}}:undefined);
     })().catch(()=>null);
     return clientP;
   }

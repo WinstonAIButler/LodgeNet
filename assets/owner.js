@@ -37,7 +37,7 @@
     if(s&&s.user.id===meId)return;
     meId=null;
     if(!s){msg($("#a-msg"),"You were signed out. Sign in again with the LodgeNet owner's email.",true);return show("v-out")}
-    $("#no-text").textContent=`This browser is now signed in as ${email}, probably from another LodgeNet tab, and that account can't use the master dashboard. Sign out, then sign in with the LodgeNet owner's email.`;
+    $("#no-text").textContent=`The owner dashboard is now signed in as ${email}, and that account can't use the master dashboard. Sign out, then sign in with the LodgeNet owner's email.`;
     show("v-no");
   }
 
@@ -392,8 +392,8 @@
     const {error}=await sb.auth.resetPasswordForEmail(email,{redirectTo:location.origin+"/login?next=/owner"});
     msg(out,error?error.message:`If ${email} has an account, a reset link is on its way.`,!!error);
   });
-  $("#no-out").addEventListener("click",async()=>{await sb.auth.signOut();meId=null;msg($("#a-msg"),"");show("v-out")});
-  $("#sign-out").addEventListener("click",async()=>{await sb.auth.signOut();location.replace("/owner")});
+  $("#no-out").addEventListener("click",async()=>{await sb.auth.signOut({scope:"local"});meId=null;msg($("#a-msg"),"");show("v-out")});
+  $("#sign-out").addEventListener("click",async()=>{await sb.auth.signOut({scope:"local"});location.replace("/owner")});
 
   (async()=>{
     sb=await A.client();
