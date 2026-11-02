@@ -23,11 +23,10 @@
   }
   const back=()=>location.origin+"/login"+(next?"?next="+encodeURIComponent(next):"");
 
-  /* fresh: just signed in with the form. The platform owner then goes straight to the owner's hub */
+  /* fresh: just signed in with the form. The owner's dashboard has its own sign-in at /owner, so nobody is sent there from here */
   async function signedIn(session,fresh){
     try{await sb.rpc("claim_invites")}catch(e){}
     if(next){location.replace(next);return}
-    if(fresh){try{const {data}=await sb.rpc("is_platform_admin");if(data===true){location.replace("/owner");return}}catch(e){}}
     /* a signed-in brother goes straight to his lodge's dashboard (the one he owns first); /login?account keeps this account page,
        which the dashboard's Settings links to for plan, billing and invites */
     const q=new URLSearchParams(location.search);
@@ -215,7 +214,7 @@
     recovering=false;
     const s=await A.session();signedIn(s||{user:data.user});
   });
-  $("#sign-out").addEventListener("click",async()=>{await sb.auth.signOut();location.href="/login"});
+  $("#sign-out").addEventListener("click",async()=>{await sb.auth.signOut({scope:"local"});location.href="/login"});
   setMode(new URLSearchParams(location.search).get("mode")==="up"?"up":"in");
   init();
 })();

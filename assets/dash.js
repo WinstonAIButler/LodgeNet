@@ -624,7 +624,7 @@
   (async()=>{
     const Au=window.LodgeNetAuth;
     if(CLOUD)$("#who-email").textContent=CLOUD.email;else $("#dash-out").hidden=true;
-    const out=async()=>{const sb=Au&&await Au.client();if(sb)await sb.auth.signOut();location.href="/login"};
+    const out=async()=>{const sb=Au&&await Au.client();if(sb)await sb.auth.signOut({scope:"local"});location.href="/login"};
     $("#dash-out").addEventListener("click",out);$("#set-out").addEventListener("click",out);$("#set-out").hidden=!CLOUD;
     if(!CLOUD||!Au)return;
     try{const rows=await Au.myLodges();if(rows.length<2)return;
