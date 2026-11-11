@@ -188,6 +188,7 @@
     if(recovering&&s){show("v-reset");return}
     if(s)return signedIn(s);
     show("v-out");
+    window.LodgeNetOAuth.render($("#oauth-box"),back(),()=>{if(next)store.set(next)});
     if(HASH.get("error_description"))msg($("#a-msg"),HASH.get("error_description")+". Try again or ask for a new link.",true);
   }
 
