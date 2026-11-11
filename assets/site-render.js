@@ -71,6 +71,32 @@
     fundraiser:{name:"Fundraiser",title:"Fundraiser",make:()=>[newSection("hero",{heading:"Our fundraiser",sub:"Join us and support a good cause.",height:"short"}),newSection("text",{heading:"What it's for",body:"Tell supporters what the money will do."}),newSection("fundraisers"),newSection("give",{bg:"tint"})]}
   };
 
+  /* whole-site designs a lodge can start from (the Website overview and Design panel) */
+  const S=newSection;
+  const SITE_TEMPLATES={
+    traditional:{name:"Traditional Lodge",desc:"Dignified and classic: a full-width banner, history and officers.",color:"#1c3a75",theme:{font:"heritage",btn:"square",header:"center"},
+      pages:()=>[{id:"home",slug:"",title:"Home",nav:true,sections:[S("hero",{layout:"center"}),S("text",{heading:"About the lodge",body:"Tell visitors when the lodge was chartered, what it stands for, and how it serves the community.",align:"center"}),
+        S("features",{bg:"tint"}),S("events"),S("officers",{bg:"tint"}),S("contact"),S("give",{bg:"color"})]},
+        tp("about","About"),tp("join","Become a Mason"),tp("contact","Contact")]},
+    bold:{name:"Bold Community",desc:"Big type beside a photo, and fundraisers up front.",color:"#6b1f2a",theme:{font:"modern",btn:"rounded",header:"left"},
+      pages:()=>[{id:"home",slug:"",title:"Home",nav:true,sections:[S("hero",{layout:"split",heading:"Good men. Doing good.",button:{label:"Become a Mason",link:""}}),
+        S("fundraisers",{bg:"tint"}),S("imageText",{side:"right"}),S("events"),S("gallery",{bg:"tint"}),S("cta",{bg:"color"}),S("give")]},
+        tp("events","Events"),tp("join","Become a Mason"),tp("contact","Contact")]},
+    heritage:{name:"Heritage",desc:"Warm and storied: picture-and-text history, columns and meetings.",color:"#264d3b",theme:{font:"classic",btn:"rounded",header:"center"},
+      pages:()=>[{id:"home",slug:"",title:"Home",nav:true,sections:[S("hero",{layout:"left"}),S("imageText"),S("features",{style:"cards",bg:"tint"}),S("events"),S("officers"),S("contact",{bg:"tint"})]},
+        tp("about","Our history"),tp("join","Membership"),tp("contact","Visit")]},
+    modern:{name:"Modern Charity",desc:"Clean and current, built around giving and the store.",color:"#22252c",theme:{font:"modern",btn:"square",header:"left"},
+      pages:()=>[{id:"home",slug:"",title:"Home",nav:true,sections:[S("hero",{layout:"split",heading:"Building better communities",sub:"Charity, fellowship and service, one neighbor at a time."}),
+        S("features",{style:"cards",heading:"Where your support goes",items:[{title:"Scholarships",body:"Helping local students reach college."},{title:"Relief",body:"Quiet help for families in need."},{title:"Community",body:"Events that bring the town together."}]}),
+        S("fundraisers",{bg:"tint"}),S("store"),S("cta",{bg:"color",heading:"Every gift makes a difference",body:"Give online in under a minute.",button:{label:"Give now",link:""}}),S("give")]},
+        tp("fundraiser","Fundraisers"),tp("about","About"),tp("contact","Contact")]},
+    fundraiser:{name:"Fundraising Focus",desc:"One clear call to give, with progress and events.",color:"#3d2f5a",theme:{font:"classic",btn:"rounded",header:"center"},
+      pages:()=>[{id:"home",slug:"",title:"Home",nav:true,sections:[S("hero",{layout:"center",heading:"Help us reach our goal",sub:"Every dollar stays in our community.",button:{label:"See our fundraisers",link:""}}),
+        S("fundraisers"),S("text",{heading:"Why we give",body:"Share the story behind the cause: who it helps and why it matters to the lodge.",align:"center",bg:"tint"}),S("events"),S("give",{bg:"color"})]},
+        tp("events","Events"),tp("about","About"),tp("contact","Contact")]}
+  };
+  function tp(k,title){const t=TEMPLATES[k];return {id:"p"+Math.random().toString(36).slice(2,9),title,slug:title.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,""),nav:true,sections:t.make()}}
+
   /* ---------- pieces ---------- */
   const parse=d=>{const [y,m,day]=String(d).split("-").map(Number);return new Date(y,m-1,day)};
   const money=n=>"$"+(+n||0).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -129,15 +155,19 @@
     const head=s=>T("h2","ls-h2","heading",s.heading,"Section heading");
 
     const R={
-      hero:s=>{const bg=okImg(s.image)?` style="background-image:linear-gradient(rgba(10,14,22,.45),rgba(10,14,22,.62)),url('${esc(s.image)}')"`:"";
-        const sub=s.sub||[place,site.schedule?"Stated Communications "+site.schedule:""].filter(Boolean).join(" · ");
-        return `<div class="ls-hero ls-h-${s.height==="short"?"short":"tall"} ls-al-${s.align==="left"?"left":"center"}${bg?" has-img":""}"${bg}><div class="ls-wrap">
+      hero:s=>{const sub=s.sub||[place,site.schedule?"Stated Communications "+site.schedule:""].filter(Boolean).join(" · ");
+        const lay=s.layout||(s.align==="left"?"left":"center");
+        if(lay==="split")return `<div class="ls-hs ls-h-${s.height==="short"?"short":"tall"}"><div class="ls-wrap ls-hs-in">
+          <div class="ls-hs-txt"><div class="ls-hs-card">${T("h1","ls-h1","heading",s.heading||full,"Page heading")}${T("p","ls-sub","sub",sub,"A short line under the heading")}</div>${btn(s.button,"button","ls-btn-block")}</div>
+          <div class="ls-hs-pic">${img(s.image,"image","ls-hs-img",s.heading||full)}</div></div></div>`;
+        const bg=okImg(s.image)?` style="background-image:linear-gradient(rgba(10,14,22,.45),rgba(10,14,22,.62)),url('${esc(s.image)}')"`:"";
+        return `<div class="ls-hero ls-h-${s.height==="short"?"short":"tall"} ls-al-${lay==="left"?"left":"center"}${bg?" has-img":""}"${bg}><div class="ls-wrap">
           ${T("h1","ls-h1","heading",s.heading||full,"Page heading")}${T("p","ls-sub","sub",sub,"A short line under the heading")}${btn(s.button,"button")}
           ${E?`<button type="button" class="ls-hero-pic" data-img="image">${okImg(s.image)?"Change background picture":"Add a background picture"}</button>`:""}</div></div>`},
       text:s=>`<div class="ls-wrap ls-narrow ls-al-${s.align==="center"?"center":"left"}">${head(s)}${B(s.body)}</div>`,
       imageText:s=>`<div class="ls-wrap ls-split${s.side==="right"?" ls-flip":""}"><div class="ls-split-pic">${img(s.image,"image","ls-pic",s.heading)}</div>
         <div class="ls-split-txt">${head(s)}${B(s.body)}${btn(s.button,"button")}</div></div>`,
-      features:s=>`<div class="ls-wrap">${head(s)}<div class="ls-cols">${(s.items||[]).map((it,i)=>`<div class="ls-col">
+      features:s=>`<div class="ls-wrap">${head(s)}<div class="ls-cols${s.style==="cards"?" ls-cols-cards":""}">${(s.items||[]).map((it,i)=>`<div class="ls-col">
           ${T("h3","ls-h3",`items.${i}.title`,it.title,"Title")}${E?`<div class="ls-body" data-f="items.${i}.body" data-ph="A sentence or two">${esc(it.body||"")}</div>`:it.body?`<div class="ls-body">${esc(it.body)}</div>`:""}</div>`).join("")}</div></div>`,
       cta:s=>`<div class="ls-wrap ls-narrow ls-al-center">${head(s)}${B(s.body)}${btn(s.button,"button","ls-btn-lg")}</div>`,
       gallery:s=>{const g=(s.images||[]).filter(okImg);
@@ -202,7 +232,7 @@
     const nav=pages.filter(p=>p.nav!==false).map(p=>`<a href="${esc(root+(p.slug?"/"+p.slug:""))}"${p.id===cur?' aria-current="page"':""}${E?` data-goto="${esc(p.id)}"`:""}>${esc(p.title)}</a>`).join("");
     const logo=okImg((site.images||{}).logo)?`<img class="ls-logo" src="${esc(site.images.logo)}" alt="">`:`<span class="ls-crest">${CREST}</span>`;
     const soc=(site.social||[]).filter(x=>safeHref(x.url));
-    return `<div class="lsite" data-font="${esc(th.font)}" data-btn="${th.btn==="square"?"square":"rounded"}" data-head="${th.header==="left"?"left":"center"}" style="--c:${color};--hf:${F.head};--bf:${F.body}">
+    return `<div class="lsite" data-font="${esc(th.font)}" data-btn="${th.btn==="square"?"square":"rounded"}" data-head="${th.header==="left"?"left":"center"}" style="--c:${color};--hf:${esc(F.head)};--bf:${esc(F.body)}">
       <header class="ls-head"><div class="ls-wrap ls-head-in"><a class="ls-brand" href="${esc(root||"/")}"${E?' data-goto="home"':""}>${logo}<span><b>${esc(full)}</b>${site.jur||site.grandLodge?`<small>${esc([site.jur,site.grandLodge].filter(Boolean).join(" · "))}</small>`:""}</span></a>
         ${nav&&pages.length>1?`<nav class="ls-nav" aria-label="Site">${nav}</nav>`:""}</div></header>
       <main>${body}</main>
@@ -212,5 +242,5 @@
     </div>`;
   }
 
-  window.LodgeSite={render,resolve,SECTIONS,TEMPLATES,FONTS,THEME,fontHref,newSection,defaultHome,pagesOf,esc,safeHref,okImg,videoSrc,HTML_MAX};
+  window.LodgeSite={render,resolve,SITE_TEMPLATES,SECTIONS,TEMPLATES,FONTS,THEME,fontHref,newSection,defaultHome,pagesOf,esc,safeHref,okImg,videoSrc,HTML_MAX};
 })();
