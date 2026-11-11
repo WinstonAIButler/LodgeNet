@@ -2,6 +2,11 @@
 // and a sync that reads the subscription back from Stripe (on return from Checkout or the Portal), so no webhook is needed.
 // POST /api/billing {action:"checkout"|"portal"|"sync", lodge_id, session_id?} with the owner's Supabase access token.
 // POST {action:"checkout", price_id} subscribes to one of the plans set up in Stripe (api/plans.js).
+// New lodges from /start pay before the lodge exists, so these take no lodge_id:
+//   {action:"checkout", price_id?}   Stripe Checkout for the signed-in account; comes back to /start?paid=1&session_id=…
+//   {action:"paid", session_id}      is that checkout finished, and this account's, and not used by a lodge yet?
+//   {action:"check_code", code}      is a LodgeNet plan code good? (redeem_plan_code() spends it once the lodge exists)
+// and once the lodge is made: {action:"attach", lodge_id, session_id} puts that subscription on the lodge.
 // Needs SUPABASE_SERVICE_ROLE_KEY, and a Stripe secret key (see api/_stripe.js).
 const PRICE_CENTS=1900;   /* used only while Stripe has no plans set up */
 const {stripeKey,stripe,plans}=require("./_stripe");
@@ -28,18 +33,76 @@ module.exports=async(req,res)=>{
   if(req.method!=="POST")return send(405,{error:"Use POST."});
   try{
     if(!SB_URL||!SB_ANON||!SB_SERVICE)return send(503,{error:"Billing isn't switched on for this site yet."});
-    const key=await stripeKey();
-    if(!key)return send(503,{error:"Stripe isn't connected to this site yet."});
     const body=req.body&&typeof req.body==="object"?req.body:JSON.parse(await readBody(req)||"{}");
     const token=(req.headers.authorization||"").replace(/^Bearer\s+/i,"");
     if(!token)return send(401,{error:"Sign in first."});
     const user=await sb("/auth/v1/user",{token}).catch(err=>{throw Object.assign(new Error("Your sign-in has expired. Sign in again."),{status:401})});
+    const origin="https://"+(req.headers["x-forwarded-host"]||req.headers.host);
+
+    if(body.action==="check_code"){
+      const c=String(body.code||"").trim().toUpperCase();
+      if(!c||c.length>64)return send(400,{error:"Enter your code."});
+      const [p]=await sb(`/rest/v1/plan_codes?select=plan,max_uses,uses,expires_at&code=eq.${encodeURIComponent(c)}`);
+      if(!p||(p.expires_at&&new Date(p.expires_at)<new Date())||(p.max_uses!=null&&p.uses>=p.max_uses))
+        return send(400,{error:"That code isn't valid or has been used up."});
+      return send(200,{ok:true,plan:p.plan,code:c});
+    }
+
+    const key=await stripeKey();
+    if(!key)return send(503,{error:"Stripe isn't connected to this site yet."});
+    const ACCOUNT="u_"+user.id;
+    /* a finished checkout from /start that belongs to this account and isn't on a lodge yet */
+    async function accountCheckout(sid){
+      if(!/^cs_[A-Za-z0-9_]+$/.test(String(sid||"")))throw Object.assign(new Error("That payment link isn't right. Choose your plan again."),{status:400});
+      const s=await stripe(key,"/checkout/sessions/"+encodeURIComponent(sid));
+      if(s.client_reference_id!==ACCOUNT)throw Object.assign(new Error("That payment belongs to a different account."),{status:403});
+      if(s.status!=="complete"||!s.subscription)throw Object.assign(new Error("Stripe hasn't finished that payment. Try paying again."),{status:400});
+      const used=await sb(`/rest/v1/lodges?select=id&stripe_subscription_id=eq.${encodeURIComponent(s.subscription)}`);
+      if(used.length)throw Object.assign(new Error("That payment is already on one of your lodges."),{status:400});
+      return s;
+    }
+
+    if(body.action==="checkout"&&!body.lodge_id){
+      const list=await plans(key);
+      const chosen=body.price_id?list.find(p=>p.price===body.price_id):null;
+      if(body.price_id&&!chosen)return send(400,{error:"That plan isn't available any more. Reload and choose again."});
+      const s=await stripe(key,"/checkout/sessions",{
+        mode:"subscription",
+        line_items:[chosen?{quantity:1,price:chosen.price}:{quantity:1,price_data:{currency:"usd",unit_amount:PRICE_CENTS,recurring:{interval:"month"},
+          product_data:{name:"LodgeNet Lodge plan"}}}],
+        client_reference_id:ACCOUNT,
+        metadata:{user_id:user.id},
+        subscription_data:{metadata:{user_id:user.id}},
+        customer_email:user.email,
+        allow_promotion_codes:true,
+        payment_method_collection:"if_required",
+        success_url:`${origin}/start?paid=1&session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url:`${origin}/start?step=pay${chosen?"&price="+encodeURIComponent(chosen.price):""}`
+      });
+      return send(200,{url:s.url});
+    }
+    if(body.action==="paid"){
+      const s=await accountCheckout(body.session_id);
+      const sub=await stripe(key,"/subscriptions/"+encodeURIComponent(s.subscription));
+      return send(200,{ok:true,billing_status:sub.status});
+    }
+
     const lid=String(body.lodge_id||"");
     if(!/^[0-9a-f-]{36}$/i.test(lid))return send(400,{error:"Which lodge?"});
     const [mem]=await sb(`/rest/v1/lodge_members?select=role&lodge_id=eq.${lid}&user_id=eq.${user.id}`);
     if(!mem||mem.role!=="owner")return send(403,{error:"Only the lodge's account owner can manage billing."});
     const [lodge]=await sb(`/rest/v1/lodges?select=id,name,number,plan,comped,stripe_customer_id,stripe_subscription_id,billing_status&id=eq.${lid}`);
-    const origin="https://"+(req.headers["x-forwarded-host"]||req.headers.host);
+
+    if(body.action==="attach"){
+      if(lodge.stripe_subscription_id&&LIVE.includes(lodge.billing_status))return send(400,{error:"This lodge already has a subscription."});
+      const s=await accountCheckout(body.session_id);
+      const sub=await stripe(key,"/subscriptions/"+encodeURIComponent(s.subscription));
+      await stripe(key,"/subscriptions/"+encodeURIComponent(sub.id),{metadata:{lodge_id:lid,lodge:`${lodge.name}${lodge.number?" No. "+lodge.number:""}`}}).catch(()=>{});
+      const patch={stripe_customer_id:s.customer,stripe_subscription_id:sub.id,billing_status:sub.status};
+      if(LIVE.includes(sub.status)&&lodge.plan==="starter")patch.plan="lodge";
+      const [row]=await sb(`/rest/v1/lodges?id=eq.${lid}`,{method:"PATCH",body:patch});
+      return send(200,{plan:row.plan,billing_status:row.billing_status});
+    }
 
     if(body.action==="checkout"){
       if(lodge.comped)return send(400,{error:"This lodge is already on the Lodge plan at no charge."});
