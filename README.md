@@ -25,16 +25,21 @@ Edits on the demo and lodge pages save automatically in the viewer's browser (lo
 
 The Secretary fills in a short form; the full Stated Communication write-up (and the PDF) is generated from it in the lodge's template wording. Each part of the minutes is a section plugin in the `MS` list in `assets/demo.js`: its fields, plus how it reads in `longForm()`. Opening, attendance, previous minutes and closing are always on; the rest can be switched on or off per lodge with the Sections button (saved as `minuteSections`). Anything left blank on the short form is left out of the write-up. Minutes saved in the old free-text format are converted on load.
 
-### Website pages, content and QR codes
+### Website builder and QR codes
 
-The Website and QR codes tabs give a lodge full control of its public site (`assets/site-pages.js`, loaded after `demo.js` on lodge pages):
+The Website tab is a drag-and-click site builder like Wix's (`assets/site-builder.js`). The middle of the screen is the real site, drawn by `assets/site-render.js` with `assets/lodge-site.css`, the same code and styles the public site at `/site/<slug>` uses (`lodge-site.html`, `assets/lodge-site.js`). What an officer edits is exactly what visitors get.
 
-- **Pages and content**: add, rename, reorder and delete pages, each at `/site/<slug>/<page>`, with a "show in the site menu" switch. A page is a list of blocks (heading, text, photo, button, custom HTML) that can be added, edited, moved and removed. On Home, each built-in section (About, Upcoming, Officers, Contact, Give, Store, Photos) can be switched off, and the lodge's own blocks show under About. "Upload an .html page" makes a page from an HTML file.
-- **Custom HTML** runs in a sandboxed iframe without `allow-same-origin` (`assets/site-blocks.js`), so a lodge's scripts work but can't read LodgeNet sign-ins, cookies or records on `www.lodgenet.app`. Up to 200 KB per block.
-- **Gallery**: up to 16 photos, added and removed under Pictures and About.
-- **QR codes** have their own sidebar tab (QR codes, after Fundraiser): each code encodes a fixed address, `/site/<slug>/qr/<id>`, and the published site redirects it to wherever it's assigned: Home, a page, a fundraiser (`/site/<slug>/fundraiser/<id>`, with progress and giving buttons) or any https link. Reassigning a printed code takes only Publish site. Codes download as PNG or SVG with their name printed under them, and the Fundraiser tab has a QR code button on each fundraiser.
-- Saved as `sitePages`, `siteHome` and `siteQrs` in the lodge's data. Publish copies the public parts into `published.site` as `pages`, `home`, `funds` and `qrs`, which is all `/site/<slug>` reads. `assets/lodge-site.js` handles the routes. vercel.json rewrites `/site/:slug/:rest*` to the same page.
-- Photos are kept as data URLs inside the lodge's one JSON document, like product photos, so a site with many pictures makes every save larger. Moving pictures to Supabase Storage is the next step if lodges hit that.
+- **On the page**: click any text to type over it, click a section to edit it in the left panel, use the toolbar on a section to move, duplicate or delete it (or drag it by its handle), and use the + between sections to add one there. Undo/Redo (also Ctrl/Cmd+Z), Desktop/Phone views, and Preview without the editing outlines.
+- **Add**: a library of sections, each added by clicking or by dragging onto the page. Banner, Text, Picture and text, Three columns, Call to action, Photo gallery (up to 24 photos), Video (YouTube/Vimeo), and lodge sections that fill themselves in from the dashboard: Upcoming events, Fundraisers, Officers, Contact and meetings, Give, and Lodge store. Plus Custom HTML.
+- **Design**: lodge color (swatches or any color), fonts (Modern, Classic, Heritage), rounded or square buttons, centered or logo-left header, and the logo.
+- **Pages**: add pages from templates (Blank, About, Become a Mason, Events, Contact, Fundraiser), rename them, change their address, show or hide them in the menu, reorder them and delete them. Home is always first.
+- **Settings**: the lodge details form (name, number, Grand Lodge, meetings, email, social, and build from a current website).
+- Buttons store links as `home`, `page:<id>`, `fund:<id>` or a web address, and they're resolved when the page is drawn, so renaming a page never breaks one.
+- Custom HTML runs in a sandboxed iframe without `allow-same-origin`, so it can't read LodgeNet sign-ins, cookies or records on `www.lodgenet.app`. Up to 200 KB per section.
+- Saved as `siteLayout` `{v:2, theme, pages:[{id,slug,title,nav,sections}]}` in the lodge's data. Publish copies it into `published.site.layout` with `funds`, `store` and `qrs`. A lodge published before the builder still renders: Home is built from its About text, banner, gallery and store (`LodgeSite.defaultHome`), and the first time the builder opens it moves the banner and gallery into that Home.
+- Layout responds to the width of the site (CSS container queries), so the Phone view is the real phone layout.
+- **QR codes** have their own sidebar tab (`assets/site-qr.js`). Each code encodes `/site/<slug>/qr/<id>` and the published site redirects it to wherever it's assigned: Home, a page, a fundraiser (`/site/<slug>/fundraiser/<id>`) or a link. Reassigning a printed code only takes Publish. Codes download as PNG or SVG. Fundraiser cards have a QR code button. Deleting a page points its codes at Home.
+- Photos are kept as data URLs inside the lodge's one JSON document, so a site with many pictures makes every save larger. Supabase Storage is the next step if lodges hit that.
 
 ## Accounts
 

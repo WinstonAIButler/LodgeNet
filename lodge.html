@@ -24,6 +24,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <script src="/assets/theme.js"></script>
 <link rel="stylesheet" href="/assets/styles.css">
+<link rel="stylesheet" href="/assets/lodge-site.css">
 <style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
 </head>
 <body class="app">
@@ -62,17 +63,56 @@
     </header>
     <div class="kpis" id="kpis" aria-label="Key figures"></div>
 
-    <!-- WEBSITE -->
+    <!-- WEBSITE: a drag-and-click site builder (assets/site-builder.js) drawing the live site with assets/site-render.js.
+         Top bar: page, Desktop/Phone, undo, Preview, Publish. Left panel: Add sections, Design, Pages, Settings (lodge details). -->
     <section class="sec" data-sec="website">
-        <div class="panel" id="p-site">
-          <div class="panel-grid">
-            <form id="site-form" autocomplete="off">
-              <details class="group imp-box" id="imp-box" open>
-                <summary>Start from your current website</summary>
-                <p class="hint">Already have a lodge website? Paste its address and Claude reads it, then fills in this form: name, meetings, officers, events, contact, social links, pictures and your About page. Check what it found before you publish.</p>
-                <div class="imp-row"><input id="imp-url" type="text" inputmode="url" autocapitalize="off" spellcheck="false" placeholder="https://yourlodge.org" aria-label="Current website address"><button type="button" class="btn line sm" id="imp-btn">Build from this site</button></div>
-                <p class="hint" id="imp-msg" aria-live="polite" hidden></p>
-              </details>
+      <div class="bld" id="bld">
+        <div class="bld-bar">
+          <div class="bld-bar-l">
+            <label class="bld-pagepick"><span class="sr">Page</span><select id="bld-page" aria-label="Page you're editing"></select></label>
+            <div class="bld-seg" role="group" aria-label="View as">
+              <button type="button" data-dev="desktop" aria-pressed="true"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="2.5" y="3.5" width="15" height="10" rx="1"/><path d="M7 16.5h6M10 13.5v3"/></svg>Desktop</button>
+              <button type="button" data-dev="phone" aria-pressed="false"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="6" y="2.5" width="8" height="15" rx="1.5"/><path d="M9 15h2"/></svg>Phone</button>
+            </div>
+            <button type="button" class="bld-icon" id="bld-undo" aria-label="Undo" title="Undo (Ctrl+Z)" disabled><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7.5 5 3.5 9l4 4"/><path d="M4 9h8a4.5 4.5 0 0 1 0 9h-2"/></svg></button>
+            <button type="button" class="bld-icon" id="bld-redo" aria-label="Redo" title="Redo (Ctrl+Shift+Z)" disabled><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m12.5 5 4 4-4 4"/><path d="M16 9H8a4.5 4.5 0 0 0 0 9h2"/></svg></button>
+          </div>
+          <div class="bld-bar-r">
+            <span class="hint" id="site-status" aria-live="polite"></span>
+            <button type="button" class="btn line sm" id="site-unpub" hidden>Take site down</button>
+            <button type="button" class="btn line sm" id="bld-preview" aria-pressed="false">Preview</button>
+            <button type="submit" class="btn sm" form="site-form">Publish</button>
+          </div>
+        </div>
+        <div class="bld-body">
+          <aside class="bld-side" aria-label="Website tools">
+            <div class="bld-tabs" role="tablist">
+              <button type="button" role="tab" data-tab="add" aria-selected="true">Add</button>
+              <button type="button" role="tab" data-tab="design" aria-selected="false">Design</button>
+              <button type="button" role="tab" data-tab="pages" aria-selected="false">Pages</button>
+              <button type="button" role="tab" data-tab="settings" aria-selected="false">Settings</button>
+            </div>
+            <div class="bld-panel" data-panel="add" id="bld-add"></div>
+            <div class="bld-panel" data-panel="edit" id="bld-edit" hidden></div>
+            <div class="bld-panel" data-panel="design" hidden>
+              <h3 class="bld-h">Colors</h3>
+              <div class="bld-colors">
+                <div class="swatches" id="swatches">
+                  <button type="button" class="swatch" style="background:#1c3a75" data-c="#1c3a75" aria-label="Lodge blue" aria-pressed="true"></button>
+                  <button type="button" class="swatch" style="background:#6b1f2a" data-c="#6b1f2a" aria-label="Royal Arch red" aria-pressed="false"></button>
+                  <button type="button" class="swatch" style="background:#264d3b" data-c="#264d3b" aria-label="Evergreen" aria-pressed="false"></button>
+                  <button type="button" class="swatch" style="background:#3d2f5a" data-c="#3d2f5a" aria-label="Purple" aria-pressed="false"></button>
+                  <button type="button" class="swatch" style="background:#22252c" data-c="#22252c" aria-label="Charcoal" aria-pressed="false"></button>
+                </div>
+                <label class="bld-custom" title="Choose any color"><input type="color" id="bld-color" aria-label="Custom lodge color"><span>Custom</span></label>
+              </div>
+              <div id="bld-design"></div>
+            </div>
+            <div class="bld-panel" data-panel="pages" id="bld-pages" hidden></div>
+            <div class="bld-panel" data-panel="settings" hidden>
+              <form id="site-form" autocomplete="off">
+                <h3 class="bld-h">Lodge details</h3>
+                <p class="hint" style="margin:-4px 0 12px">These fill in the site's header, footer, contact and meeting details on every page.</p>
               <div class="field"><label for="f-name">Lodge name</label><input id="f-name" value="" placeholder="e.g. Murrells Inlet Lodge"></div>
               <div class="field"><label for="f-num">Lodge number</label><input id="f-num" value="" inputmode="numeric" placeholder="e.g. 368"></div>
               <div class="field"><label for="f-state">State</label>
@@ -97,37 +137,6 @@
                 <span class="hint" id="sched-text">of each month</span>
                 <input id="f-sched" type="hidden" value="2nd Tuesday of each month, 7:30 PM">
               </fieldset>
-              <div class="field"><label>Lodge color</label>
-                <div class="swatches" id="swatches">
-                  <button type="button" class="swatch" style="background:#1c3a75" data-c="#1c3a75" aria-label="Lodge blue" aria-pressed="true"></button>
-                  <button type="button" class="swatch" style="background:#6b1f2a" data-c="#6b1f2a" aria-label="Royal Arch red" aria-pressed="false"></button>
-                  <button type="button" class="swatch" style="background:#264d3b" data-c="#264d3b" aria-label="Evergreen" aria-pressed="false"></button>
-                  <button type="button" class="swatch" style="background:#3d2f5a" data-c="#3d2f5a" aria-label="Purple" aria-pressed="false"></button>
-                  <button type="button" class="swatch" style="background:#22252c" data-c="#22252c" aria-label="Charcoal" aria-pressed="false"></button>
-                </div>
-              </div>
-              <details class="group" open>
-                <summary>Pictures and About</summary>
-                <p class="hint">Photos are resized in your browser before they're saved, so large phone pictures are fine.</p>
-                <div class="pic-grid">
-                  <div class="pic-slot" data-slot="hero"><b>Banner photo</b><div class="pic-prev" data-prev="hero"></div>
-                    <span class="row-acts"><label class="btn line sm">Choose photo<input type="file" accept="image/*" data-pic="hero" hidden></label><button type="button" class="btn line sm" data-unpic="hero" hidden>Remove</button></span></div>
-                  <div class="pic-slot" data-slot="logo"><b>Lodge logo or seal</b><div class="pic-prev logo" data-prev="logo"></div>
-                    <span class="row-acts"><label class="btn line sm">Choose image<input type="file" accept="image/*" data-pic="logo" hidden></label><button type="button" class="btn line sm" data-unpic="logo" hidden>Remove</button></span></div>
-                </div>
-                <div class="field"><label for="f-about">About the lodge</label><textarea id="f-about" rows="5" placeholder="Our history, when we were chartered, what we do in the community, and how to become a Mason."></textarea></div>
-                <div class="field"><label>Photo gallery <span class="hint" id="gal-count"></span></label>
-                  <div class="gal" id="gal"></div>
-                  <label class="btn line sm" style="justify-self:start">Add photos<input type="file" accept="image/*" multiple data-pic="gallery" hidden></label>
-                </div>
-                <label class="check"><input type="checkbox" id="site-store-on" checked> Show the lodge store on the website</label>
-                <p class="hint" id="site-store-hint"></p>
-              </details>
-              <details class="group" id="pages-box" data-nosnap open>
-                <summary>Pages and content</summary>
-                <p class="hint">Add, edit, reorder and delete the pages on the lodge website. Each page is built from headings, text, photos, buttons and your own HTML.</p>
-                <div id="pages"></div>
-              </details>
               <details class="group" open>
                 <summary>Lodge email</summary>
                 <div class="gmail" id="gmail-box">
@@ -145,40 +154,23 @@
                 <div class="field"><label for="f-yt">YouTube</label><div class="pre"><span>youtube.com/@</span><input id="f-yt" value=""></div></div>
                 <div class="field"><label for="f-tt">TikTok</label><div class="pre"><span>tiktok.com/@</span><input id="f-tt" value=""></div></div>
               </details>
-              <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-                <button class="btn" type="submit">Publish site</button>
-                <button class="btn line sm" type="button" id="site-unpub" hidden>Take site down</button>
-                <span class="hint" id="site-status">Draft · last saved just now</span>
-              </div>
-            </form>
-            <div class="browser" style="--site:#1c3a75" id="site-preview">
-              <div class="browser-bar"><span class="dots"><i></i><i></i><i></i></span><span id="pv-url">yourlodge.lodgenet.org</span></div>
-              <div class="site-hero">
-                <svg class="sc"><use href="#sc"/></svg>
-                <h4 id="pv-title">Cedar Hollow Lodge No. 214, F.&amp;A.M.</h4>
-                <p id="pv-sub">Millbrook, Ohio · Stated Communications 2nd Tuesday of each month, 7:30 PM</p>
-              </div>
-              <div class="site-nav"><span>Home</span></div>
-              <div class="pv-blocks" id="pv-home-blocks" hidden></div>
-              <div class="pv-blocks" id="pv-page" hidden></div>
-              <div class="site-body">
-                <div data-hs="events">
-                  <h5>UPCOMING</h5>
-                  <ul id="pv-events"></ul>
-                </div>
-                <div data-hs="officers">
-                  <h5>OFFICERS, 2026</h5>
-                  <dl class="site-officers" id="pv-officers"></dl>
-                </div>
-              </div>
-              <div class="site-foot">
-                <div data-hs="contact"><h5>CONTACT</h5><span id="pv-email"></span><div class="socials" id="pv-social"></div></div>
-                <div data-hs="give"><h5>GIVE TO THE LODGE</h5><div class="paybtns" id="pv-pay"></div></div>
-              </div>
+              <details class="group imp-box" id="imp-box">
+                <summary>Start from your current website</summary>
+                <p class="hint">Already have a lodge website? Paste its address and Claude reads it, then fills in this form: name, meetings, officers, events, contact, social links, pictures and your About page. Check what it found before you publish.</p>
+                <div class="imp-row"><input id="imp-url" type="text" inputmode="url" autocapitalize="off" spellcheck="false" placeholder="https://yourlodge.org" aria-label="Current website address"><button type="button" class="btn line sm" id="imp-btn">Build from this site</button></div>
+                <p class="hint" id="imp-msg" aria-live="polite" hidden></p>
+              </details>
+              </form>
             </div>
+          </aside>
+          <div class="bld-stage" id="bld-stage">
+            <div class="bld-frame" id="bld-frame"><div class="bld-urlbar"><span class="dots"><i></i><i></i><i></i></span><span id="bld-url"></span></div><div id="bld-canvas"></div></div>
           </div>
         </div>
-
+      </div>
+      <!-- demo.js renderSite() still writes to these preview fields (the public demo page shows them); here they stay hidden -->
+      <div id="site-preview" hidden><span id="pv-url"></span><div class="site-hero"><svg class="sc"></svg><h4 id="pv-title"></h4><p id="pv-sub"></p></div>
+        <ul id="pv-events"></ul><dl id="pv-officers"></dl><span id="pv-email"></span><div id="pv-social"></div><div id="pv-pay"></div></div>
     </section>
 
     <!-- MEMBERS -->
@@ -418,6 +410,6 @@
   window.LODGE=Object.assign(blank,SEEDS[m[1]]||{},{slug:m[1],fromAccount:true});
 })();
 </script>
-<script src="/assets/auth.js" data-app="/assets/vendor/qrcode.min.js /assets/site-blocks.js /assets/demo.js /assets/site-pages.js /assets/dash.js"></script>
+<script src="/assets/auth.js" data-app="/assets/vendor/qrcode.min.js /assets/site-render.js /assets/demo.js /assets/site-builder.js /assets/site-qr.js /assets/dash.js"></script>
 </body>
 </html>

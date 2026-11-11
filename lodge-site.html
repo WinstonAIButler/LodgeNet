@@ -8,117 +8,24 @@
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&family=Public+Sans:wght@400;500;600;700&display=swap">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&family=Public+Sans:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="/assets/lodge-site.css">
 <style>
-:root{--site:#1c3a75;--ink:#1d2433;--muted:#5a6276;--line:#e4dfd3;--bg:#fbf9f4;--card:#fff;--gold:#b8923a}
-*{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 "Public Sans",system-ui,sans-serif}
-a{color:var(--site)}
-h1,h2,h3{font-family:Montserrat,system-ui,sans-serif;line-height:1.2;margin:0}
+body{margin:0;background:#fff}
 [hidden]{display:none!important}
-.wrap{max-width:1040px;margin:0 auto;padding:0 20px}
-.hero{background:var(--site);color:#fff;padding:56px 0 48px;text-align:center}
-.hero svg{width:64px;height:64px;color:var(--gold)}
-.hero h1{font-size:clamp(26px,5vw,40px);font-weight:800;margin:14px 0 8px}
-.hero p{margin:4px 0;opacity:.88}
-.nav{background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:2}
-.nav .wrap{display:flex;gap:22px;overflow-x:auto;padding-top:12px;padding-bottom:12px}
-.nav a{text-decoration:none;color:var(--ink);font-weight:600;font-size:14px;white-space:nowrap}
-main.wrap{padding-top:36px;padding-bottom:48px}
-.grid{display:grid;grid-template-columns:3fr 2fr;gap:24px}
-@media (max-width:760px){.grid{grid-template-columns:1fr}}
-.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:24px;margin-bottom:24px}
-.card h2{font-size:15px;letter-spacing:.08em;text-transform:uppercase;color:var(--site);margin-bottom:14px}
-.ev{list-style:none;margin:0;padding:0}
-.ev li{display:flex;gap:16px;padding:12px 0;border-top:1px solid var(--line)}
-.ev li:first-child{border-top:0;padding-top:0}
-.date{flex:0 0 54px;text-align:center;border-radius:8px;background:color-mix(in srgb,var(--site) 10%,#fff);padding:6px 0;font-family:Montserrat,sans-serif}
-.date b{display:block;font-size:20px;color:var(--site)}
-.date span{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
-.ev .t{font-weight:600}
-.ev .s{color:var(--muted);font-size:14px}
-.tag{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--gold);margin-left:6px}
-dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:8px 16px}
-dt{color:var(--muted);font-size:14px}
-dd{margin:0;font-weight:600}
-.links{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px}
-.btn{display:inline-block;padding:10px 16px;border-radius:8px;background:var(--site);color:#fff;text-decoration:none;font-weight:600;font-size:14px}
-.btn.line{background:#fff;color:var(--site);border:1px solid var(--site)}
-.note{color:var(--muted);font-size:14px;margin:8px 0 0}
-.empty{color:var(--muted)}
-footer{border-top:1px solid var(--line);padding:24px 0;color:var(--muted);font-size:13px;text-align:center}
-footer a{color:var(--muted)}
-.hero.has-img{background-size:cover;background-position:center;padding:96px 0 80px}
-.hero img.logo{width:96px;height:96px;object-fit:contain}
-.about p{margin:0 0 12px}.about p:last-child{margin:0}
-.gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px}
-.gallery button{padding:0;border:0;background:none;cursor:zoom-in}
-.gallery img{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:8px;display:block}
-.store{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px}
-.item{border:1px solid var(--line);border-radius:10px;overflow:hidden;display:grid;background:#fff}
-.item .pic{aspect-ratio:4/3;background:color-mix(in srgb,var(--site) 8%,#fff) center/cover no-repeat;display:grid;place-items:center;color:var(--site)}
-.item .pic svg{width:56px;height:56px;opacity:.5}
-.item .body{padding:12px 14px;display:grid;gap:4px}
-.item .price{font-family:Montserrat,sans-serif;font-weight:700;color:var(--site)}
-.item .opts{color:var(--muted);font-size:13px}
-.item .buy{margin-top:8px;display:flex;flex-wrap:wrap;gap:6px}
-.item .buy a,.item .buy button{font-size:13px;padding:7px 10px}
-button.btn{border:0;cursor:pointer;font:inherit;font-weight:600}
-.howpay{font-size:13px;color:var(--muted);margin:6px 0 0}
-dialog{border:0;padding:0;background:transparent;max-width:min(92vw,1100px)}
-dialog::backdrop{background:rgba(0,0,0,.8)}
-dialog img{max-width:100%;max-height:86vh;display:block;border-radius:8px}
-.full{grid-column:1/-1}
-.state{max-width:520px;margin:80px auto;text-align:center;padding:0 20px}
-.state h1{font-size:26px;margin-bottom:10px}
-.nav a[aria-current="page"]{color:var(--site);box-shadow:inset 0 -2px 0 var(--gold)}
-.blocks{display:grid;gap:16px}
-.blocks .blk-h{font-size:22px;color:var(--site);margin-top:6px}
-.blocks .blk-t p{margin:0 0 12px}.blocks .blk-t p:last-child{margin:0}
-.blocks .blk-img{margin:0}.blocks .blk-img img{width:100%;border-radius:8px;display:block}
-.blocks figcaption{color:var(--muted);font-size:14px;margin-top:6px}
-.blocks .blk-b{margin:0}
-.blocks .blk-frame{width:100%;border:0;display:block;background:#fff}
-.page-h{font-size:clamp(24px,4vw,32px);color:var(--site);margin-bottom:18px}
-.goal{height:12px;border-radius:6px;background:color-mix(in srgb,var(--site) 12%,#fff);overflow:hidden;margin:8px 0 6px}
-.goal i{display:block;height:100%;background:var(--gold)}
-.ev .t a{color:inherit}
+.state{max-width:520px;margin:90px auto;text-align:center;padding:0 20px;font:16px/1.55 "Public Sans",system-ui,sans-serif;color:#1d2433}
+.state h1{font:700 26px/1.2 Montserrat,system-ui,sans-serif;margin:0 0 10px}
+.state p{color:#5a6276}
+.state a{color:#1c3a75}
 </style>
 </head>
 <body>
-<svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="sc" viewBox="0 0 64 64"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M32 6 12 46M32 6l20 40"/><path d="M8 34l24 22 24-22"/><path d="M20 46h24"/></g><text x="32" y="38" text-anchor="middle" font-family="Montserrat,sans-serif" font-weight="800" font-size="13" fill="currentColor">G</text></symbol></svg>
-<div id="state" class="state"><p class="empty">Loading the lodge's website…</p></div>
-<div id="site" hidden>
-  <header class="hero">
-    <div class="wrap">
-      <svg id="s-crest"><use href="#sc"/></svg>
-      <h1 id="s-title"></h1>
-      <p id="s-place"></p>
-      <p id="s-sched"></p>
-    </div>
-  </header>
-  <nav class="nav" aria-label="Site"><div class="wrap" id="s-nav"></div></nav>
-  <main class="wrap" id="page" hidden><article class="card"><div id="s-page"></div></article></main>
-  <main class="wrap" id="home">
-    <section class="card about" id="about"><h2>About the lodge</h2><div id="s-about"></div></section>
-    <section class="card" id="extra" hidden><div class="blocks" id="s-blocks"></div></section>
-    <div class="grid">
-      <div>
-        <section class="card" id="events"><h2>Upcoming</h2><ul class="ev" id="s-events"></ul></section>
-      </div>
-      <div>
-        <section class="card" id="officers"><h2>Officers</h2><dl id="s-officers"></dl></section>
-        <section class="card" id="contact"><h2>Contact</h2><div id="s-contact"></div></section>
-        <section class="card" id="give"><h2>Give to the lodge</h2><div id="s-give"></div></section>
-      </div>
-    </div>
-    <section class="card" id="store"><h2>Lodge store</h2><p class="note" style="margin:0 0 14px">Pay the lodge directly with the button you prefer, and put the item, size and your name in the payment note.</p><div class="store" id="s-store"></div></section>
-    <section class="card" id="photos"><h2>Photos</h2><div class="gallery" id="s-gallery"></div></section>
-  </main>
-  <dialog id="zoom"><img alt=""></dialog>
-  <footer><span id="s-foot"></span> · Website by <a href="/">LodgeNet</a></footer>
-</div>
-<script src="/assets/site-blocks.js"></script>
+<!-- A lodge's public website at /site/<slug>/… (vercel.json rewrites here). assets/lodge-site.js fetches what the lodge
+     last published and assets/site-render.js draws it, the same renderer the dashboard's Website builder uses. -->
+<div id="state" class="state"><p>Loading the lodge's website…</p></div>
+<div id="site" hidden></div>
+<script src="/assets/site-render.js"></script>
 <script src="/assets/lodge-site.js"></script>
 </body>
 </html>
