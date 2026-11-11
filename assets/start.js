@@ -100,8 +100,18 @@
     const out=$("#c-msg"),code=$("#c-code").value.trim();
     if(!code)return msg(out,"Enter your code.",true);
     $("#c-go").disabled=true;msg(out,"Checking your code…");
-    try{const d=await api("check_code",{code});st.code=d.code;if(d.plan==="district")st.name="District / Grand Lodge";keep();
-      toDetails("Code accepted. No payment needed. Now tell us about your lodge.")}
+    try{
+      const d=await api("check_code",{code});
+      /* a Stripe promotion code: open checkout with it already applied (a 100%-off code needs no card) */
+      if(d.promo){
+        msg(out,`${d.code} applied: ${d.off}. Opening Stripe to finish${d.free?". No card needed":""}…`);
+        st.promo=d.promo;keep();
+        location.href=(await api("checkout",{...(st.price?{price_id:st.price}:{}),promotion_code:d.promo})).url;
+        return;
+      }
+      st.code=d.code;if(d.plan==="district")st.name="District / Grand Lodge";keep();
+      toDetails("Code accepted. No payment needed. Now tell us about your lodge.");
+    }
     catch(err){msg(out,err.message,true)}
     finally{$("#c-go").disabled=false}
   });
