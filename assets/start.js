@@ -84,9 +84,9 @@
   });
   $("#re-pick").addEventListener("click",()=>{
     if((st.session_id||st.code)&&!confirm("You've already "+(st.code?"entered a code":"paid")+" for this plan. Choose a different plan anyway?"))return;
-    forget();show("v-pick");
+    forget();toPick();
   });
-  $("#pay-back").addEventListener("click",()=>{forget();show("v-pick")});
+  $("#pay-back").addEventListener("click",()=>{forget();toPick()});
 
   /* step 3: Stripe Checkout, before the lodge exists */
   $("#pay-go").addEventListener("click",async()=>{
@@ -100,8 +100,18 @@
     const out=$("#c-msg"),code=$("#c-code").value.trim();
     if(!code)return msg(out,"Enter your code.",true);
     $("#c-go").disabled=true;msg(out,"Checking your code…");
-    try{const d=await api("check_code",{code});st.code=d.code;if(d.plan==="district")st.name="District / Grand Lodge";keep();
-      toDetails("Code accepted. No payment needed. Now tell us about your lodge.")}
+    try{
+      const d=await api("check_code",{code});
+      /* a Stripe promotion code: open checkout with it already applied (a 100%-off code needs no card) */
+      if(d.promo){
+        msg(out,`${d.code} applied: ${d.off}. Opening Stripe to finish${d.free?". No card needed":""}…`);
+        st.promo=d.promo;keep();
+        location.href=(await api("checkout",{...(st.price?{price_id:st.price}:{}),promotion_code:d.promo})).url;
+        return;
+      }
+      st.code=d.code;if(d.plan==="district")st.name="District / Grand Lodge";keep();
+      toDetails("Code accepted. No payment needed. Now tell us about your lodge.");
+    }
     catch(err){msg(out,err.message,true)}
     finally{$("#c-go").disabled=false}
   });
@@ -142,11 +152,31 @@
     try{await settle();forget();location.assign(dash())}catch(err){msg($("#d-msg"),err.message,true);b.disabled=false}
   });
 
+  /* the paid plan named by ?price=…, as Stripe has it (the same list the Pricing page shows) */
+  const label=p=>`$${(p.amount/100).toFixed(p.amount%100?2:0)} / ${p.interval_count>1?p.interval_count+" "+p.interval+"s":p.interval}`;
+  async function chosen(){
+    const id=q.get("price"),lodgeLink=q.get("plan")==="lodge";
+    if((!id&&!lodgeLink)||st.session_id||st.code)return null;
+    const paid=(await window.LodgeNetPlans.load()).filter(x=>x.amount>0);
+    /* /start?plan=lodge (an older link): the Lodge Level, or the cheapest paid plan */
+    return (id?paid.find(x=>x.price===id):paid.find(x=>/^lodge\b/i.test(x.name))||paid[0])||null;
+  }
+  let drawn=false;
+  async function toPick(){
+    show("v-pick");
+    if(!drawn){drawn=true;await window.LodgeNetPlans.render($("#tiers"),"start")}
+  }
+
   (async()=>{
     sb=await A.client();
     if(!sb)return show("v-off");
     session=await A.session();
-    if(!session)return show("v-out");
+    if(!session){
+      show("v-out");
+      /* signed out with a plan already chosen: say so, so step 2 isn't a surprise */
+      chosen().then(p=>{if(p)$("#plan-eyebrow").textContent=`Start your lodge · ${p.name} · ${label(p)}`});
+      return;
+    }
     $("#who").textContent="Signed in as "+session.user.email+". You'll be your lodge's account owner.";
     /* back from Stripe */
     if(q.get("paid")&&q.get("session_id")){
@@ -158,10 +188,11 @@
     }
     if(q.get("step")==="pay"&&st.plan==="lodge"&&!st.session_id){history.replaceState(null,"",location.pathname);return toPay("Checkout was closed before paying. You can try again, or use a code.")}
     if(st.session_id||st.code)return toDetails(st.code?"Your code is ready to use. Add your lodge's details.":"Your payment is ready. Add your lodge's details.");
+    /* a plan already chosen on the Pricing page (/start?price=…): don't ask again, go straight to payment */
+    const p=await chosen();
+    if(p){st={plan:"lodge",price:p.price,name:p.name,label:label(p)};keep();history.replaceState(null,"",location.pathname);return toPay()}
     if(st.plan==="starter")return toDetails();
-    show("v-pick");
-    await window.LodgeNetPlans.render($("#tiers"),"start");
-    const want=q.get("price")||st.plan;
-    if(want){const t=document.querySelector(`[data-tier="${CSS.escape(want)}"]`);if(t)t.scrollIntoView({block:"center"})}
+    await toPick();
+    if(st.plan){const t=document.querySelector(`[data-tier="${CSS.escape(st.price||st.plan)}"]`);if(t)t.scrollIntoView({block:"center"})}
   })();
 })();

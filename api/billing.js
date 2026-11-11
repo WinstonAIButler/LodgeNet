@@ -5,7 +5,8 @@
 // New lodges from /start pay before the lodge exists, so these take no lodge_id:
 //   {action:"checkout", price_id?}   Stripe Checkout for the signed-in account; comes back to /start?paid=1&session_id=…
 //   {action:"paid", session_id}      is that checkout finished, and this account's, and not used by a lodge yet?
-//   {action:"check_code", code}      is a LodgeNet plan code good? (redeem_plan_code() spends it once the lodge exists)
+//   {action:"check_code", code}      a LodgeNet plan code (redeem_plan_code() spends it once the lodge exists), or else a Stripe
+//                                    promotion code, which "checkout" then applies ({promotion_code}) so no one has to type it twice
 // and once the lodge is made: {action:"attach", lodge_id, session_id} puts that subscription on the lodge.
 // Needs SUPABASE_SERVICE_ROLE_KEY, and a Stripe secret key (see api/_stripe.js).
 const PRICE_CENTS=1900;   /* used only while Stripe has no plans set up */
@@ -43,9 +44,23 @@ module.exports=async(req,res)=>{
       const c=String(body.code||"").trim().toUpperCase();
       if(!c||c.length>64)return send(400,{error:"Enter your code."});
       const [p]=await sb(`/rest/v1/plan_codes?select=plan,max_uses,uses,expires_at&code=eq.${encodeURIComponent(c)}`);
-      if(!p||(p.expires_at&&new Date(p.expires_at)<new Date())||(p.max_uses!=null&&p.uses>=p.max_uses))
-        return send(400,{error:"That code isn't valid or has been used up."});
-      return send(200,{ok:true,plan:p.plan,code:c});
+      if(p&&!(p.expires_at&&new Date(p.expires_at)<new Date())&&!(p.max_uses!=null&&p.uses>=p.max_uses))
+        return send(200,{ok:true,plan:p.plan,code:c});
+      /* not a LodgeNet code: a Stripe promotion code (Stripe matches these ignoring case) */
+      const k=await stripeKey();
+      if(k&&/^[A-Za-z0-9_-]+$/.test(c)){
+        const {data:[pc]=[]}=await stripe(k,"/promotion_codes?active=true&limit=1&code="+encodeURIComponent(c));
+        if(pc&&!(pc.expires_at&&pc.expires_at*1000<Date.now())&&!(pc.max_redemptions&&pc.times_redeemed>=pc.max_redemptions)){
+          const cid=typeof pc.coupon==="string"?pc.coupon:pc.coupon?pc.coupon.id:pc.promotion&&pc.promotion.coupon;
+          const cp=pc.coupon&&typeof pc.coupon==="object"?pc.coupon:cid?await stripe(k,"/coupons/"+encodeURIComponent(cid)).catch(()=>null):null;
+          if(!cp||cp.valid!==false){
+            const off=cp&&cp.percent_off?cp.percent_off+"% off":cp&&cp.amount_off?"$"+(cp.amount_off/100).toFixed(cp.amount_off%100?2:0)+" off":"discount";
+            const how=cp&&cp.duration==="forever"?"":cp&&cp.duration==="once"?" the first month":cp&&cp.duration_in_months?` for ${cp.duration_in_months} months`:"";
+            return send(200,{ok:true,promo:pc.id,code:pc.code,off:off+how,free:!!(cp&&cp.percent_off===100)});
+          }
+        }
+      }
+      return send(400,{error:"That code isn't valid or has been used up."});
     }
 
     const key=await stripeKey();
@@ -74,8 +89,9 @@ module.exports=async(req,res)=>{
         metadata:{user_id:user.id},
         subscription_data:{metadata:{user_id:user.id}},
         customer_email:user.email,
-        allow_promotion_codes:true,
-        payment_method_collection:"if_required",
+        /* a code already checked on the Payment step goes on now; otherwise Stripe's page has a box for one */
+        ...(/^promo_[A-Za-z0-9]+$/.test(body.promotion_code||"")?{discounts:[{promotion_code:body.promotion_code}]}:{allow_promotion_codes:true}),
+        payment_method_collection:"if_required",   /* a 100%-off code needs no card */
         success_url:`${origin}/start?paid=1&session_id={CHECKOUT_SESSION_ID}`,
         cancel_url:`${origin}/start?step=pay${chosen?"&price="+encodeURIComponent(chosen.price):""}`
       });
