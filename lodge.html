@@ -41,6 +41,7 @@
           <a class="nav-i" href="#communications" data-sec="communications"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 4.5h14v9H8l-4 3v-3H3z"/><path d="M6.5 8h7M6.5 10.5h4.5"/></svg><span>Communications</span></a>
           <a class="nav-i" href="#treasury" data-sec="treasury"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="2.5" y="5" width="15" height="11" rx="1.5"/><path d="M2.5 8.5h15M13 12.5h2"/><path d="M5 5V3.5h10V5"/></svg><span>Treasury</span></a>
           <a class="nav-i" href="#fundraiser" data-sec="fundraiser"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 16.5s-6.5-3.8-6.5-8.3A3.4 3.4 0 0 1 10 6.3a3.4 3.4 0 0 1 6.5 1.9c0 4.5-6.5 8.3-6.5 8.3z"/></svg><span>Fundraiser</span></a>
+          <a class="nav-i" href="#qrcodes" data-sec="qrcodes"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="3" width="5" height="5"/><rect x="12" y="3" width="5" height="5"/><rect x="3" y="12" width="5" height="5"/><path d="M12 12h2v2h-2zM15 15h2v2h-2zM12 16v1M16 12h1"/></svg><span>QR codes</span></a>
           <a class="nav-i" href="#pipelines" data-sec="pipelines"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="2.5" y="3.5" width="4" height="13" rx="1"/><rect x="8" y="3.5" width="4" height="9" rx="1"/><rect x="13.5" y="3.5" width="4" height="5.5" rx="1"/></svg><span>Pipelines</span></a>
           <a class="nav-i" href="#sponsors" data-sec="sponsors"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2.8l2.2 4.5 4.9.7-3.6 3.5.9 4.9-4.4-2.3-4.4 2.3.9-4.9L2.9 8l4.9-.7z"/></svg><span>Sponsors</span></a>
           <a class="nav-i" href="#merchandise" data-sec="merchandise"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 6.5h12l-1 10.5H5z"/><path d="M7 6.5V5a3 3 0 0 1 6 0v1.5"/></svg><span>Merchandise</span></a>
@@ -122,6 +123,11 @@
                 <label class="check"><input type="checkbox" id="site-store-on" checked> Show the lodge store on the website</label>
                 <p class="hint" id="site-store-hint"></p>
               </details>
+              <details class="group" id="pages-box" data-nosnap open>
+                <summary>Pages and content</summary>
+                <p class="hint">Add, edit, reorder and delete the pages on the lodge website. Each page is built from headings, text, photos, buttons and your own HTML.</p>
+                <div id="pages"></div>
+              </details>
               <details class="group" open>
                 <summary>Lodge email</summary>
                 <div class="gmail" id="gmail-box">
@@ -152,20 +158,22 @@
                 <h4 id="pv-title">Cedar Hollow Lodge No. 214, F.&amp;A.M.</h4>
                 <p id="pv-sub">Millbrook, Ohio · Stated Communications 2nd Tuesday of each month, 7:30 PM</p>
               </div>
-              <div class="site-nav"><span>Home</span><span>Calendar</span><span>Store</span><span>Our History</span><span>Become a Mason</span><span>Members</span></div>
+              <div class="site-nav"><span>Home</span></div>
+              <div class="pv-blocks" id="pv-home-blocks" hidden></div>
+              <div class="pv-blocks" id="pv-page" hidden></div>
               <div class="site-body">
-                <div>
+                <div data-hs="events">
                   <h5>UPCOMING</h5>
                   <ul id="pv-events"></ul>
                 </div>
-                <div>
+                <div data-hs="officers">
                   <h5>OFFICERS, 2026</h5>
                   <dl class="site-officers" id="pv-officers"></dl>
                 </div>
               </div>
               <div class="site-foot">
-                <div><h5>CONTACT</h5><span id="pv-email"></span><div class="socials" id="pv-social"></div></div>
-                <div><h5>GIVE TO THE LODGE</h5><div class="paybtns" id="pv-pay"></div></div>
+                <div data-hs="contact"><h5>CONTACT</h5><span id="pv-email"></span><div class="socials" id="pv-social"></div></div>
+                <div data-hs="give"><h5>GIVE TO THE LODGE</h5><div class="paybtns" id="pv-pay"></div></div>
               </div>
             </div>
           </div>
@@ -253,6 +261,12 @@
 
     <section class="sec" data-sec="treasury" hidden><div class="panel" id="p-treas"></div></section>
     <section class="sec" data-sec="fundraiser" hidden><div class="panel" id="p-fund"></div></section>
+    <section class="sec" data-sec="qrcodes" hidden>
+      <div class="panel" id="qr-box">
+        <p class="hint" style="margin:0 0 16px;max-width:62ch">For flyers, posters, tickets and table tents. Point a code at a fundraiser or anywhere on the lodge website, and change where it goes later without reprinting.</p>
+        <div id="qr"></div>
+      </div>
+    </section>
     <section class="sec" data-sec="pipelines" hidden><div class="panel" id="p-pipe"></div></section>
     <section class="sec" data-sec="sponsors" hidden><div class="panel" id="p-spon"></div></section>
 
@@ -404,6 +418,6 @@
   window.LODGE=Object.assign(blank,SEEDS[m[1]]||{},{slug:m[1],fromAccount:true});
 })();
 </script>
-<script src="/assets/auth.js" data-app="/assets/demo.js /assets/dash.js"></script>
+<script src="/assets/auth.js" data-app="/assets/vendor/qrcode.min.js /assets/site-blocks.js /assets/demo.js /assets/site-pages.js /assets/dash.js"></script>
 </body>
 </html>

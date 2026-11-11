@@ -1,14 +1,26 @@
-/* A lodge's public website at /site/<slug> (vercel.json rewrites it to lodge-site.html).
+/* A lodge's public website at /site/<slug> (vercel.json rewrites it and everything under it to lodge-site.html).
    It shows only what an officer last published from the dashboard: published_site() in supabase/public-site.sql
-   returns that copy, and only while the lodge's plan is paid for. */
+   returns that copy, and only while the lodge's plan is paid for.
+   Addresses under the lodge:
+     /site/<slug>                    Home (built-in sections the lodge hasn't switched off, plus its own blocks under About)
+     /site/<slug>/<page>             one of the lodge's own pages
+     /site/<slug>/fundraiser/<id>    a fundraiser: details, progress and the lodge's giving buttons
+     /site/<slug>/qr/<id>            a printed QR code; sends the visitor on to wherever the lodge last assigned it */
 (function(){
   const $=s=>document.querySelector(s);
   const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
   const safe=u=>/^https:\/\/[^\s"<>]+$/i.test(u||"")?u:"";
-  const slug=decodeURIComponent((location.pathname.match(/\/site\/([^/?#]+)/)||[])[1]||new URLSearchParams(location.search).get("slug")||"");
+  const pm=location.pathname.match(/\/site\/([^/?#]+)(?:\/([^?#]*))?/)||[];
+  const slug=decodeURIComponent(pm[1]||new URLSearchParams(location.search).get("slug")||"");
+  const rest=decodeURIComponent(pm[2]||"").replace(/\/+$/,"");
+  const B=window.LodgeSiteBlocks;
   function show(title,body){$("#state").innerHTML=`<h1>${esc(title)}</h1><p class="empty">${esc(body)}</p><p><a href="/">LodgeNet</a></p>`}
   const parse=d=>{const [y,m,day]=d.split("-").map(Number);return new Date(y,m-1,day)};
   function render(s,at){
+    const root="/site/"+encodeURIComponent(slug),pages=s.pages||[],funds=s.funds||[],hide=(s.home&&s.home.hide)||[];
+    /* a QR code goes straight on to its target */
+    if(/^qr\//.test(rest)){const q=(s.qrs||[]).find(x=>x.id===rest.slice(3));
+      const to=q&&B.safeHref(q.href);location.replace(to||root);return}
     document.documentElement.style.setProperty("--site",/^#[0-9a-f]{3,8}$/i.test(s.color||"")?s.color:"#1c3a75");
     const title=s.full+(s.jur?", "+s.jur:"");
     document.title=title;
@@ -22,7 +34,7 @@
     const ev=(s.events||[]).filter(e=>parse(e.d)>=today);
     $("#s-events").innerHTML=ev.length?ev.map(e=>{const d=parse(e.d);
       return `<li><div class="date"><span>${d.toLocaleDateString("en-US",{month:"short"})}</span><b>${d.getDate()}</b></div>
-        <div><div class="t">${esc(e.t)}${e.fund?'<span class="tag">Fundraiser</span>':""}</div><div class="s">${esc(d.toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"}))}${e.time&&!/not set/i.test(e.time)?" · "+esc(e.time):""}</div></div></li>`}).join("")
+        <div><div class="t">${e.fid&&funds.some(f=>f.id===e.fid)?`<a href="${root}/fundraiser/${esc(e.fid)}">${esc(e.t)}</a>`:esc(e.t)}${e.fund?'<span class="tag">Fundraiser</span>':""}</div><div class="s">${esc(d.toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"}))}${e.time&&!/not set/i.test(e.time)?" · "+esc(e.time):""}</div></div></li>`}).join("")
       :'<li class="empty">No upcoming events posted. Check back soon.</li>';
     $("#s-officers").innerHTML=(s.officers||[]).length?s.officers.map(o=>`<dt>${esc(o.seat)}</dt><dd>${esc(o.name)}</dd>`).join(""):'<dd class="empty">Officers to be announced.</dd>';
     const soc=(s.social||[]).filter(x=>safe(x.url));
@@ -30,7 +42,7 @@
       +(soc.length?`<div class="links">${soc.map(x=>`<a class="btn line" href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.name)}</a>`).join("")}</div>`:"")
       +(!s.email&&!soc.length?'<p class="empty" style="margin:0">Visit us at a Stated Communication.</p>':"");
     const give=s.give||[];
-    $("#give").hidden=$("#nav-give").hidden=!give.length;
+    $("#give").hidden=!give.length;
     $("#s-give").innerHTML=`<div class="links">${give.filter(g=>safe(g.url)).map(g=>`<a class="btn" href="${esc(g.url)}" target="_blank" rel="noopener">${esc(g.label)}</a>`).join("")}</div>`
       +give.filter(g=>!safe(g.url)&&g.note).map(g=>`<p class="note"><b>${esc(g.label)}:</b> ${esc(g.note)}</p>`).join("");
     /* pictures */
@@ -38,16 +50,16 @@
     if(okImg(im.hero)){const h=$(".hero");h.classList.add("has-img");h.style.backgroundImage=`linear-gradient(rgba(0,0,0,.45),rgba(0,0,0,.6)),url("${im.hero}")`}
     if(okImg(im.logo)){const l=document.createElement("img");l.className="logo";l.src=im.logo;l.alt=s.full+" seal";$("#s-crest").replaceWith(l)}
     const about=String(s.about||"").trim();
-    $("#about").hidden=$("#nav-about").hidden=!about;
+    $("#about").hidden=!about;
     $("#s-about").innerHTML=about.split(/\n\s*\n/).map(p=>`<p>${esc(p.trim()).replace(/\n/g,"<br>")}</p>`).join("");
     const gal=(im.gallery||[]).filter(okImg);
-    $("#photos").hidden=$("#nav-photos").hidden=!gal.length;
+    $("#photos").hidden=!gal.length;
     $("#s-gallery").innerHTML=gal.map((u,i)=>`<button type="button" data-z="${i}" aria-label="Open photo ${i+1}"><img src="${esc(u)}" alt="" loading="lazy"></button>`).join("");
     $("#s-gallery").onclick=e=>{const b=e.target.closest("[data-z]");if(!b)return;const d=$("#zoom");d.querySelector("img").src=gal[+b.dataset.z];d.showModal()};
     $("#zoom").onclick=()=>$("#zoom").close();
     /* store: each item pays the lodge straight through its own PayPal, Venmo or Cash App, or shows where to send Zelle or a check */
     const items=s.store||[],pay=s.pay||[];
-    $("#store").hidden=$("#nav-store").hidden=!items.length;
+    $("#store").hidden=!items.length;
     const enc=encodeURIComponent,amt=n=>(+n||0).toFixed(2);
     const payUrl=(p,n,note)=>p.k==="cashapp"?`https://cash.app/$${enc(p.v)}/${amt(n)}`:p.k==="paypal"?`https://paypal.me/${enc(p.v)}/${amt(n)}USD`
       :p.k==="venmo"?`https://venmo.com/?txn=pay&recipients=${enc(p.v)}&amount=${amt(n)}&note=${enc(note)}`:p.k==="link"?safe(p.v):"";
@@ -61,6 +73,42 @@
         ${it.sizes?`<span class="opts">Sizes: ${esc(it.sizes)}</span>`:""}${it.colors?`<span class="opts">Colors: ${esc(it.colors)}</span>`:""}
         <div class="buy">${links||mail||'<span class="opts">Ask at the lodge to order.</span>'}${links&&mail?mail:""}</div>${notes}</div></div>`}).join("");
     $("#s-foot").textContent="© "+new Date().getFullYear()+" "+s.full;
+    /* the lodge's own content on Home, and the Home sections it switched off */
+    const hb=B.render((s.home&&s.home.blocks)||[]);
+    $("#extra").hidden=!hb;$("#s-blocks").innerHTML=hb;
+    hide.forEach(k=>{const el=document.getElementById(k);if(el)el.hidden=true});
+    /* which page this address is */
+    let view="home",page=null,fund=null;
+    if(rest){const fm=/^fundraiser\/(.+)$/.exec(rest);
+      if(fm){fund=funds.find(f=>f.id===fm[1]);view="fund"}else{page=pages.find(p=>p.slug===rest);view="page"}}
+    /* menu: Home's sections on Home, then the lodge's pages */
+    const secs=[["about","About"],["events","Upcoming"],["store","Store"],["photos","Photos"],["officers","Officers"],["contact","Contact"],["give","Give"]]
+      .filter(([k])=>!document.getElementById(k).hidden);
+    const navPages=pages.filter(p=>p.nav);
+    $("#s-nav").innerHTML=(view==="home"
+        ?(navPages.length?`<a href="${root}" aria-current="page">Home</a>`:"")+secs.map(([k,t])=>`<a href="#${k}">${t}</a>`).join("")
+        :`<a href="${root}">Home</a>`)
+      +navPages.map(p=>`<a href="${root}/${esc(p.slug)}"${page===p?' aria-current="page"':""}>${esc(p.title)}</a>`).join("");
+    if(view!=="home"){
+      $("#home").hidden=true;$("#page").hidden=false;
+      const box=$("#s-page");
+      if(view==="page"&&page){document.title=page.title+" · "+title;
+        box.innerHTML=`<h1 class="page-h">${esc(page.title)}</h1><div class="blocks">${B.render(page.blocks)||'<p class="empty">Nothing here yet.</p>'}</div>`}
+      else if(view==="fund"&&fund){document.title=fund.t+" · "+title;
+        const d=parse(fund.d),over=d<today,pct=fund.goal?Math.min(100,Math.round(fund.raised/fund.goal*100)):0;
+        const giveBtns=give.filter(g=>safe(g.url)).map(g=>`<a class="btn" href="${esc(g.url)}" target="_blank" rel="noopener">${esc(g.label)}</a>`).join("")
+          +give.filter(g=>!safe(g.url)&&g.note).map(g=>`<p class="note"><b>${esc(g.label)}:</b> ${esc(g.note)}</p>`).join("");
+        box.innerHTML=`<p class="tag" style="margin:0 0 6px">Fundraiser</p><h1 class="page-h" style="margin-bottom:6px">${esc(fund.t)}</h1>
+          <p style="margin:0 0 4px"><b>${esc(d.toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric",year:"numeric"}))}</b>${fund.time&&!/not set|to be announced/i.test(fund.time)?" · "+esc(fund.time):""}</p>
+          ${fund.charity?`<p class="note" style="margin:0 0 12px">Proceeds support ${esc(fund.charity)}.</p>`:""}
+          ${fund.note?`<div class="about">${esc(fund.note).split(/\n\s*\n/).map(p=>`<p>${p.replace(/\n/g,"<br>")}</p>`).join("")}</div>`:""}
+          ${fund.goal?`<div class="goal" role="img" aria-label="${pct}% of the goal raised"><i style="width:${pct}%"></i></div><p class="note" style="margin:0 0 16px">${money(fund.raised)} raised of ${money(fund.goal)}</p>`:""}
+          ${over?'<p><b>This fundraiser has ended. Thank you to everyone who came out and gave.</b></p>':""}
+          ${giveBtns?`<h2 style="font-size:15px;letter-spacing:.08em;text-transform:uppercase;color:var(--site);margin:18px 0 0">${over?"You can still give to the lodge":"Give now"}</h2><div>${giveBtns}</div><p class="note">Put "${esc(fund.t)}" in the payment note so it's counted.</p>`:""}
+          ${s.email?`<p class="note">Questions? <a href="mailto:${esc(s.email)}?subject=${enc(fund.t)}">${esc(s.email)}</a></p>`:""}`}
+      else{document.title="Page not found · "+title;
+        box.innerHTML=`<h1 class="page-h">That page isn't here</h1><p class="empty">It may have moved or been taken down.</p><p><a class="btn" href="${root}">Go to the lodge's home page</a></p>`}
+    }
     $("#state").hidden=true;$("#site").hidden=false;
   }
   (async()=>{

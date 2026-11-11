@@ -21,6 +21,10 @@
     {
       "source": "/site/:slug",
       "destination": "/lodge-site"
+    },
+    {
+      "source": "/site/:slug/:rest*",
+      "destination": "/lodge-site"
     }
   ],
   "headers": [
