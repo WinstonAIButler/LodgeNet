@@ -5,7 +5,14 @@
   const A=window.LodgeNetAuth;
   const PLAN={starter:"Lodge Starter",lodge:"Lodge plan",district:"District / Grand Lodge"};
   const ROLE={owner:"Account owner",officer:"Officer",member:"Member"};
-  const next=(()=>{const n=new URLSearchParams(location.search).get("next");return n&&n.startsWith("/")&&!n.startsWith("//")?n:null})();
+  const okNext=n=>n&&n.startsWith("/")&&!n.startsWith("//")?n:null;
+  /* where to go after signing in. A sign-up remembers it too, because the confirmation email can come back
+     without it (Supabase falls back to its Site URL when the return address isn't on its allowed list) */
+  const NEXT_KEY="lodgenet-next";
+  const store={get(){try{const v=JSON.parse(localStorage.getItem(NEXT_KEY)||"null");return v&&Date.now()-v.t<7*864e5?okNext(v.next):null}catch(e){return null}},
+    set(n){try{localStorage.setItem(NEXT_KEY,JSON.stringify({next:n,t:Date.now()}))}catch(e){}},
+    clear(){try{localStorage.removeItem(NEXT_KEY)}catch(e){}}};
+  const next=okNext(new URLSearchParams(location.search).get("next"))||store.get();
   /* read before the client takes the tokens out of the address */
   const HASH=new URLSearchParams(location.hash.slice(1));
   let recovering=HASH.get("type")==="recovery";
@@ -26,13 +33,16 @@
   /* fresh: just signed in with the form. The owner's dashboard has its own sign-in at /owner, so nobody is sent there from here */
   async function signedIn(session,fresh){
     try{await sb.rpc("claim_invites")}catch(e){}
+    store.clear();
     if(next){location.replace(next);return}
     /* a signed-in brother goes straight to his lodge's dashboard (the one he owns first); /login?account keeps this account page,
        which the dashboard's Settings links to for plan, billing and invites */
     const q=new URLSearchParams(location.search);
     if(!q.has("account")&&!q.get("billing")){
       try{const rows=await A.myLodges(),r=rows.find(x=>x.role==="owner")||rows[0];
-        if(r){location.replace("/lodges/"+encodeURIComponent(r.lodge.slug));return}}catch(e){}
+        if(r){location.replace("/lodges/"+encodeURIComponent(r.lodge.slug));return}
+        /* a brand-new account with no lodge and no invite: carry on setting up a lodge (plan, payment, lodge details) */
+        if(!rows.length){location.replace("/start");return}}catch(e){}
     }
     $("#head-title").textContent="Your lodge account";
     $("#head-text").textContent="Open your lodge's dashboard. Edits there save to the lodge account, so every officer sees the same website, calendar, members and minutes.";
@@ -178,6 +188,7 @@
     if(recovering&&s){show("v-reset");return}
     if(s)return signedIn(s);
     show("v-out");
+    window.LodgeNetOAuth.render($("#oauth-box"),back(),()=>{if(next)store.set(next)});
     if(HASH.get("error_description"))msg($("#a-msg"),HASH.get("error_description")+". Try again or ask for a new link.",true);
   }
 
@@ -193,10 +204,16 @@
         if(error)return msg(out,error.message==="Invalid login credentials"?"That email and password don't match an account.":error.message,true);
         return signedIn(data.session,true);
       }
+      store.set(next||"/start");
       const {data,error}=await sb.auth.signUp({email,password,options:{emailRedirectTo:back()}});
       if(error)return msg(out,error.message,true);
       if(data.session)return signedIn(data.session);
-      msg(out,`Check ${email} for a confirmation link. It brings you back here signed in.`);
+      /* Supabase answers a sign-up for an email that already has an account with no identities, and sends no email */
+      if(data.user&&Array.isArray(data.user.identities)&&!data.user.identities.length){
+        setMode("in");$("#a-pass").value="";
+        return msg(out,`${email} already has a LodgeNet account. Sign in with its password, or choose Forgot your password.`,true);
+      }
+      msg(out,`Check ${email} for a confirmation link. Open it on this device and it brings you back here signed in, ready to choose your plan.`);
     }finally{$("#a-go").disabled=false}
   });
   $("#a-forgot").addEventListener("click",async()=>{
