@@ -352,7 +352,10 @@
     try{if(im.banner){await addPics("hero",[im.banner]);np++}}catch(e){}
     for(const g of im.gallery||[]){try{const before=pics.gallery.length;await addPics("gallery",[g]);if(pics.gallery.length>before)np++}catch(e){}}
     if(np)f.push(np+" pictures");
-    refreshPeople();renderCal();renderProducts();renderPics();renderSite();renderMinutes();queueSave();
+    refreshPeople();renderCal();renderProducts();renderPics();renderSite();renderMinutes();
+    /* the Website builder puts the banner, About text and photos onto the Home page */
+    if(window.LodgeNetSite&&window.LodgeNetSite.fromImport)window.LodgeNetSite.fromImport(d);
+    queueSave();
     return f;
   }
   if($("#imp-btn"))$("#imp-btn").addEventListener("click",async()=>{
@@ -395,7 +398,7 @@
       pay:PAY.filter(payOn).map(p=>({k:p.k,label:payLabel(p),v:payVal(p)})),
       about:fieldVal("#f-about"),images:{hero:pics.hero,logo:pics.logo,gallery:pics.gallery.slice()},
       store:siteStoreOn&&(CLOUD?CFG.plan:plan)!=="starter"?products.filter(x=>!x.off).map(x=>({id:x.id,n:x.n,p:+x.p||0,img:x.img||"",tag:x.tag||"",sizes:x.sizes||"",colors:x.colors||"",kind:x.kind||""})):[],
-      /* pages, Home sections and blocks, fundraisers and QR codes, from assets/site-pages.js */
+      /* the builder's pages and theme, fundraisers, store and QR codes, from assets/site-builder.js */
       ...(window.LodgeNetSite?window.LodgeNetSite.publicExtra():{})};
   }
   const sameSite=()=>!!published&&JSON.stringify(publicSite())===JSON.stringify(published.site);
@@ -1077,8 +1080,8 @@
     const form={};document.querySelectorAll("#site-form input[id]:not([type=checkbox]),#site-form select[id],#site-form textarea[id],#pay-form input[id]").forEach(el=>{if(!el.closest("[data-nosnap]"))form[el.id]=el.value});
     return {app:"LodgeNet",version:1,page:STORE_KEY,savedAt:new Date().toISOString(),form,color:siteColor,
       membersFull:members,officers,events,minutes,minuteSections,gmail,nextStated,products,orders,published,siteImages:pics,siteStore:siteStoreOn,...(plan?{plan}:{}),
-      /* site-pages.js owns these; without it (the public demo) they pass through untouched */
-      ...(window.LodgeNetSite?window.LodgeNetSite.snapshot():{sitePages:CFG.sitePages,siteHome:CFG.siteHome,siteQrs:CFG.siteQrs}),
+      /* site-builder.js and site-qr.js own these; without them (the public demo) they pass through untouched */
+      ...(window.LodgeNetSite?window.LodgeNetSite.snapshot():{siteLayout:CFG.siteLayout,siteQrs:CFG.siteQrs}),
       ...(window.LodgeNetDash?window.LodgeNetDash.snapshot():{})};
   }
   const stamp=d=>new Date(d).toLocaleString("en-US",{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"});
@@ -1145,7 +1148,10 @@
     refresh(){renderCal();refreshPeople()},
     get orders(){return orders},set orders(v){orders=v},renderProducts,
     drawProducts,payLink,payButtons,save:queueSave,
-    SLUG,siteState,shrinkPic,fileUrl,publicSite};
+    SLUG,siteState,shrinkPic,fileUrl,publicSite,pics,
+    /* the Website builder's Design panel (assets/site-builder.js) picks any color, not just the swatches */
+    get siteColor(){return siteColor},
+    setColor(c){if(!/^#[0-9a-f]{6}$/i.test(c))return;siteColor=c;document.querySelectorAll(".swatch").forEach(s=>s.setAttribute("aria-pressed",String(s.dataset.c===c)));renderSite();queueSave()}};
   if(MOVE_LOCAL)save().then(ok=>{if(ok)try{localStorage.removeItem(STORE_KEY)}catch(e){}});
 })();
 
