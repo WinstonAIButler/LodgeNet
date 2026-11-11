@@ -14,7 +14,7 @@
       let cfg=null;
       try{const r=await fetch("/api/config",{cache:"no-store"});if(r.ok)cfg=await r.json()}catch(e){}
       if(!cfg||!cfg.url||!cfg.key)return null;
-      window.LodgeNetAuth.billing=!!cfg.billing;window.LodgeNetAuth.ai=!!cfg.ai;
+      window.LodgeNetAuth.billing=!!cfg.billing;window.LodgeNetAuth.ai=!!cfg.ai;window.LodgeNetAuth.cfg=cfg;
       if(!window.supabase)await loadScript("/assets/vendor/supabase.umd.min.js");
       /* the LodgeNet owner's dashboard (<html data-auth="owner">) keeps its own sign-in, apart from the lodge portal's,
          so signing in on one never signs you in, or switches accounts, on the other */
@@ -31,7 +31,17 @@
     if(error)throw error;
     return (data||[]).filter(r=>r.lodges).map(r=>({role:r.role,lodge:r.lodges}));
   }
-  window.LodgeNetAuth={client,session,myLodges};
+  /* which "Continue with …" sign-ins are switched on in Supabase (Authentication → Sign In / Providers) */
+  let provP=null;
+  function providers(){
+    if(!provP)provP=client().then(async sb=>{
+      const cfg=window.LodgeNetAuth.cfg;if(!sb||!cfg)return {};
+      const r=await fetch(cfg.url+"/auth/v1/settings",{headers:{apikey:cfg.key}});
+      return r.ok?((await r.json()).external||{}):{};
+    }).catch(()=>({}));
+    return provP;
+  }
+  window.LodgeNetAuth={client,session,myLodges,providers};
 
   function gate(title,body,cta){
     const shell=document.querySelector("[data-gate]"),band=shell||document.querySelector("#demo .wrap")||document.querySelector("main");
@@ -74,11 +84,18 @@
   /* straight from /start: say where to begin */
   function welcome(){
     const q=new URLSearchParams(location.search);if(!q.has("welcome"))return;
+    const site=q.get("import");q.delete("import");
     q.delete("welcome");history.replaceState(null,"",location.pathname+(q.toString()?"?"+q:"")+location.hash);
     const sec=document.querySelector('.sec[data-sec="website"]');if(!sec)return;
     const c=document.createElement("div");c.className="card";c.setAttribute("role","status");c.style.marginBottom="16px";
     c.innerHTML=`<h3 style="margin:0 0 6px">Welcome to LodgeNet. Let's build your website.</h3><p class="hint" style="margin:0 0 10px">Your name and details are already filled in below. Add your meeting times, officers, pictures and pages, or paste your current website's address under Start from your current website and we'll fill it in for you. ${window.LODGENET_CLOUD&&window.LODGENET_CLOUD.paid?"When it looks right, choose Publish.":"Publishing comes with a paid level; you can upgrade from Settings."}</p><button class="btn line sm" type="button">Got it</button>`;
     c.querySelector("button").addEventListener("click",()=>c.remove());
+    /* their current website from /start: ready in "Start from your current website", one click to read it in */
+    const imp=document.getElementById("imp-url");
+    if(site&&/^https?:\/\//i.test(site)&&imp){imp.value=site;const d=imp.closest("details");if(d)d.open=true;
+      const p=document.createElement("p");p.className="hint";p.style.margin="0 0 10px";
+      p.textContent="We've put "+site+" into Start from your current website below. Choose Build from this site and we'll read it and fill in your new website for you.";
+      c.querySelector("p").after(p)}
     sec.prepend(c);
     if(location.hash!=="#website")location.hash="website";
   }
