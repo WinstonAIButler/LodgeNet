@@ -354,7 +354,7 @@
     if(np)f.push(np+" pictures");
     refreshPeople();renderCal();renderProducts();renderPics();renderSite();renderMinutes();
     /* the Website builder puts the banner, About text and photos onto the Home page */
-    if(window.LodgeNetSite&&window.LodgeNetSite.fromImport)window.LodgeNetSite.fromImport(d);
+    if(window.LodgeNetSite&&window.LodgeNetSite.fromImport)await window.LodgeNetSite.fromImport(d);
     queueSave();
     return f;
   }
@@ -1148,7 +1148,7 @@
     refresh(){renderCal();refreshPeople()},
     get orders(){return orders},set orders(v){orders=v},renderProducts,
     drawProducts,payLink,payButtons,save:queueSave,
-    SLUG,siteState,shrinkPic,fileUrl,publicSite,pics,
+    SLUG,siteState,shrinkPic,fileUrl,publicSite,pics,applyImport,SEATS_TITLES:()=>SEATS.map(x=>x.t),isoDay,
     /* the Website builder's Design panel (assets/site-builder.js) picks any color, not just the swatches */
     get siteColor(){return siteColor},
     setColor(c){if(!/^#[0-9a-f]{6}$/i.test(c))return;siteColor=c;document.querySelectorAll(".swatch").forEach(s=>s.setAttribute("aria-pressed",String(s.dataset.c===c)));renderSite();queueSave()}};

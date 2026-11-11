@@ -41,6 +41,9 @@
     contact:{name:"Contact and meetings",group:"Lodge",make:()=>({heading:"Visit us",body:"Visitors and Masons in good standing are always welcome."})},
     give:{name:"Give to the lodge",group:"Lodge",make:()=>({heading:"Give to the lodge",body:"Your gift supports our charities and the upkeep of the lodge."})},
     store:{name:"Lodge store",group:"Lodge",make:()=>({heading:"Lodge store",body:"Pay the lodge directly with the button you prefer, and put the item, size and your name in the payment note."})},
+    charities:{name:"Charities",group:"Lodge",make:()=>({heading:"The causes we support",body:"Every fundraiser and store purchase helps these funds and charities."})},
+    sponsors:{name:"Sponsors",group:"Lodge",make:()=>({heading:"Thank you to our sponsors",body:"These local businesses help make our work possible."})},
+    news:{name:"News",group:"Lodge",make:()=>({heading:"Lodge news",count:6})},
     html:{name:"Custom HTML",group:"Advanced",make:()=>({html:""})}
   };
   const newSection=(type,over)=>Object.assign({id:uid(),type,bg:"plain"},SECTIONS[type].make(),over||{});
@@ -209,6 +212,17 @@
             <div class="ls-item-b"><b>${esc(it.n)}</b><span class="ls-price">${money(it.p)}</span>${it.sizes?`<span class="ls-note">Sizes: ${esc(it.sizes)}</span>`:""}
             <div class="ls-btns">${links||mail||'<span class="ls-note">Ask at the lodge to order.</span>'}${links&&mail?mail:""}</div>${notes}</div></div>`}).join("")}</div>`
           :empty(E?"Items you mark as showing on Merchandise appear here (paid plans).":"The store is being stocked. Check back soon.")}</div>`},
+      charities:s=>{const c=site.charities||[];
+        return `<div class="ls-wrap">${head(s)}${B(s.body)}${c.length?`<div class="ls-cards">${c.map(x=>{const fr=funds.filter(f=>f.charity===x.name&&parse(f.d)>=today);
+          return `<div class="ls-card ls-card-static"><span class="ls-tag">${esc(x.kind||"Charity")}</span><h3 class="ls-h3">${esc(x.name)}</h3>${x.note?`<span class="ls-note">${esc(x.note)}</span>`:""}
+            ${fr.map(f=>`<a class="ls-more" href="${esc(root+"/fundraiser/"+f.id)}">${esc(f.t)} →</a>`).join("")}</div>`}).join("")}</div>`:empty("Our charities will be listed here soon.")}
+          ${E?'<p class="ls-hint">Charities come from the Charities tab.</p>':""}</div>`},
+      sponsors:s=>{const sp=site.sponsors||[];
+        return `<div class="ls-wrap ls-al-center">${head(s)}${B(s.body)}${sp.length?`<div class="ls-sponsors">${sp.map(x=>`<div class="ls-sponsor"><b>${esc(x.name)}</b>${x.level?`<span>${esc(x.level)}</span>`:""}</div>`).join("")}</div>`:empty("Sponsor recognition coming soon.")}
+          ${E?'<p class="ls-hint">Active sponsors come from the Sponsors tab.</p>':""}</div>`},
+      news:s=>{const n=(site.news||[]).slice(0,+s.count||6);
+        return `<div class="ls-wrap ls-narrow">${head(s)}${n.length?`<div class="ls-news">${n.map(x=>`<article><span class="ls-tag">${esc(parse(x.d).toLocaleDateString("en-US",{month:"long",day:"numeric",year:"numeric"}))}</span><h3 class="ls-h3">${esc(x.subject)}</h3>${x.body?`<div class="ls-body">${esc(x.body)}</div>`:""}</article>`).join("")}</div>`
+          :empty("No news posted yet.")}${E?'<p class="ls-hint">Posts come from Communications → Announcements, when the audience is Public.</p>':""}</div>`},
       html:s=>String(s.html||"").trim()?`<iframe class="ls-frame" title="Lodge content" sandbox="allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation" referrerpolicy="no-referrer" srcdoc="${esc(frameDoc(s.html))}" style="height:140px"></iframe>`
         :E?'<div class="ls-wrap"><div class="ls-noimg ls-video-empty"><span>Paste your HTML in the panel on the left</span></div></div>':""
     };

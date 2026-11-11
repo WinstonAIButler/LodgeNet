@@ -75,6 +75,70 @@
     return t||"Nowhere yet"}
   const isUrl=l=>!!l&&!/^(home|page:|fund:)/.test(l);
 
+  /* charities (name, kind, note), active sponsors (name and level only, never contacts or amounts) and Public announcements */
+  function lodgeLists(){
+    const D=window.LodgeNetDash&&window.LodgeNetDash.snapshot?window.LodgeNetDash.snapshot():{charities:CFG.charities,sponsors:CFG.sponsors,announcements:CFG.announcements};
+    return {
+      charities:(D.charities||[]).map(c=>({name:c.name,kind:c.kind||"",note:c.note||""})),
+      sponsors:(D.sponsors||[]).filter(x=>x.status==="Active").map(x=>({name:x.name,level:x.level||""})),
+      news:(D.announcements||[]).filter(a=>a.status==="Posted"&&a.aud==="Public").sort((a,b)=>a.d<b.d?1:-1).slice(0,20).map(a=>({d:a.d,subject:a.subject,body:a.body||""}))
+    };
+  }
+
+  /* ---------- pages that build themselves from the dashboard's other tabs ---------- */
+  const today=()=>A.isoDay(new Date());
+  const CONNECTED={
+    events:{name:"Events",tab:"Communications",icon:'<rect x="3" y="4.5" width="14" height="12" rx="1.5"/><path d="M3 8h14M7 3v3M13 3v3"/>',
+      count:()=>{const n=A.events.filter(e=>e.d>=today()).length;return n+" upcoming "+(n===1?"event":"events")},
+      make:()=>[L.newSection("hero",{heading:"Events",sub:"Stated Communications, degree nights and public events.",height:"short"}),L.newSection("events",{count:"12"}),L.newSection("fundraisers",{bg:"tint"})]},
+    fundraisers:{name:"Fundraisers",tab:"Fundraiser",icon:'<path d="M10 16.5s-6.5-3.8-6.5-8.3A3.4 3.4 0 0 1 10 6.3a3.4 3.4 0 0 1 6.5 1.9c0 4.5-6.5 8.3-6.5 8.3z"/>',
+      count:()=>{const n=fundraisers().filter(e=>e.d>=today()).length;return n+" upcoming "+(n===1?"fundraiser":"fundraisers")},
+      make:()=>[L.newSection("hero",{heading:"Fundraisers",sub:"Every dollar stays in our community.",height:"short"}),L.newSection("fundraisers",{heading:"Coming up"}),L.newSection("give",{bg:"tint"})]},
+    store:{name:"Lodge store",tab:"Merchandise",icon:'<path d="M4 6.5h12l-1 10.5H5z"/><path d="M7 6.5V5a3 3 0 0 1 6 0v1.5"/>',
+      count:()=>planNow()==="starter"?"Comes with a paid plan":(()=>{const n=A.products.filter(x=>!x.off).length;return n+" "+(n===1?"item":"items")+" for sale"})(),
+      make:()=>[L.newSection("hero",{heading:"Lodge store",sub:"Every purchase supports our lodge and its charities.",height:"short"}),L.newSection("store"),L.newSection("give",{bg:"tint"})]},
+    charities:{name:"Charities",tab:"Charities",icon:'<path d="M3 11.5l3.2-2.3c.8-.5 1.8-.5 2.5.1l1.3 1h2.5a1.3 1.3 0 0 1 0 2.6H9.5"/><path d="M3 16.5l2.5-1.8h5.2l5.3-3.6a1.3 1.3 0 0 0-1.5-2.1L12 10.5"/>',
+      count:()=>{const n=lodgeLists().charities.length;return n+" "+(n===1?"charity":"charities")},
+      make:()=>[L.newSection("hero",{heading:"Our charities",sub:"Where your support goes.",height:"short"}),L.newSection("charities"),L.newSection("fundraisers",{bg:"tint"}),L.newSection("give")]},
+    officers:{name:"Officers",tab:"Members",icon:'<circle cx="7.5" cy="7" r="3"/><path d="M2 17c.6-3 2.8-4.5 5.5-4.5S12.4 14 13 17"/><circle cx="14" cy="6.5" r="2.3"/><path d="M14.5 11.5c1.9.3 3.1 1.7 3.5 4"/>',
+      count:()=>{const n=A.publicSite().officers.length;return n+" "+(n===1?"officer":"officers")},
+      make:()=>[L.newSection("hero",{heading:"Our officers",height:"short"}),L.newSection("officers",{bg:"plain"}),L.newSection("contact",{bg:"tint"})]},
+    sponsors:{name:"Sponsors",tab:"Sponsors",icon:'<path d="M10 2.8l2.2 4.5 4.9.7-3.6 3.5.9 4.9-4.4-2.3-4.4 2.3.9-4.9L2.9 8l4.9-.7z"/>',
+      count:()=>{const n=lodgeLists().sponsors.length;return n+" active "+(n===1?"sponsor":"sponsors")},
+      make:()=>[L.newSection("hero",{heading:"Our sponsors",height:"short"}),L.newSection("sponsors"),L.newSection("cta",{heading:"Become a sponsor",body:"Support the lodge's charity work and reach your neighbors.",button:{label:"Get in touch",link:"home"},bg:"tint"})]},
+    news:{name:"News",tab:"Communications",icon:'<path d="M4 4.5h10v11H5.5A1.5 1.5 0 0 1 4 14z"/><path d="M14 7h2v7.5a1.5 1.5 0 0 1-3 0M6.5 7.5h5M6.5 10h5M6.5 12.5h3"/>',
+      count:()=>{const n=lodgeLists().news.length;return n+" public "+(n===1?"post":"posts")},
+      make:()=>[L.newSection("hero",{heading:"Lodge news",height:"short"}),L.newSection("news",{count:"12"})]}
+  };
+  const connectedPage=k=>pages.find(p=>p.auto===k);
+  function connect(k,on){
+    const c=CONNECTED[k];if(!c)return;
+    if(on){if(connectedPage(k))return;if(pages.length>=MAX_PAGES)return alert(`A site can have up to ${MAX_PAGES} pages.`);
+      const p={id:"p"+rid(7),title:c.name,slug:uniqueSlug(c.name),nav:true,auto:k,sections:c.make()};
+      change(()=>{const i=pages.findIndex(x=>x.id!=="home"&&/contact|visit/i.test(x.title));pages.splice(i>0?i:pages.length,0,p)})}
+    else{const p=connectedPage(k);if(!p)return;if(!confirm(`Take the ${p.title} page off the site? You can turn it back on any time.`))return drawOverview();
+      change(()=>{pages.splice(pages.indexOf(p),1);if(curId===p.id)curId="home"});if(window.LodgeNetSite.pageDeleted)window.LodgeNetSite.pageDeleted(p.id)}
+  }
+  function connectedCard(){
+    const auto=layout.autoSync!==false;
+    return `<div class="wov-conn"><div class="row-sp"><div><h3>Pages from your dashboard</h3><p class="hint">Switch one on and LodgeNet builds the page for you from that tab. Each page fills itself in, so a new event, item or charity shows up on its own.</p></div></div>
+      <div class="wov-conn-grid">${Object.entries(CONNECTED).map(([k,c])=>{const p=connectedPage(k);
+        return `<label class="wov-conn-i${p?" on":""}"><span class="wov-conn-ic" aria-hidden="true"><svg viewBox="0 0 20 20">${c.icon}</svg></span>
+          <span class="wov-conn-t"><b>${esc(c.name)} page</b><small>${esc(c.count())} · from ${esc(c.tab)}</small>${p?`<a href="#website/edit" data-conn-open="${esc(p.id)}">Edit page</a>`:""}</span>
+          <span class="wov-switch"><input type="checkbox" role="switch" data-conn="${k}"${p?" checked":""} aria-label="${esc(c.name)} page on the website"><i></i></span></label>`}).join("")}</div>
+      <label class="wov-auto"><span class="wov-switch"><input type="checkbox" role="switch" data-autosync${auto?" checked":""}><i></i></span>
+        <span><b>Keep the live site up to date automatically</b><small>${auto?"When an officer adds, changes or deletes an event, fundraiser, store item, charity, officer, sponsor or public post, the published site updates right away. Changes to page design still wait for Publish.":"Off: the live site only changes when you press Publish."}</small></span></label></div>`;
+  }
+  /* the live parts of the published site follow the dashboard between Publishes (runs on every save) */
+  const LIVE_KEYS=["events","funds","store","charities","sponsors","news","officers","give","pay","email","schedule"];
+  function syncLive(){
+    if(layout.autoSync===false||!CLOUD||!CLOUD.canEdit||!CLOUD.paid)return;
+    const p=A.published;if(!p||!p.site)return;
+    const cur=A.publicSite();let changed=false;
+    LIVE_KEYS.forEach(k=>{if(JSON.stringify(p.site[k])!==JSON.stringify(cur[k])){p.site[k]=cur[k];changed=true}});
+    if(changed)p.synced=new Date().toISOString();
+  }
+
   /* ---------- what Publish sends (demo.js publicSite() spreads this in) ---------- */
   function publicExtra(){
     ensureFids();
@@ -83,6 +147,7 @@
     return {
       layout:{v:2,theme:Object.assign({},layout.theme),pages:pages.map(p=>({id:p.id,slug:p.slug,title:p.title,nav:p.nav!==false,sections:p.sections}))},
       funds:fundraisers().map(e=>({id:e.fid,t:e.t,d:e.d,time:e.time||"",note:e.note||"",goal:+e.goal||0,raised:+e.raised||0,charity:e.charity||""})),
+      ...lodgeLists(),
       store:hasStore&&planNow()!=="starter"?A.products.filter(x=>!x.off).map(x=>({id:x.id,n:x.n,p:+x.p||0,img:x.img||"",tag:x.tag||"",sizes:x.sizes||"",colors:x.colors||"",kind:x.kind||""})):[],
       ...(Q?{qrs:Q()}:{})
     };
@@ -396,7 +461,7 @@
         <div class="bld-lib">${Object.entries(L.TEMPLATES).map(([k,t])=>`<button type="button" class="bld-card" data-tpl="${k}">${I.page}<span>${esc(t.name)}</span></button>`).join("")}</div>`
       :`<p class="bld-lead">Click a page to edit it. The menu on the site follows this order.</p>
       <ul class="bld-pages">${pages.map((p,i)=>`<li class="${p.id===curId?"on":""}">
-        <div class="bld-page-row"><button type="button" class="bld-page-go" data-pg-go="${p.id}">${p.id==="home"?I.home:I.page}<span><b>${esc(p.title)}</b><small>${esc(p.slug?"/"+p.slug:"/")}${p.nav===false?" · hidden from menu":""}</small></span></button>
+        <div class="bld-page-row"><button type="button" class="bld-page-go" data-pg-go="${p.id}">${p.id==="home"?I.home:I.page}<span><b>${esc(p.title)}</b><small>${esc(p.slug?"/"+p.slug:"/")}${p.nav===false?" · hidden from menu":""}${p.auto&&CONNECTED[p.auto]?" · fills itself from "+esc(CONNECTED[p.auto].tab):""}</small></span></button>
           ${p.id==="home"?"":`<button type="button" class="bld-icon" data-pg-up="${i}"${i>1?"":" disabled"} title="Move up">${I.up}<span class="sr">Move ${esc(p.title)} up</span></button><button type="button" class="bld-icon" data-pg-down="${i}"${i<n-1?"":" disabled"} title="Move down">${I.down}<span class="sr">Move ${esc(p.title)} down</span></button>`}
           <button type="button" class="bld-icon" data-pg-set="${p.id}" aria-expanded="${String(pageOpen===p.id)}" title="Page settings">${I.gear}<span class="sr">Settings for ${esc(p.title)}</span></button></div>
         ${pageOpen===p.id?`<div class="bld-page-set">
@@ -556,6 +621,8 @@
           <div class="row-acts"><a class="btn" href="#website/edit">Edit site</a><a class="btn line" href="#website/edit" data-wov-preview>Preview</a><a class="btn line" href="#qrcodes">QR codes</a></div>
         </div>
       </div>
+      ${importCard()}
+      ${connectedCard()}
       <div class="wov-setup">
         <div class="wov-setup-h">${ring(done,steps.length)}<div><h3>${done===steps.length?"Your site is all set":"Let's get your site live"}</h3><p class="hint">${done===steps.length?"Nice work. Keep it fresh with photos and events.":"Finish these steps for a site visitors will trust."}</p></div></div>
         <ul class="wov-steps">${steps.map(([t,ok,go],i)=>`<li class="${ok?"done":i===steps.findIndex(x=>!x[1])?"next":""}"><span class="wov-tick" aria-hidden="true">${ok?'<svg viewBox="0 0 20 20"><path d="m5 10 3.5 3.5L15 7"/></svg>':""}</span><span class="wov-step">${esc(t)}</span>${ok?'<span class="sr">Done</span>':`<a class="btn sm${i===steps.findIndex(x=>!x[1])?" wov-go":" line"}" href="#website/edit" data-step="${go}">${go==="publish"?"Publish":"Start"}</a>`}</li>`).join("")}</ul>
@@ -597,7 +664,9 @@
   }
   window.addEventListener("hashchange",route);
   /* ---------- after "Build from your current website" (demo.js applyImport) ---------- */
-  function fromImport(d){
+  let extrasWanted=null;
+  async function fromImport(d){
+    if(d.site&&Array.isArray(d.site.pages)&&d.site.pages.length)return rebuild(d);
     const p=A.pics,h=pages[0];
     change(()=>{
       let hero=h.sections.find(s=>s.type==="hero");if(!hero){hero=L.newSection("hero");h.sections.unshift(hero)}
@@ -608,10 +677,111 @@
       curId="home";
     });
   }
+  /* the old site rebuilt: its pages, sections, words, pictures and look, plus the LodgeNet extras the officer chose */
+  const EXTRAS=[["store","A lodge store with your merchandise","Sell shirts, pins and coins; buyers pay the lodge directly"],
+    ["give","Online giving","PayPal, Venmo, Cash App and Zelle buttons"],["events","Your events calendar","Upcoming events, always up to date"],
+    ["fundraisers","Fundraisers","Each with its own page and progress bar"],["join","A Become a Mason page","How to join, with a way to get in touch"]];
+  async function rebuild(d){
+    const pics=d.pictures||{},want=extrasWanted||{store:1,give:1,events:1,fundraisers:1,join:1};
+    const shrunk={};
+    for(const [k,u] of Object.entries(pics)){try{shrunk[k]=await A.shrinkPic(u,"block")}catch(e){}}
+    const pic=n=>shrunk[String(parseInt(n,10)||"")]||"";
+    const made=d.site.pages.map((pg,i)=>({id:i===0?"home":"p"+rid(7),title:String(pg.title||"Page").slice(0,60),nav:pg.nav!==false,src:pg}));
+    made[0].title="Home";made[0].slug="";
+    const used=new Set();made.slice(1).forEach(m=>{let b=slugify(m.title);if(RESERVED.includes(b))b+="-page";let s2=b,n=2;while(used.has(s2))s2=b+"-"+n++;used.add(s2);m.slug=s2});
+    const target=t=>{t=String(t||"").trim();if(!t)return "";if(/^https:\/\//i.test(t))return L.safeHref(t)?t:"";
+      const m=made.find(x=>x.title.toLowerCase()===t.toLowerCase())||made.find(x=>t.toLowerCase().includes(x.title.toLowerCase())||x.title.toLowerCase().includes(t.toLowerCase()));
+      return m?(m.id==="home"?"home":"page:"+m.id):""};
+    const built=made.map(m=>({id:m.id,slug:m.slug,title:m.title,nav:m.nav,sections:(m.src.sections||[]).map(x=>{
+      const S=L.newSection(L.SECTIONS[x.type]?x.type:"text");
+      if("heading" in S||x.heading)S.heading=x.heading||(x.type==="hero"?"":S.heading);
+      if(x.type!=="events"&&x.type!=="officers"&&x.type!=="store")S.body=x.body||S.body||"";
+      if(x.type==="hero"){S.heading=x.heading||"";S.sub=x.body||"";S.image=pic(x.image);S.layout=["center","left","split"].includes(x.layout)?x.layout:"center";if(!S.image&&S.layout==="split")S.layout="center"}
+      if(x.type==="imageText"){S.image=pic(x.image);S.side=x.layout==="right"?"right":"left"}
+      if(x.type==="gallery")S.images=(x.images||[]).map(pic).filter(Boolean).slice(0,GAL_MAX);
+      if(x.type==="features"&&(x.items||[]).length)S.items=x.items.slice(0,4).map(it=>({title:it.title||"",body:it.body||""}));
+      if(x.type==="video")S.url=x.video_url||"";
+      if(S.button){S.button={label:x.button_label||"",link:target(x.button_target)};if(S.button.label&&!S.button.link)S.button.link="home"}
+      return S}).filter(S=>!(S.type==="gallery"&&!S.images.length)&&!(S.type==="video"&&!L.videoSrc(S.url)))}));
+    if(!built[0].sections.length)built[0].sections.push(L.newSection("hero"));
+    /* LodgeNet extras */
+    const all=()=>built.flatMap(p=>p.sections.map(x=>x.type)),home=built[0].sections;
+    const before=t=>{const i=home.findIndex(x=>x.type==="contact"||x.type==="give");return i<0?home.length:i};
+    if(want.events&&!all().includes("events"))home.splice(before(),0,L.newSection("events"));
+    if(want.fundraisers&&!all().includes("fundraisers"))home.splice(before(),0,L.newSection("fundraisers",{bg:"tint"}));
+    if(want.give&&!all().includes("give"))home.push(L.newSection("give",{bg:"tint"}));
+    if(want.store&&!all().includes("store")&&built.length<MAX_PAGES){let s2="store";while(built.some(p=>p.slug===s2))s2+="-2";
+      built.push({id:"p"+rid(7),slug:s2,title:"Store",nav:true,sections:[L.newSection("hero",{heading:"Lodge store",sub:"Every purchase supports our lodge and its charities.",height:"short"}),L.newSection("store"),L.newSection("give",{bg:"tint"})]})}
+    if(want.join&&!built.some(p=>/mason|join|member/i.test(p.title))&&built.length<MAX_PAGES){const t=L.TEMPLATES.join;let s2="become-a-mason";while(built.some(p=>p.slug===s2))s2+="-2";
+      const pg={id:"p"+rid(7),slug:s2,title:"Become a Mason",nav:true,sections:t.make()};
+      const contact=built.find(p=>/contact|visit/i.test(p.title));pg.sections.forEach(x=>{if(x.button&&x.button.label&&!x.button.link)x.button.link=contact?"page:"+contact.id:"home"});built.push(pg)}
+    commit();
+    pages.splice(0,pages.length,...built);
+    const st=d.site.style||{};
+    if(L.FONTS[st.font])layout.theme.font=st.font;layout.theme.header=st.header==="left"?"left":"center";
+    if(/^#[0-9a-f]{6}$/i.test(st.color||"")){const c=st.color,lum=(0.299*parseInt(c.slice(1,3),16)+0.587*parseInt(c.slice(3,5),16)+0.114*parseInt(c.slice(5,7),16))/255;if(lum<0.62)A.setColor(c)}
+    A.pics.hero="";A.pics.gallery.splice(0);
+    curId="home";sel=null;drawAll();A.save();
+  }
+
+  /* the "Bring over your current website" card on the overview, and the screen shown while Claude rebuilds the site */
+  function importCard(){
+    const ok=CLOUD&&CLOUD.canEdit&&window.LodgeNetAuth&&window.LodgeNetAuth.ai;
+    const why=!CLOUD?"Sign in to your lodge to bring over its current website.":!CLOUD.canEdit?"The lodge's officers can bring over its current website.":!ok?"Bringing over a website needs Claude switched on for LodgeNet (the same setting as AI minutes).":"";
+    return `<div class="wov-import"><div class="wov-import-h"><span class="wov-import-ic" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="M10 3v9M6 8l4 4 4-4"/><path d="M3.5 13.5v3h13v-3"/></svg></span>
+        <div><h3>Bring over your current website</h3><p class="hint">Paste your lodge's website address. Claude reads it and rebuilds it here, with your pages, words, pictures and colors, and adds LodgeNet's tools. Nothing goes live until you press Publish.</p></div></div>
+      <form class="wov-import-f" data-imp-form novalidate>
+        <div class="wov-import-row"><input type="text" inputmode="url" autocapitalize="off" spellcheck="false" placeholder="https://yourlodge.org" aria-label="Your current website address" data-imp-url value="${esc(lastUrl)}"${ok?"":" disabled"}>
+          <button type="submit" class="btn wov-go"${ok?"":" disabled"}>Rebuild my site</button></div>
+        <fieldset class="wov-extras"${ok?"":" disabled"}><legend>Add LodgeNet extras</legend>${EXTRAS.map(([k,t,h])=>`<label class="wov-extra"><input type="checkbox" data-imp-x="${k}" checked><span><b>${esc(t)}</b><small>${esc(h)}</small></span></label>`).join("")}</fieldset>
+        ${why?`<p class="hint">${esc(why)}</p>`:""}<p class="hint wov-imp-msg" data-imp-msg aria-live="polite"></p>
+      </form></div>`;
+  }
+  let lastUrl="",importing=false;
+  const STEPS=["Reading your website","Finding your pages and pictures","Rebuilding each page","Adding your LodgeNet extras"];
+  function progress(on,i,err){
+    let el=$("#wov-progress");
+    if(!on){if(el)el.remove();document.documentElement.classList.remove("bld-open");return}
+    if(!el){el=document.createElement("div");el.id="wov-progress";el.className="wov-progress";el.setAttribute("role","dialog");el.setAttribute("aria-modal","true");el.setAttribute("aria-label","Rebuilding your website");document.body.appendChild(el);document.documentElement.classList.add("bld-open")}
+    el.innerHTML=`<div class="wov-progress-card"><span class="wov-spin" aria-hidden="true"></span><h3>${err?"That didn't work":"Rebuilding your website"}</h3>
+      <p class="hint">${err?esc(err):`${esc(lastUrl.replace(/^https?:\/\//,""))} · this takes a minute or two`}</p>
+      ${err?'<button type="button" class="btn" data-imp-close>Close</button>':`<ol class="wov-progress-steps">${STEPS.map((t,n)=>`<li class="${n<i?"done":n===i?"now":""}">${esc(t)}</li>`).join("")}</ol>`}</div>`;
+    if(err)el.querySelector("[data-imp-close]").onclick=()=>progress(false);
+  }
+  async function runImport(url){
+    if(importing)return;let u=String(url||"").trim();if(u&&!/^https?:\/\//i.test(u))u="https://"+u;
+    const msg=$("[data-imp-msg]"),say=t=>{if(msg)msg.textContent=t};
+    if(!/^https?:\/\/[^\s/]+\.[^\s]+/i.test(u))return say("Enter your website's full address, like https://yourlodge.org.");
+    lastUrl=u;extrasWanted={};$$("[data-imp-x]").forEach(c=>{if(c.checked)extrasWanted[c.dataset.impX]=1});
+    importing=true;let step=0;progress(true,0);
+    const tick=setInterval(()=>{if(step<2){step++;progress(true,step)}},16000);
+    try{
+      const s2=await window.LodgeNetAuth.session();
+      const r=await fetch("/api/site-import",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+(s2&&s2.access_token)},
+        body:JSON.stringify({lodge_id:CLOUD.lodgeId,url:u,seats:A.SEATS_TITLES(),today:A.isoDay(new Date()),rebuild:true})});
+      const d=await r.json().catch(()=>({}));
+      if(!r.ok)throw new Error(d.error||"Couldn't read that website.");
+      if(!d.site||!(d.site.pages||[]).length)throw new Error("Claude read the site but couldn't make out its pages. Try the address of its home page.");
+      clearInterval(tick);progress(true,3);
+      await A.applyImport(d);
+      progress(false);importing=false;
+      location.hash="website/edit";
+      setTimeout(()=>toast(`Rebuilt ${d.site.pages.length} ${d.site.pages.length===1?"page":"pages"} from ${u.replace(/^https?:\/\//,"").replace(/\/$/,"")}. Look it over, change anything, then press Publish.${d.notes?" Note: "+d.notes:""}`),200);
+    }catch(e){clearInterval(tick);importing=false;progress(true,0,e.message)}
+  }
+  function toast(t){let el=$("#bld-toast");if(!el){el=document.createElement("div");el.id="bld-toast";el.className="bld-toast";el.setAttribute("role","status");$("#bld").appendChild(el)}
+    el.innerHTML=`<span>${esc(t)}</span><button type="button" class="bld-icon" aria-label="Dismiss">${'<svg viewBox="0 0 20 20"><path d="M5 5l10 10M15 5 5 15"/></svg>'}</button>`;el.hidden=false;
+    el.querySelector("button").onclick=()=>{el.hidden=true};clearTimeout(el._t);el._t=setTimeout(()=>{el.hidden=true},14000)}
+  $("#wov").addEventListener("submit",e=>{const f=e.target.closest("[data-imp-form]");if(!f)return;e.preventDefault();runImport(f.querySelector("[data-imp-url]").value)});
+  $("#wov").addEventListener("input",e=>{if(e.target.matches("[data-imp-url]"))lastUrl=e.target.value});
+  $("#wov").addEventListener("change",e=>{const t=e.target;
+    if(t.dataset.conn){connect(t.dataset.conn,t.checked);return drawOverview()}
+    if("autosync" in t.dataset){layout.autoSync=t.checked;A.save();return drawOverview()}});
+  $("#wov").addEventListener("click",e=>{const o=e.target.closest("[data-conn-open]");if(o){curId=o.dataset.connOpen;sel=null}});
 
   window.LodgeNetSite=Object.assign(window.LodgeNetSite||{},{
-    snapshot:()=>Object.assign({siteLayout:layout},window.LodgeNetSite.qrSnapshot?window.LodgeNetSite.qrSnapshot():{siteQrs:CFG.siteQrs}),
-    publicExtra,preview:()=>{drawSoon();if(!$("#wov").hidden)clearTimeout(ovTimer),ovTimer=setTimeout(drawOverview,300)},fromImport,
+    snapshot:()=>{syncLive();return Object.assign({siteLayout:layout},window.LodgeNetSite.qrSnapshot?window.LodgeNetSite.qrSnapshot():{siteQrs:CFG.siteQrs})},
+    publicExtra,preview:()=>{drawSoon();if(!$("#wov").hidden&&!$("#wov").contains(document.activeElement))clearTimeout(ovTimer),ovTimer=setTimeout(drawOverview,300)},fromImport,
     pages:()=>pages,pageById,fundById,fundraisers,ensureFids,targetOptions,linkName,isUrl,ROOT,SLUG,slugify
   });
   let ovTimer=0;

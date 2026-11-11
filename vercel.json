@@ -49,7 +49,7 @@
       "maxDuration": 120
     },
     "api/site-import.js": {
-      "maxDuration": 120
+      "maxDuration": 300
     }
   }
 }
