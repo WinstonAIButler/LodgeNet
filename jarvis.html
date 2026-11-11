@@ -26,6 +26,11 @@
   .theme-btn { display: inline-flex; align-items: center; gap: 7px; border: 0; background: none; padding: 9px 4px; color: var(--accent); font-size: 13px; }
   .theme-btn svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linejoin: round; }
   .theme-btn[aria-pressed="true"] svg { fill: currentColor; }
+  .theme-toggle { display: inline-flex; border: 1px solid var(--line); }
+  .theme-toggle button { display: inline-flex; align-items: center; gap: 6px; padding: 6px 11px; border: 0; background: none; color: inherit; opacity: .7; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+  .theme-toggle button + button { border-left: 1px solid var(--line); }
+  .theme-toggle button[aria-pressed="true"] { opacity: 1; background: var(--accent); color: var(--bg); }
+  .theme-toggle svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linejoin: round; stroke-linecap: round; }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); color: var(--text); font-size: 15px; line-height: 1.5; }
   a { color: var(--accent); }

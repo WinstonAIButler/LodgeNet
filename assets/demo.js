@@ -251,6 +251,7 @@
     renderPayTests();
     $("#checkout").innerHTML=payButtons("data-pay")+($("#o-name")?'<button type="button" class="paybtn cash" data-pay="cash">Cash or check</button>':"");
     if(selected&&selected.k==="fund")renderDetail();
+    if(window.LodgeNetSite)window.LodgeNetSite.preview();
     $("#pv-events").innerHTML=up.map(e=>`<li><b>${fmt(parse(e.d),{month:"short",day:"numeric"})}</b> · ${esc(e.t)}</li>`).join("");
   }
   ["#f-name","#f-num","#f-jur","#f-gl","#f-city","#f-sched","#f-email","#f-fb","#f-ig","#f-x","#f-yt","#f-tt","#f-pp","#f-venmo","#f-cash","#f-zelle","#f-link","#f-link-label","#f-check"].filter(s=>$(s)).forEach(s=>$(s).addEventListener("input",()=>{renderSite();renderMinutes()}));
@@ -272,7 +273,7 @@
   $("#f-email").addEventListener("input",()=>{if(gmail)renderGmail()});
   /* ---------- pictures, About and the store switch (lodge.html's Website form) ----------
      Pictures are shrunk in the browser and kept in the lodge's data as JPEG data URLs, like product photos. */
-  const GAL_MAX=8,PIC_SIZE={hero:[1400,.74],logo:[360,.86],gallery:[900,.72]};
+  const GAL_MAX=16,PIC_SIZE={hero:[1400,.74],logo:[360,.86],gallery:[900,.72],block:[1100,.74]};
   function shrinkPic(src,kind){return new Promise((ok,no)=>{const img=new Image(),[max,q]=PIC_SIZE[kind];
     img.onload=()=>{const k=Math.min(1,max/Math.max(img.width,img.height)),c=document.createElement("canvas");c.width=Math.round(img.width*k);c.height=Math.round(img.height*k);
       const x=c.getContext("2d");if(kind==="logo"){c.getContext("2d")}else{x.fillStyle="#fff";x.fillRect(0,0,c.width,c.height)}
@@ -387,13 +388,15 @@
     return {name,number:num,full:name+(num?" No. "+num:""),jur:fieldVal("#f-jur"),grandLodge:fieldVal("#f-gl"),
       city:fieldVal("#f-city"),state:fieldVal("#f-state"),schedule:fieldVal("#f-sched"),color:siteColor,email:fieldVal("#f-email"),
       officers:SEATS.map(x=>{const m=member(officers[x.k]);return m?{seat:x.t,name:m.name+(m.pm&&x.k!=="WM"?", PM":"")}:null}).filter(Boolean),
-      events:events.filter(e=>e.d>=now).sort((a,b)=>a.d<b.d?-1:1).slice(0,12).map(e=>({d:e.d,t:e.t,time:e.time||"",fund:e.k==="fund"})),
+      events:events.filter(e=>e.d>=now).sort((a,b)=>a.d<b.d?-1:1).slice(0,12).map(e=>({d:e.d,t:e.t,time:e.time||"",fund:e.k==="fund",...(e.k==="fund"&&e.fid?{fid:e.fid}:{})})),
       social:[["Facebook","#f-fb","https://facebook.com/"],["Instagram","#f-ig","https://instagram.com/"],["X","#f-x","https://x.com/"],["YouTube","#f-yt","https://youtube.com/@"],["TikTok","#f-tt","https://tiktok.com/@"]]
         .filter(([,f])=>handle(f)).map(([n,f,base])=>({name:n,url:base+handle(f)})),
       give:PAY.filter(payOn).map(p=>{const h=p.home&&p.home(payVal(p));return h?{k:p.k,label:payLabel(p),url:h}:{k:p.k,label:payLabel(p),note:payVal(p)}}),
       pay:PAY.filter(payOn).map(p=>({k:p.k,label:payLabel(p),v:payVal(p)})),
       about:fieldVal("#f-about"),images:{hero:pics.hero,logo:pics.logo,gallery:pics.gallery.slice()},
-      store:siteStoreOn&&(CLOUD?CFG.plan:plan)!=="starter"?products.filter(x=>!x.off).map(x=>({id:x.id,n:x.n,p:+x.p||0,img:x.img||"",tag:x.tag||"",sizes:x.sizes||"",colors:x.colors||"",kind:x.kind||""})):[]};
+      store:siteStoreOn&&(CLOUD?CFG.plan:plan)!=="starter"?products.filter(x=>!x.off).map(x=>({id:x.id,n:x.n,p:+x.p||0,img:x.img||"",tag:x.tag||"",sizes:x.sizes||"",colors:x.colors||"",kind:x.kind||""})):[],
+      /* pages, Home sections and blocks, fundraisers and QR codes, from assets/site-pages.js */
+      ...(window.LodgeNetSite?window.LodgeNetSite.publicExtra():{})};
   }
   const sameSite=()=>!!published&&JSON.stringify(publicSite())===JSON.stringify(published.site);
   const LOCKED='<span class="pill">Not published</span> Publishing unlocks once the lodge\'s plan is paid for. <a href="/login?account">Subscribe from your account</a>';
@@ -1071,9 +1074,11 @@
 
   /* ---------- saving ---------- */
   function snapshot(){
-    const form={};document.querySelectorAll("#site-form input[id]:not([type=checkbox]),#site-form select[id],#site-form textarea[id],#pay-form input[id]").forEach(el=>form[el.id]=el.value);
+    const form={};document.querySelectorAll("#site-form input[id]:not([type=checkbox]),#site-form select[id],#site-form textarea[id],#pay-form input[id]").forEach(el=>{if(!el.closest("[data-nosnap]"))form[el.id]=el.value});
     return {app:"LodgeNet",version:1,page:STORE_KEY,savedAt:new Date().toISOString(),form,color:siteColor,
       membersFull:members,officers,events,minutes,minuteSections,gmail,nextStated,products,orders,published,siteImages:pics,siteStore:siteStoreOn,...(plan?{plan}:{}),
+      /* site-pages.js owns these; without it (the public demo) they pass through untouched */
+      ...(window.LodgeNetSite?window.LodgeNetSite.snapshot():{sitePages:CFG.sitePages,siteHome:CFG.siteHome,siteQrs:CFG.siteQrs}),
       ...(window.LodgeNetDash?window.LodgeNetDash.snapshot():{})};
   }
   const stamp=d=>new Date(d).toLocaleString("en-US",{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"});
@@ -1139,7 +1144,8 @@
     addEvent(e){events.push(e);renderCal();return e},
     refresh(){renderCal();refreshPeople()},
     get orders(){return orders},set orders(v){orders=v},renderProducts,
-    drawProducts,payLink,payButtons,save:queueSave};
+    drawProducts,payLink,payButtons,save:queueSave,
+    SLUG,siteState,shrinkPic,fileUrl,publicSite};
   if(MOVE_LOCAL)save().then(ok=>{if(ok)try{localStorage.removeItem(STORE_KEY)}catch(e){}});
 })();
 

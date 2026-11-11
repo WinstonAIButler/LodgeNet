@@ -25,6 +25,17 @@ Edits on the demo and lodge pages save automatically in the viewer's browser (lo
 
 The Secretary fills in a short form; the full Stated Communication write-up (and the PDF) is generated from it in the lodge's template wording. Each part of the minutes is a section plugin in the `MS` list in `assets/demo.js`: its fields, plus how it reads in `longForm()`. Opening, attendance, previous minutes and closing are always on; the rest can be switched on or off per lodge with the Sections button (saved as `minuteSections`). Anything left blank on the short form is left out of the write-up. Minutes saved in the old free-text format are converted on load.
 
+### Website pages, content and QR codes
+
+The Website and QR codes tabs give a lodge full control of its public site (`assets/site-pages.js`, loaded after `demo.js` on lodge pages):
+
+- **Pages and content**: add, rename, reorder and delete pages, each at `/site/<slug>/<page>`, with a "show in the site menu" switch. A page is a list of blocks (heading, text, photo, button, custom HTML) that can be added, edited, moved and removed. On Home, each built-in section (About, Upcoming, Officers, Contact, Give, Store, Photos) can be switched off, and the lodge's own blocks show under About. "Upload an .html page" makes a page from an HTML file.
+- **Custom HTML** runs in a sandboxed iframe without `allow-same-origin` (`assets/site-blocks.js`), so a lodge's scripts work but can't read LodgeNet sign-ins, cookies or records on `www.lodgenet.app`. Up to 200 KB per block.
+- **Gallery**: up to 16 photos, added and removed under Pictures and About.
+- **QR codes** have their own sidebar tab (QR codes, after Fundraiser): each code encodes a fixed address, `/site/<slug>/qr/<id>`, and the published site redirects it to wherever it's assigned: Home, a page, a fundraiser (`/site/<slug>/fundraiser/<id>`, with progress and giving buttons) or any https link. Reassigning a printed code takes only Publish site. Codes download as PNG or SVG with their name printed under them, and the Fundraiser tab has a QR code button on each fundraiser.
+- Saved as `sitePages`, `siteHome` and `siteQrs` in the lodge's data. Publish copies the public parts into `published.site` as `pages`, `home`, `funds` and `qrs`, which is all `/site/<slug>` reads. `assets/lodge-site.js` handles the routes. vercel.json rewrites `/site/:slug/:rest*` to the same page.
+- Photos are kept as data URLs inside the lodge's one JSON document, like product photos, so a site with many pictures makes every save larger. Moving pictures to Supabase Storage is the next step if lodges hit that.
+
 ## Accounts
 
 Lodges sign in with Supabase (Auth for email and password, Postgres for the lodge's data). `/api/config` gives the browser the project URL and public key from Vercel's environment (`SUPABASE_URL` and `SUPABASE_ANON_KEY`, or the `NEXT_PUBLIC_` / publishable-key names the Vercel Supabase integration sets). With neither set, the site runs browser-only exactly as before and `/login` says sign-in isn't switched on.

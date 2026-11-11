@@ -32,7 +32,7 @@
   const ledgerSum=f=>D.treasury.ledger.filter(f||(()=>true)).reduce((t,x)=>t+(x.kind==="out"?-1:1)*(+x.amt||0),0);
 
   /* ---------- sections ---------- */
-  const TITLES={website:"Website",members:"Members",communications:"Communications",treasury:"Treasury",fundraiser:"Fundraiser",
+  const TITLES={website:"Website",members:"Members",communications:"Communications",treasury:"Treasury",fundraiser:"Fundraiser",qrcodes:"QR codes",
     pipelines:"Pipelines",sponsors:"Sponsors",merchandise:"Merchandise",charities:"Charities",settings:"Settings"};
   const OLD={site:"website",store:"merchandise",calendar:"communications",minutes:"communications"};
   let cur="website";
@@ -70,6 +70,9 @@
       fundraiser:[["Active",fr.filter(e=>e.d>=TODAY).length,"Upcoming fundraisers"],["Raised",money(raised),"All fundraisers"],
         ["Goal",money(fr.reduce((t,e)=>t+(+e.goal||0),0)),fr.length?Math.round(raised/Math.max(1,fr.reduce((t,e)=>t+(+e.goal||0),0))*100)+"% of goal":""],
         ["RSVPs",fr.reduce((t,e)=>t+(+e.rsvp||0),0),""]],
+      qrcodes:(()=>{const Q=window.LodgeNetSite?window.LodgeNetSite.snapshot().siteQrs:[],nf=Q.filter(q=>(q.to||"").startsWith("fund:")).length;
+        return [["QR codes",Q.length,"Made for this lodge"],["Fundraiser codes",nf,"Point at a fundraiser"],["General codes",Q.length-nf,"Home, a page or a link"],
+          ["Website",A.published?"Published":"Not published",A.published?"Codes work once published":"Publish so codes open the site"]]})(),
       pipelines:[["In progress",D.pipeline.filter(c=>c.stage<RAISED).length,many(D.pipeline.filter(c=>c.stage===0).length,"new inquiry","new inquiries")],["Petitions",D.pipeline.filter(c=>c.stage>=1&&c.stage<=3).length,"Received, investigating or at ballot"],
         ["In degrees",D.pipeline.filter(c=>c.stage===4||c.stage===5).length,"Entered Apprentice or Fellowcraft"],["Follow-ups due",D.ptasks.filter(t=>!t.done&&t.due&&t.due<=TODAY).length,many(D.ptasks.filter(t=>!t.done).length,"open task")]],
       sponsors:[["Active sponsors",live.length,""],["Yearly support",money(live.reduce((t,s)=>t+(+s.amt||0),0)),"From active sponsors"],
@@ -174,7 +177,7 @@
           <span class="hint num">${+e.rsvp||0} RSVPs</span>
           <div class="row-acts"><input type="number" min="1" step="1" placeholder="$" aria-label="Donation amount" class="amt-in">
             <button class="btn sm" type="button" data-act="don">Log donation</button><button class="btn line sm" type="button" data-act="rsvp">Add RSVP</button>
-            <button class="btn line sm" type="button" data-act="cal">Calendar</button></div></div>`}).join("")
+            <button class="btn line sm" type="button" data-act="cal">Calendar</button>${window.LodgeNetSite?'<button class="btn line sm" type="button" data-act="qr">QR code</button>':""}</div></div>`}).join("")
         :'<div class="empty">No fundraisers yet. Plan one on the right; it goes on the lodge calendar too.</div>'}</div>
       <form class="card" id="fund-form">
         <h4>Plan a fundraiser</h4>
@@ -191,6 +194,7 @@
     $("#p-fund").querySelectorAll("[data-act]").forEach(b=>b.addEventListener("click",()=>{
       const card=b.closest("[data-fi]"),e=A.events[+card.dataset.fi];if(!e)return;
       if(b.dataset.act==="cal"){location.hash="communications";$("#t-cal").click();A.select(e);return}
+      if(b.dataset.act==="qr"){window.LodgeNetSite.qrForFund(e);return}
       if(b.dataset.act==="rsvp")e.rsvp=(+e.rsvp||0)+1;
       if(b.dataset.act==="don"){const amt=+card.querySelector(".amt-in").value;if(!amt)return card.querySelector(".amt-in").focus();
         e.raised=(+e.raised||0)+amt;
@@ -617,7 +621,8 @@
   document.querySelectorAll("#t-ord,#t-prod").forEach(t=>t.addEventListener("click",()=>t.id==="t-ord"?renderOrders():renderProd()));
   if(A.plan==="starter")document.querySelector('[data-sec="merchandise"] .sub-tabs').hidden=true;
 
-  const RENDER={communications:()=>{if(!$("#p-ann").innerHTML)renderAnn()},treasury:renderTreasury,fundraiser:renderFund,pipelines:renderPipe,
+  const RENDER={communications:()=>{if(!$("#p-ann").innerHTML)renderAnn()},treasury:renderTreasury,fundraiser:renderFund,
+    qrcodes:()=>{if(window.LodgeNetSite)window.LodgeNetSite.renderQr()},pipelines:renderPipe,
     sponsors:renderSpon,charities:renderChar,settings:renderSet,merchandise:()=>{renderOrders();renderProd()}};
 
   /* ---------- sidebar: who's signed in, sign out, other lodges ---------- */
