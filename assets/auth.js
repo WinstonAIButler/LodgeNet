@@ -69,7 +69,18 @@
         if(!data||!data.length)throw new Error("this account can't save this lodge");
         return data[0].updated_at;
       }};
-    return open();
+    return open().then(welcome);
+  }
+  /* straight from /start: say where to begin */
+  function welcome(){
+    const q=new URLSearchParams(location.search);if(!q.has("welcome"))return;
+    q.delete("welcome");history.replaceState(null,"",location.pathname+(q.toString()?"?"+q:"")+location.hash);
+    const sec=document.querySelector('.sec[data-sec="website"]');if(!sec)return;
+    const c=document.createElement("div");c.className="card";c.setAttribute("role","status");c.style.marginBottom="16px";
+    c.innerHTML=`<h3 style="margin:0 0 6px">Welcome to LodgeNet. Let's build your website.</h3><p class="hint" style="margin:0 0 10px">Your name and details are already filled in below. Add your meeting times, officers, pictures and pages, or paste your current website's address under Start from your current website and we'll fill it in for you. ${window.LODGENET_CLOUD&&window.LODGENET_CLOUD.paid?"When it looks right, choose Publish.":"Publishing comes with a paid level; you can upgrade from Settings."}</p><button class="btn line sm" type="button">Got it</button>`;
+    c.querySelector("button").addEventListener("click",()=>c.remove());
+    sec.prepend(c);
+    if(location.hash!=="#website")location.hash="website";
   }
 
   const ready=f=>document.readyState==="loading"?document.addEventListener("DOMContentLoaded",f):f();

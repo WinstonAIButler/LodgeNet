@@ -25,6 +25,7 @@
 <meta name="twitter:image" content="https://www.lodgenet.app/og-image.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<script src="/assets/auth-return.js"></script>
 <link rel="stylesheet" href="/assets/styles.css">
 <style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
 </head>
@@ -45,7 +46,7 @@
     <div class="page-head">
       <div class="eyebrow" id="plan-eyebrow">Start your lodge</div>
       <h1>Welcome. Let's build your lodge.</h1>
-      <p>Three steps: create your account, choose your plan, and name your lodge. You'll be its account owner, and you can invite your officers and brethren by email.</p>
+      <p>Create your account, choose your plan, pay or enter your code, add your lodge or Scottish Rite club's details, then build your website. You'll be its account owner, and you can invite your officers and brethren by email.</p>
     </div>
   </div>
   <div class="pavement" aria-hidden="true"></div>
@@ -75,7 +76,7 @@
         </div>
         <div class="card">
           <h4>What happens next</h4>
-          <p class="hint">Step 2, choose Lodge Starter (free) or a paid level. Step 3, enter your lodge's name and number. On a paid level you then pay by card through Stripe, and the subscription renews monthly.</p>
+          <p class="hint">Step 2, choose Lodge Starter (free) or a paid level. Step 3, pay by card through Stripe or enter a LodgeNet code. Step 4, your lodge or club's name, number and city. Step 5, your dashboard opens on the Website builder.</p>
         </div>
       </div>
 
@@ -95,20 +96,47 @@
             <button class="btn" type="button" data-pick="lodge">Choose Lodge Level</button>
             <div class="incl"><b>Everything in Lodge Starter, plus</b><ul><li>Publish on a lodgenet.org address or your own domain</li><li>Print-on-demand store: shirts, pins, caps and coins</li><li>Fundraiser goals, RSVPs and donations</li><li>Payments straight to the lodge's PayPal, Venmo or Cash App</li><li>Unlimited officer logins and a members area</li></ul></div></div>
         </div>
-        <p class="tiers-note">Paid levels bill monthly by card through Stripe, and you can cancel from your account at any time. Have a promo code? Enter it on Stripe's checkout page.</p>
+        <p class="tiers-note">Paid levels bill monthly by card through Stripe, and you can cancel from your account at any time. Have a LodgeNet code? You can enter it on the next step.</p>
         <p class="auth-msg" id="pick-msg" role="status" aria-live="polite" style="margin-top:12px"></p>
       </div>
 
-      <!-- step 3: the lodge -->
+      <!-- step 3: payment, or a LodgeNet code -->
+      <div class="auth-wrap" id="v-pay" hidden>
+        <div class="card auth-card">
+          <h3>Step 3 · Payment</h3>
+          <p class="hint" id="pay-plan"></p>
+          <button class="btn gold" type="button" id="pay-go">Pay by card with Stripe</button>
+          <p class="hint" style="margin:0">Stripe's secure checkout opens, then brings you straight back here to add your lodge's details. A Stripe promo code can be entered on that page.</p>
+          <p class="auth-msg" id="pay-msg" role="status" aria-live="polite"></p>
+        </div>
+        <div class="card auth-card">
+          <h4>Have a LodgeNet code?</h4>
+          <p class="hint">A code from LodgeNet or your Grand Lodge puts you on the plan at no charge, with no card needed.</p>
+          <form id="f-code" novalidate style="display:grid;gap:10px">
+            <div class="field"><label for="c-code">Code</label><input id="c-code" autocapitalize="characters" autocomplete="off" spellcheck="false" maxlength="64"></div>
+            <button class="btn line" type="submit" id="c-go">Use this code</button>
+          </form>
+          <p class="auth-msg" id="c-msg" role="status" aria-live="polite"></p>
+          <button class="link-btn" type="button" id="pay-back" style="justify-self:start">Choose a different plan</button>
+        </div>
+      </div>
+
+      <!-- step 4: the lodge or club -->
       <div class="auth-wrap" id="v-in" hidden>
         <div class="card auth-card">
-          <h3>Step 3 · Your lodge</h3>
+          <h3 id="in-title">Step 4 · Your lodge</h3>
+          <p class="auth-msg" id="paid-note" role="status" aria-live="polite"></p>
           <form id="f-lodge" novalidate>
-            <div class="field"><label for="l-name">Lodge name</label><input id="l-name" required maxlength="120" placeholder="e.g. Murrells Inlet Lodge"></div>
-            <div class="field"><label for="l-num">Lodge number</label><input id="l-num" inputmode="numeric" maxlength="12" placeholder="e.g. 368"></div>
+            <div class="field"><label for="l-kind">This is a</label><select id="l-kind">
+              <option value="lodge">Blue Lodge</option>
+              <option value="club">Scottish Rite Club</option>
+              <option value="valley">Scottish Rite Valley</option>
+              <option value="other">Other Masonic body</option></select></div>
+            <div class="field"><label for="l-name" id="l-name-lbl">Lodge name</label><input id="l-name" required maxlength="120" placeholder="e.g. Murrells Inlet Lodge"></div>
+            <div class="field"><label for="l-num" id="l-num-lbl">Lodge number</label><input id="l-num" inputmode="numeric" maxlength="12" placeholder="e.g. 368"></div>
             <div class="field"><label for="l-city">City</label><input id="l-city" maxlength="80"></div>
             <div class="field"><label for="l-state">State</label><select id="l-state"><option value="">Choose your state</option></select></div>
-            <button class="btn" type="submit" id="l-go">Create my lodge</button>
+            <button class="btn" type="submit" id="l-go">Save and build my website</button>
           </form>
           <p class="auth-msg" id="l-msg" role="status" aria-live="polite"></p>
         </div>
@@ -116,16 +144,18 @@
           <h4 id="plan-name">Your plan</h4>
           <p class="hint" id="plan-text"></p>
           <button class="link-btn" type="button" id="re-pick" style="justify-self:start">Change plan</button>
+          <h4 style="margin-top:12px">Next: your website</h4>
+          <p class="hint">Once these are saved, your dashboard opens on the Website builder with your name and details filled in, ready for your pictures, pages and meeting times.</p>
         </div>
       </div>
 
-      <!-- after creating: payment didn't open -->
+      <!-- the lodge was made, but the payment or code couldn't be put on it -->
       <div class="card auth-card" id="v-done" hidden style="max-width:560px">
         <h3 id="made-title">Your lodge is set up</h3>
         <p class="auth-msg" id="d-msg" role="status" aria-live="polite"></p>
         <span style="display:flex;flex-wrap:wrap;gap:8px">
-          <button class="btn gold" type="button" id="pay-again" hidden>Continue to payment · $19 / month</button>
-          <a class="btn line" id="open-lodge" href="/login">Open my dashboard</a>
+          <button class="btn gold" type="button" id="pay-again" hidden>Try again</button>
+          <a class="btn line" id="open-lodge" href="/login">Build my website</a>
         </span>
       </div>
     </div>
