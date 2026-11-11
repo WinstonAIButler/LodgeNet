@@ -1090,3 +1090,21 @@ body.bx-dragging #bld-canvas .bx-txt,body.bx-dragging #bld-canvas iframe{pointer
 .bld-rail,.bld-side{grid-row:1}
 .bld.previewing .bld-stage{grid-column:1}
 @media (max-width:900px){.bld-stage{grid-column:2}}
+
+/* the import card's two areas: the main website to copy, and other websites to gather details from */
+.wov-src{display:grid;gap:10px;padding:16px;border:1px solid var(--line);border-radius:10px;background:var(--surface);margin-bottom:10px}
+.wov-src-main{border-color:color-mix(in srgb,var(--ed-accent) 40%,var(--line))}
+.wov-src-h{display:flex;gap:12px;align-items:flex-start}
+.wov-src-h b{display:block;font-size:15px}
+.wov-src-h small{display:block;font-size:13px;color:var(--muted);max-width:80ch;margin-top:2px;line-height:1.45}
+.wov-src-n{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:var(--ed-accent);color:#fff;font:700 13px/1 var(--body);flex:none}
+.wov-src:not(.wov-src-main) .wov-src-n{background:var(--sunk);color:var(--fg)}
+.wov-src input{width:100%;box-sizing:border-box;padding:11px 13px;font-size:15px;border:1px solid var(--line);background:var(--bg);color:var(--fg);border-radius:8px}
+.wov-src-list{display:grid;gap:8px}
+.wov-src-row{display:flex;gap:6px;align-items:center}
+.wov-src-row .bld-icon{display:inline-grid;place-items:center;width:36px;height:36px;border:0;border-radius:8px;background:none;color:var(--muted);cursor:pointer;flex:none}
+.wov-src-row .bld-icon:hover{background:var(--sunk);color:var(--fg)}
+.wov-src-row .bld-icon svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round}
+.wov-src-add{justify-self:start;font-size:14px;font-weight:600}
+.wov-import-go{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:16px}
+.wov-import-go .btn{border-radius:8px;padding:13px 24px;font-size:15px}
