@@ -724,41 +724,66 @@
     curId="home";sel=null;drawAll();A.save();
   }
 
-  /* the "Bring over your current website" card on the overview, and the screen shown while Claude rebuilds the site */
+  /* the "Bring over your current website" card on the overview, and the screen shown while Claude rebuilds the site.
+     The primary website is the one rebuilt. The other websites (up to 4) are only read for facts: a Scottish Rite Club or
+     Valley often has its details spread across the Valley's site, the Orient or Supreme Council page, or a sister body's site.
+     The addresses are kept with the layout (siteLayout.importFrom) so they're there next time. */
+  const MAX_EXTRA=4;
+  const src=()=>{layout.importFrom=Object.assign({primary:"",extra:[]},layout.importFrom||{});if(!Array.isArray(layout.importFrom.extra))layout.importFrom.extra=[];return layout.importFrom};
+  const host=u=>String(u||"").replace(/^https?:\/\//i,"").replace(/^www\./i,"").replace(/\/$/,"");
+  const fullUrl=u=>{u=String(u||"").trim();if(u&&!/^https?:\/\//i.test(u))u="https://"+u;return u};
+  const okUrl=u=>/^https?:\/\/[^\s/]+\.[^\s]+/i.test(u);
   function importCard(){
     const ok=CLOUD&&CLOUD.canEdit&&window.LodgeNetAuth&&window.LodgeNetAuth.ai;
     const why=!CLOUD?"Sign in to your lodge to bring over its current website.":!CLOUD.canEdit?"The lodge's officers can bring over its current website.":!ok?"Bringing over a website needs Claude switched on for LodgeNet (the same setting as AI minutes).":"";
+    const f=src(),rows=f.extra.length?f.extra:[""],dis=ok?"":" disabled";
     return `<div class="wov-import"><div class="wov-import-h"><span class="wov-import-ic" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="M10 3v9M6 8l4 4 4-4"/><path d="M3.5 13.5v3h13v-3"/></svg></span>
-        <div><h3>Bring over your current website</h3><p class="hint">Paste your lodge's website address. Claude reads it and rebuilds it here, with your pages, words, pictures and colors, and adds LodgeNet's tools. Nothing goes live until you press Publish.</p></div></div>
+        <div><h3>Bring over your current website</h3><p class="hint">Claude rebuilds your main website here, with its pages, words, pictures and colors, and adds LodgeNet's tools. It can also gather details from your other websites. Nothing goes live until you press Publish.</p></div></div>
       <form class="wov-import-f" data-imp-form novalidate>
-        <div class="wov-import-row"><input type="text" inputmode="url" autocapitalize="off" spellcheck="false" placeholder="https://yourlodge.org" aria-label="Your current website address" data-imp-url value="${esc(lastUrl)}"${ok?"":" disabled"}>
-          <button type="submit" class="btn wov-go"${ok?"":" disabled"}>Rebuild my site</button></div>
-        <fieldset class="wov-extras"${ok?"":" disabled"}><legend>Add LodgeNet extras</legend>${EXTRAS.map(([k,t,h])=>`<label class="wov-extra"><input type="checkbox" data-imp-x="${k}" checked><span><b>${esc(t)}</b><small>${esc(h)}</small></span></label>`).join("")}</fieldset>
-        ${why?`<p class="hint">${esc(why)}</p>`:""}<p class="hint wov-imp-msg" data-imp-msg aria-live="polite"></p>
+        <div class="wov-src wov-src-main">
+          <div class="wov-src-h"><span class="wov-src-n">1</span><div><b>Your main website</b><small>The one we copy: its pages, look and pictures.</small></div></div>
+          <input type="text" inputmode="url" autocapitalize="off" spellcheck="false" placeholder="https://yourlodge.org" aria-label="Your main website, the one to copy" data-imp-url value="${esc(f.primary)}"${dis}>
+        </div>
+        <div class="wov-src">
+          <div class="wov-src-h"><span class="wov-src-n">2</span><div><b>Other websites to gather information from</b><small>Optional. We read these for officers, meetings, events, history, contacts and merchandise, but don't copy their design. For a Scottish Rite Club or Valley, add the Valley's site, the Orient or Supreme Council page, or a sister body's site.</small></div></div>
+          <div class="wov-src-list">${rows.map((u,i)=>`<div class="wov-src-row"><input type="text" inputmode="url" autocapitalize="off" spellcheck="false" placeholder="${["https://yourvalley.org","https://orient-or-supreme-council-page.org","https://sister-body.org","https://grand-lodge-listing.org"][i]||"https://"}" aria-label="Other website ${i+1}" data-imp-extra="${i}" value="${esc(u)}"${dis}>
+            ${rows.length>1||u?`<button type="button" class="bld-icon" data-imp-del="${i}" aria-label="Remove website ${i+1}"${dis}><svg viewBox="0 0 20 20"><path d="M5 5l10 10M15 5 5 15"/></svg></button>`:""}</div>`).join("")}</div>
+          ${rows.length<MAX_EXTRA?`<button type="button" class="link-btn wov-src-add" data-imp-addrow${dis}>+ Add another website</button>`:""}
+        </div>
+        <fieldset class="wov-extras"${dis}><legend>Add LodgeNet extras</legend>${EXTRAS.map(([k,t,h])=>`<label class="wov-extra"><input type="checkbox" data-imp-x="${k}" checked><span><b>${esc(t)}</b><small>${esc(h)}</small></span></label>`).join("")}</fieldset>
+        <div class="wov-import-go"><button type="submit" class="btn wov-go"${dis}>Rebuild my site</button>${why?`<span class="hint">${esc(why)}</span>`:""}<span class="hint wov-imp-msg" data-imp-msg aria-live="polite"></span></div>
       </form></div>`;
   }
-  let lastUrl="",importing=false;
-  const STEPS=["Reading your website","Finding your pages and pictures","Rebuilding each page","Adding your LodgeNet extras"];
+  /* read the boxes into the saved addresses without redrawing (so typing isn't interrupted) */
+  function readSources(){const f=src(),m=$("[data-imp-url]");if(m)f.primary=m.value.trim();
+    const ex=$$("[data-imp-extra]").map(i=>i.value.trim());f.extra=ex.filter((u,i)=>u||i<ex.length-1).slice(0,MAX_EXTRA);if(!ex.some(Boolean))f.extra=[];return f}
+  let importing=false,runLabel="";
+  const STEPS=["Reading your websites","Finding your pages and pictures","Rebuilding each page","Adding your LodgeNet extras"];
   function progress(on,i,err){
     let el=$("#wov-progress");
     if(!on){if(el)el.remove();document.documentElement.classList.remove("bld-open");return}
     if(!el){el=document.createElement("div");el.id="wov-progress";el.className="wov-progress";el.setAttribute("role","dialog");el.setAttribute("aria-modal","true");el.setAttribute("aria-label","Rebuilding your website");document.body.appendChild(el);document.documentElement.classList.add("bld-open")}
     el.innerHTML=`<div class="wov-progress-card"><span class="wov-spin" aria-hidden="true"></span><h3>${err?"That didn't work":"Rebuilding your website"}</h3>
-      <p class="hint">${err?esc(err):`${esc(lastUrl.replace(/^https?:\/\//,""))} · this takes a minute or two`}</p>
+      <p class="hint">${err?esc(err):`${esc(runLabel)} · this takes a minute or two`}</p>
       ${err?'<button type="button" class="btn" data-imp-close>Close</button>':`<ol class="wov-progress-steps">${STEPS.map((t,n)=>`<li class="${n<i?"done":n===i?"now":""}">${esc(t)}</li>`).join("")}</ol>`}</div>`;
     if(err)el.querySelector("[data-imp-close]").onclick=()=>progress(false);
   }
-  async function runImport(url){
-    if(importing)return;let u=String(url||"").trim();if(u&&!/^https?:\/\//i.test(u))u="https://"+u;
-    const msg=$("[data-imp-msg]"),say=t=>{if(msg)msg.textContent=t};
-    if(!/^https?:\/\/[^\s/]+\.[^\s]+/i.test(u))return say("Enter your website's full address, like https://yourlodge.org.");
-    lastUrl=u;extrasWanted={};$$("[data-imp-x]").forEach(c=>{if(c.checked)extrasWanted[c.dataset.impX]=1});
+  async function runImport(){
+    if(importing)return;
+    const f=readSources(),msg=$("[data-imp-msg]"),say=t=>{if(msg)msg.textContent=t};
+    const u=fullUrl(f.primary);
+    if(!okUrl(u))return say("Enter your main website's full address, like https://yourlodge.org.");
+    const extra=[...new Set(f.extra.map(fullUrl).filter(Boolean))].filter(x=>host(x)!==host(u));
+    const badX=extra.find(x=>!okUrl(x));if(badX)return say(`"${badX}" doesn't look like a web address.`);
+    f.primary=u;f.extra=extra;A.save();
+    extrasWanted={};$$("[data-imp-x]").forEach(c=>{if(c.checked)extrasWanted[c.dataset.impX]=1});
+    runLabel=host(u)+(extra.length?` + ${extra.length} more ${extra.length===1?"site":"sites"}`:"");
     importing=true;let step=0;progress(true,0);
     const tick=setInterval(()=>{if(step<2){step++;progress(true,step)}},16000);
     try{
       const s2=await window.LodgeNetAuth.session();
       const r=await fetch("/api/site-import",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+(s2&&s2.access_token)},
-        body:JSON.stringify({lodge_id:CLOUD.lodgeId,url:u,seats:A.SEATS_TITLES(),today:A.isoDay(new Date()),rebuild:true})});
+        body:JSON.stringify({lodge_id:CLOUD.lodgeId,url:u,extra_urls:extra,seats:A.SEATS_TITLES(),today:A.isoDay(new Date()),rebuild:true})});
       const d=await r.json().catch(()=>({}));
       if(!r.ok)throw new Error(d.error||"Couldn't read that website.");
       if(!d.site||!(d.site.pages||[]).length)throw new Error("Claude read the site but couldn't make out its pages. Try the address of its home page.");
@@ -766,14 +791,20 @@
       await A.applyImport(d);
       progress(false);importing=false;
       location.hash="website/edit";
-      setTimeout(()=>toast(`Rebuilt ${d.site.pages.length} ${d.site.pages.length===1?"page":"pages"} from ${u.replace(/^https?:\/\//,"").replace(/\/$/,"")}. Look it over, change anything, then press Publish.${d.notes?" Note: "+d.notes:""}`),200);
+      const others=(d.sources||[]).filter(x=>!x.primary),read=others.filter(x=>x.ok).map(x=>host(x.url)),missed=others.filter(x=>!x.ok).map(x=>host(x.url));
+      setTimeout(()=>toast(`Rebuilt ${d.site.pages.length} ${d.site.pages.length===1?"page":"pages"} from ${host(u)}`+(read.length?`, with details gathered from ${read.join(", ")}`:"")+". Look it over, change anything, then press Publish."
+        +(missed.length?` Couldn't read ${missed.join(", ")}.`:"")+(d.notes?" Note: "+d.notes:"")),200);
     }catch(e){clearInterval(tick);importing=false;progress(true,0,e.message)}
   }
   function toast(t){let el=$("#bld-toast");if(!el){el=document.createElement("div");el.id="bld-toast";el.className="bld-toast";el.setAttribute("role","status");$("#bld").appendChild(el)}
     el.innerHTML=`<span>${esc(t)}</span><button type="button" class="bld-icon" aria-label="Dismiss">${'<svg viewBox="0 0 20 20"><path d="M5 5l10 10M15 5 5 15"/></svg>'}</button>`;el.hidden=false;
     el.querySelector("button").onclick=()=>{el.hidden=true};clearTimeout(el._t);el._t=setTimeout(()=>{el.hidden=true},14000)}
-  $("#wov").addEventListener("submit",e=>{const f=e.target.closest("[data-imp-form]");if(!f)return;e.preventDefault();runImport(f.querySelector("[data-imp-url]").value)});
-  $("#wov").addEventListener("input",e=>{if(e.target.matches("[data-imp-url]"))lastUrl=e.target.value});
+  $("#wov").addEventListener("submit",e=>{const f=e.target.closest("[data-imp-form]");if(!f)return;e.preventDefault();runImport()});
+  $("#wov").addEventListener("input",e=>{if(e.target.matches("[data-imp-url],[data-imp-extra]"))readSources()});
+  $("#wov").addEventListener("focusout",e=>{if(e.target.matches("[data-imp-url],[data-imp-extra]"))A.save()});
+  $("#wov").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;
+    if("impAddrow" in b.dataset){const f=readSources();if(f.extra.length<MAX_EXTRA){f.extra.push("");drawOverview();const l=$$("[data-imp-extra]");if(l.length)l[l.length-1].focus()}return}
+    if(b.dataset.impDel){const f=readSources(),i=+b.dataset.impDel,all=$$("[data-imp-extra]").map(x=>x.value.trim());all.splice(i,1);f.extra=all;drawOverview()}});
   $("#wov").addEventListener("change",e=>{const t=e.target;
     if(t.dataset.conn){connect(t.dataset.conn,t.checked);return drawOverview()}
     if("autosync" in t.dataset){layout.autoSync=t.checked;A.save();return drawOverview()}});
