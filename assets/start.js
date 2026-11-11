@@ -134,7 +134,9 @@
           session=data.session;
         }else{
           backHere();
-          const {data,error}=await sb.auth.signUp({email,password,options:{emailRedirectTo:location.origin+"/start",data:meta}});
+          const {data,error}=await sb.auth.signUp({email,password,options:{emailRedirectTo:location.origin+"/start",
+            /* the plan and step 2 ride on the account too, so the confirmation link can be opened in any browser or on a phone */
+            data:{...meta,lodgenet_start:{plan:st.plan,price:st.price||null,name:st.name||null,label:st.label||null,info:i}}}});
           if(error)return msg(out,error.message,true);
           if(data.user&&Array.isArray(data.user.identities)&&!data.user.identities.length){
             acctMode="in";setAcct();$("#a-pass").value="";
@@ -212,6 +214,7 @@
       try{await settle()}
       catch(err){return failed(`Your lodge is saved, but ${st.code?"the code":"the payment"} couldn't be added to it yet (${err.message}). Try again, and if it keeps failing, contact LodgeNet. You won't be charged twice.`)}
     }
+    sb.auth.updateUser({data:{lodgenet_start:null}}).catch(()=>{});
     const to=dash();forget();location.assign(to);
   }
   $("#pay-again").addEventListener("click",async()=>{
@@ -224,6 +227,9 @@
     sb=await A.client();
     if(!sb)return show("v-off");
     session=await A.session();
+    /* confirmed in another browser, on a phone or in the mail app: pick up where they left off from the account */
+    const saved=session&&session.user.user_metadata&&session.user.user_metadata.lodgenet_start;
+    if(saved&&saved.plan&&!st.plan&&!st.session_id&&!st.code){st={...saved,await:1};keep()}
     /* back from Stripe */
     if(q.get("paid")&&q.get("session_id")){
       history.replaceState(null,"",location.pathname);
