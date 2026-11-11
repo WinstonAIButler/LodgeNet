@@ -716,10 +716,14 @@ a.paybtn{text-decoration:none;display:inline-block}
 :root[data-theme="dark"] .hub .btn.hub-danger-line{color:#f08a80}
 :root[data-theme="dark"] .hub-dialog::backdrop{background:rgba(0,0,0,.6)}
 :root[data-theme="dark"] .brand img,:root[data-theme="dark"] .side-brand img{filter:drop-shadow(0 0 1px rgba(243,237,224,.35))}
-.theme-btn{display:inline-flex;align-items:center;gap:7px;color:var(--gold);font-size:13px;justify-self:start;background:none;border:0;padding:0;cursor:pointer;text-decoration:none;white-space:nowrap}
-.theme-btn svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linejoin:round}
-.theme-btn[aria-pressed="true"] svg{fill:currentColor}
-.theme-btn:hover{text-decoration:underline;text-underline-offset:3px}
+.theme-toggle{display:inline-flex;justify-self:start;border:1px solid var(--line);background:var(--surface)}
+.theme-toggle button{display:inline-flex;align-items:center;gap:6px;padding:6px 11px;border:0;background:none;color:var(--muted);font:inherit;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap}
+.theme-toggle button + button{border-left:1px solid var(--line)}
+.theme-toggle button[aria-pressed="true"]{background:var(--blue);color:var(--blue-ink)}
+.theme-toggle button:not([aria-pressed="true"]):hover{color:var(--fg)}
+.theme-toggle button:focus-visible{outline:2px solid var(--gilt);outline-offset:1px}
+.theme-toggle svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linejoin:round;stroke-linecap:round}
+.side .theme-toggle{border-color:var(--side-line);background:none}
 .app-top-r{display:flex;align-items:center;gap:8px 18px;flex-wrap:wrap}
 
 /* owner's master dashboard (/owner) in the lodge dashboard's layout */
@@ -730,7 +734,7 @@ a.paybtn{text-decoration:none;display:inline-block}
 .app-top .hub-search{min-width:min(280px,100%)}
 .app-top .hub-search input{width:100%}
 .hub-sec .mem-head{margin-bottom:10px}
-.gate-wrap .theme-btn{justify-self:center}
+.gate-wrap .theme-toggle{justify-self:center}
 .hub-detail-in .field label{display:grid;gap:6px;font-size:14px;font-weight:400}
 .hub-detail-in .field label > span{font-size:13px;font-weight:600}
 /* labels that wrap their field (My lodges roll, owner's Manage, hand over) */
