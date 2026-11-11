@@ -142,7 +142,7 @@
             acctMode="in";setAcct();$("#a-pass").value="";
             return msg(out,`${email} already has a LodgeNet account. Enter its password to sign in.`,true);
           }
-          if(!data.session){st.await=1;keep();$("#check-text").textContent=`We sent a confirmation link to ${email}. Open it to confirm your address.`;return show("v-check")}
+          if(!data.session){st.await=1;st.email=email;keep();$("#check-text").textContent=`We sent an email to ${email} to confirm it's yours.`;show("v-check");$("#o-code").focus();return}
           session=data.session;
         }
       }
@@ -152,6 +152,28 @@
       await finish();
     }finally{go.disabled=false}
   });
+
+  /* ---------- confirming the email: the code from it, typed here (or the link in it, which comes back to /start) ---------- */
+  $("#f-otp").addEventListener("submit",async e=>{
+    e.preventDefault();
+    const out=$("#o-msg"),token=$("#o-code").value.replace(/\s/g,"");
+    if(!/^\d{6,10}$/.test(token))return msg(out,"Enter the code from the email.",true);
+    $("#o-go").disabled=true;msg(out,"Confirming…");
+    try{
+      const {data,error}=await sb.auth.verifyOtp({email:st.email,token,type:"signup"});
+      if(error)return msg(out,/expired|invalid/i.test(error.message)?"That code didn't work or has expired. Check the newest email, or send it again.":error.message,true);
+      session=data.session;delete st.await;keep();
+      const i=st.info||{};
+      sb.auth.updateUser({data:{full_name:i.name,phone:i.phone,title:i.title}}).catch(()=>{});
+      if(paidPlan()&&!st.session_id&&!st.code)return toPay("Email confirmed. You're signed in as "+session.user.email+".");
+      await finish();
+    }finally{$("#o-go").disabled=false}
+  });
+  $("#o-again").addEventListener("click",async()=>{
+    const {error}=await sb.auth.resend({type:"signup",email:st.email,options:{emailRedirectTo:location.origin+"/start"}});
+    msg($("#o-msg"),error?error.message:"Sent again. Use the newest email.",!!error);
+  });
+  $("#o-back").addEventListener("click",()=>{delete st.await;delete st.email;keep();toInfo()});
 
   /* ---------- step 3: payment or a code ---------- */
   function toPay(note,err){
@@ -250,6 +272,7 @@
         return finish()}
       return toInfo("You're signed in as "+session.user.email+". Fill in the rest, then continue.");
     }
+    if(st.await&&!session&&st.email){$("#check-text").textContent=`We sent an email to ${st.email} to confirm it's yours.`;return show("v-check")}
     if(st.session_id||st.code)return session?finish():toInfo();
     if(st.plan)return toInfo();
     await toPick();

@@ -146,7 +146,13 @@
       <div class="card auth-card" id="v-check" hidden style="max-width:560px">
         <h3>Check your email</h3>
         <p class="hint" id="check-text"></p>
-        <p class="hint">Your information is saved on this device. Open the link on this same computer or phone and you'll come straight back to payment.</p>
+        <form id="f-otp" novalidate style="display:grid;gap:10px;max-width:320px">
+          <div class="field"><label for="o-code">Code from the email</label><input id="o-code" inputmode="numeric" autocomplete="one-time-code" maxlength="10" placeholder="6-digit code"></div>
+          <button class="btn gold" type="submit" id="o-go">Confirm and continue to payment</button>
+        </form>
+        <p class="auth-msg" id="o-msg" role="status" aria-live="polite"></p>
+        <p class="hint">Or select the link in the email, on any device. It brings you back to payment with everything you entered.</p>
+        <p><button class="link-btn" type="button" id="o-again">Send the email again</button> · <button class="link-btn" type="button" id="o-back">Use a different email</button></p>
       </div>
 
       <!-- step 3: payment, or a code -->
