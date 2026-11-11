@@ -1108,3 +1108,11 @@ body.bx-dragging #bld-canvas .bx-txt,body.bx-dragging #bld-canvas iframe{pointer
 .wov-src-add{justify-self:start;font-size:14px;font-weight:600}
 .wov-import-go{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:16px}
 .wov-import-go .btn{border-radius:8px;padding:13px 24px;font-size:15px}
+
+/* Add a page: templates in groups, each a live thumbnail of the page it makes */
+.bld-tpls{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.bld-tpl{display:grid;gap:6px;padding:0;border:1px solid var(--ed-line);border-radius:10px;background:var(--ed-chrome);color:var(--ed-fg);font:600 12px/1.25 var(--body);text-align:left;cursor:pointer;overflow:hidden;transition:border-color .12s,box-shadow .12s}
+.bld-tpl:hover{border-color:var(--ed-accent);box-shadow:0 4px 14px rgba(47,110,224,.15)}
+.bld-tpl .mini{aspect-ratio:4/3;border-bottom:1px solid var(--ed-line)}
+.bld-tpl > span{display:flex;align-items:center;gap:5px;padding:0 9px 9px}
+.bld svg.bld-tpl-lock{width:13px;height:13px;flex:none}

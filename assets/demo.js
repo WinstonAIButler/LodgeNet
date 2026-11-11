@@ -417,7 +417,7 @@
     if(!CLOUD)return st.innerHTML='<span class="pill ok">Published</span> Live at '+esc($("#pv-url").textContent)+" (demo)";
     if(!CLOUD.canEdit)return st.textContent=VIEW_ONLY;
     if(!CLOUD.paid)return st.innerHTML=LOCKED;
-    const prev=published;published={at:new Date().toISOString(),site:publicSite()};
+    const prev=published;published={at:new Date().toISOString(),site:publicSite()};{const m=window.LodgeNetSite&&window.LodgeNetSite.publicPrivate&&window.LodgeNetSite.publicPrivate();if(m)published.members=m}/* members-only pages sit beside site, never in it */
     st.textContent="Publishing…";clearTimeout(saveTimer);
     if(await save())siteState();
     else{published=prev;st.innerHTML='<span class="pill">Not published</span> Couldn\'t reach the lodge account. Check your connection and press Publish site again.'}

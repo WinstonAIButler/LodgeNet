@@ -66,22 +66,34 @@
     ensureFids();const fr=fundraisers(),o=(v,t)=>`<option value="${esc(v)}"${v===cur?" selected":""}>${esc(t)}</option>`;
     return `<optgroup label="Pages">${pages.map(p=>o(p.id==="home"?"home":"page:"+p.id,p.title)).join("")}</optgroup>`
       +(fr.length?`<optgroup label="Fundraisers">${fr.map(e=>o("fund:"+e.fid,e.t+" · "+dayFmt(e.d))).join("")}</optgroup>`:"")
-      +(withUrl?`<optgroup label="Other">${o("url","A web address")}</optgroup>`:"");
+      +(withUrl?`<optgroup label="Other">${o("email","Email the lodge")}${o("url","A web address")}</optgroup>`:"");
   }
   function linkName(t){t=t||"";
     if(t==="home")return "Home";
+    if(t==="email")return "An email to the lodge";
     if(t.startsWith("page:")){const p=pageById(t.slice(5));return p?p.title:"A deleted page"}
     if(t.startsWith("fund:")){const f=fundById(t.slice(5));return f?"Fundraiser: "+f.t:"A deleted fundraiser"}
     return t||"Nowhere yet"}
-  const isUrl=l=>!!l&&!/^(home|page:|fund:)/.test(l);
+  const isUrl=l=>!!l&&!/^(home|email|page:|fund:)/.test(l);
 
+  /* members-only pages' content and what it shows (news for brethren, dues), saved as published.members beside the public copy.
+     supabase/members-pages.sql's members_page() hands one page to a signed-in brother on the lodge's roll. */
+  function publicPrivate(){
+    const mp=pages.filter(p=>p.members);if(!mp.length)return null;
+    const D=window.LodgeNetDash&&window.LodgeNetDash.snapshot?window.LodgeNetDash.snapshot():{announcements:CFG.announcements};
+    const news=(D.announcements||[]).filter(a=>a.status==="Posted"&&a.aud!=="Officers").sort((a,b)=>a.d<b.d?1:-1).slice(0,20).map(a=>({d:a.d,subject:a.subject,body:a.body||""}));
+    return {pages:Object.fromEntries(mp.map(p=>[p.id,{title:p.title,sections:p.sections}])),dues:duesNow(),news};
+  }
   /* charities (name, kind, note), active sponsors (name and level only, never contacts or amounts) and Public announcements */
+  function duesNow(){const T=(window.LodgeNetDash&&window.LodgeNetDash.snapshot&&window.LodgeNetDash.snapshot().treasury)||CFG.treasury||{};return {amount:+T.dues||0,year:new Date().getFullYear()}}
+  const publicDues=()=>pages.some(p=>!p.members&&p.sections.some(x=>x.type==="dues"));
   function lodgeLists(){
     const D=window.LodgeNetDash&&window.LodgeNetDash.snapshot?window.LodgeNetDash.snapshot():{charities:CFG.charities,sponsors:CFG.sponsors,announcements:CFG.announcements};
     return {
       charities:(D.charities||[]).map(c=>({name:c.name,kind:c.kind||"",note:c.note||""})),
       sponsors:(D.sponsors||[]).filter(x=>x.status==="Active").map(x=>({name:x.name,level:x.level||""})),
-      news:(D.announcements||[]).filter(a=>a.status==="Posted"&&a.aud==="Public").sort((a,b)=>a.d<b.d?1:-1).slice(0,20).map(a=>({d:a.d,subject:a.subject,body:a.body||""}))
+      news:(D.announcements||[]).filter(a=>a.status==="Posted"&&a.aud==="Public").sort((a,b)=>a.d<b.d?1:-1).slice(0,20).map(a=>({d:a.d,subject:a.subject,body:a.body||""})),
+      dues:publicDues()?duesNow():null
     };
   }
 
@@ -130,12 +142,13 @@
         <span><b>Keep the live site up to date automatically</b><small>${auto?"When an officer adds, changes or deletes an event, fundraiser, store item, charity, officer, sponsor or public post, the published site updates right away. Changes to page design still wait for Publish.":"Off: the live site only changes when you press Publish."}</small></span></label></div>`;
   }
   /* the live parts of the published site follow the dashboard between Publishes (runs on every save) */
-  const LIVE_KEYS=["events","funds","store","charities","sponsors","news","officers","give","pay","email","schedule"];
+  const LIVE_KEYS=["events","funds","store","charities","sponsors","news","officers","give","pay","email","schedule","dues"];
   function syncLive(){
     if(layout.autoSync===false||!CLOUD||!CLOUD.canEdit||!CLOUD.paid)return;
     const p=A.published;if(!p||!p.site)return;
     const cur=A.publicSite();let changed=false;
     LIVE_KEYS.forEach(k=>{if(JSON.stringify(p.site[k])!==JSON.stringify(cur[k])){p.site[k]=cur[k];changed=true}});
+    if("members" in p||pages.some(x=>x.members)){const m=publicPrivate();if(JSON.stringify(p.members||null)!==JSON.stringify(m)){p.members=m;changed=true}}
     if(changed)p.synced=new Date().toISOString();
   }
 
@@ -145,7 +158,8 @@
     const hasStore=pages.some(p=>p.sections.some(s=>s.type==="store"));
     const Q=window.LodgeNetSite&&window.LodgeNetSite.qrPublic;
     return {
-      layout:{v:2,theme:Object.assign({},layout.theme),pages:pages.map(p=>({id:p.id,slug:p.slug,title:p.title,nav:p.nav!==false,sections:p.sections}))},
+      /* a members-only page goes out with its title only; its sections go in publicPrivate(), which the public site lookup never returns */
+      layout:{v:2,theme:Object.assign({},layout.theme),pages:pages.map(p=>p.members?{id:p.id,slug:p.slug,title:p.title,nav:p.nav!==false,members:true,sections:[]}:{id:p.id,slug:p.slug,title:p.title,nav:p.nav!==false,sections:p.sections})},
       funds:fundraisers().map(e=>({id:e.fid,t:e.t,d:e.d,time:e.time||"",note:e.note||"",goal:+e.goal||0,raised:+e.raised||0,charity:e.charity||""})),
       ...lodgeLists(),
       store:hasStore&&planNow()!=="starter"?A.products.filter(x=>!x.off).map(x=>({id:x.id,n:x.n,p:+x.p||0,img:x.img||"",tag:x.tag||"",sizes:x.sizes||"",colors:x.colors||"",kind:x.kind||""})):[],
@@ -319,7 +333,7 @@
     if(!panelOpen)return;
     $$(".bld-panel").forEach(p=>p.hidden=p.dataset.panel!==tab);
     const s=tab==="edit"&&secOf(sel);$("#bld-side-title").textContent=s?L.SECTIONS[s.type].name:TITLES[tab]||"";
-    if(tab==="add")drawAdd();if(tab==="edit")drawEdit();if(tab==="design")drawDesign();if(tab==="pages")drawPages();
+    if(tab==="add")drawAdd();if(tab==="edit")drawEdit();if(tab==="design")drawDesign();if(tab==="pages"){drawPages();fitMinis($("#bld-pages"))}
   }
   function drawAdd(){
     const groups={};Object.entries(L.SECTIONS).forEach(([k,v])=>(groups[v.group]=groups[v.group]||[]).push([k,v]));
@@ -454,28 +468,34 @@
   const slugify=t=>String(t||"").toLowerCase().normalize("NFKD").replace(/[̀-ͯ]/g,"").replace(/&/g," and ").replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"").slice(0,48)||"page";
   function uniqueSlug(base,self){let s=slugify(base);if(RESERVED.includes(s))s+="-page";let out=s,n=2;while(pages.some(p=>p!==self&&p.slug===out))out=s+"-"+n++;return out}
   let pageOpen=null;
+  /* a template drawn with the lodge's own name, color and records, shrunk to a thumbnail */
+  function tplMini(k){const t=L.TEMPLATES[k],site=A.publicSite(),pg={id:"tpl",slug:"tpl",title:t.title,nav:true,sections:t.make()};
+    site.layout=Object.assign({},site.layout,{pages:[pg]});return mini(site,1200).replace('class="mini"','class="mini" data-tpl-mini')}
   function drawPages(){
     const n=pages.length;
     $("#bld-pages").innerHTML=addingPage?`<div class="bld-edit-h"><button type="button" class="link-btn" data-pg-cancel>${I.back}Pages</button></div>
         <h3 class="bld-title">Add a page</h3><p class="bld-lead">Start from a ready-made page and change anything on it.</p>
-        <div class="bld-lib">${Object.entries(L.TEMPLATES).map(([k,t])=>`<button type="button" class="bld-card" data-tpl="${k}">${I.page}<span>${esc(t.name)}</span></button>`).join("")}</div>`
+        ${L.TEMPLATE_GROUPS.map(g=>`<h3 class="bld-h">${esc(g)}</h3><div class="bld-tpls">${Object.entries(L.TEMPLATES).filter(([,t])=>t.group===g).map(([k,t])=>
+          `<button type="button" class="bld-tpl" data-tpl="${k}">${tplMini(k)}<span>${t.members?'<svg class="bld-tpl-lock" viewBox="0 0 20 20" aria-hidden="true"><rect x="4.5" y="9" width="11" height="8" rx="1.5"/><path d="M7 9V6.5a3 3 0 0 1 6 0V9"/></svg>':""}${esc(t.name)}</span></button>`).join("")}</div>`).join("")}`
       :`<p class="bld-lead">Click a page to edit it. The menu on the site follows this order.</p>
       <ul class="bld-pages">${pages.map((p,i)=>`<li class="${p.id===curId?"on":""}">
-        <div class="bld-page-row"><button type="button" class="bld-page-go" data-pg-go="${p.id}">${p.id==="home"?I.home:I.page}<span><b>${esc(p.title)}</b><small>${esc(p.slug?"/"+p.slug:"/")}${p.nav===false?" · hidden from menu":""}${p.auto&&CONNECTED[p.auto]?" · fills itself from "+esc(CONNECTED[p.auto].tab):""}</small></span></button>
+        <div class="bld-page-row"><button type="button" class="bld-page-go" data-pg-go="${p.id}">${p.id==="home"?I.home:I.page}<span><b>${esc(p.title)}</b><small>${esc(p.slug?"/"+p.slug:"/")}${p.members?" · members only":""}${p.nav===false?" · hidden from menu":""}${p.auto&&CONNECTED[p.auto]?" · fills itself from "+esc(CONNECTED[p.auto].tab):""}</small></span></button>
           ${p.id==="home"?"":`<button type="button" class="bld-icon" data-pg-up="${i}"${i>1?"":" disabled"} title="Move up">${I.up}<span class="sr">Move ${esc(p.title)} up</span></button><button type="button" class="bld-icon" data-pg-down="${i}"${i<n-1?"":" disabled"} title="Move down">${I.down}<span class="sr">Move ${esc(p.title)} down</span></button>`}
           <button type="button" class="bld-icon" data-pg-set="${p.id}" aria-expanded="${String(pageOpen===p.id)}" title="Page settings">${I.gear}<span class="sr">Settings for ${esc(p.title)}</span></button></div>
         ${pageOpen===p.id?`<div class="bld-page-set">
           <div class="field"><label for="pg-t-${p.id}">Page name</label><input id="pg-t-${p.id}" data-pg-title="${p.id}" value="${esc(p.title)}"></div>
           ${p.id==="home"?"":`<div class="field"><label for="pg-s-${p.id}">Address</label><div class="pre"><span>…/</span><input id="pg-s-${p.id}" data-pg-slug="${p.id}" value="${esc(p.slug)}" autocapitalize="off" spellcheck="false"></div><span class="hint">Changing it breaks links people saved. Buttons and QR codes keep working.</span></div>`}
           <label class="check"><input type="checkbox" data-pg-nav="${p.id}"${p.nav!==false?" checked":""}> Show in the site menu</label>
+          ${p.id==="home"?"":`<label class="check"><input type="checkbox" data-pg-members="${p.id}"${p.members?" checked":""}> Members only: signed-in brethren on the roll</label>`}
           ${p.id==="home"?"":`<button type="button" class="btn line sm bld-danger" data-pg-del="${p.id}">${I.del}Delete page</button>`}</div>`:""}</li>`).join("")}</ul>
       ${n<MAX_PAGES?`<button type="button" class="btn sm" data-pg-add>${I.plus}Add a page</button>`:`<p class="hint">That's the most pages a lodge site can have (${MAX_PAGES}).</p>`}`;
   }
+  const fitTpls=()=>fitMinis($("#bld-pages"));
   const pg=$("#bld-pages");
   pg.addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;const d=b.dataset;
-    if("pgAdd" in d){addingPage=true;return drawPages()}
+    if("pgAdd" in d){addingPage=true;drawPages();return fitTpls()}
     if("pgCancel" in d){addingPage=false;return drawPages()}
-    if(d.tpl){const t=L.TEMPLATES[d.tpl];const p={id:"p"+rid(7),title:t.title,slug:uniqueSlug(t.title),nav:true,sections:t.make()};
+    if(d.tpl){const t=L.TEMPLATES[d.tpl];const p={id:"p"+rid(7),title:t.title,slug:uniqueSlug(t.title),nav:true,sections:t.make(),...(t.members?{members:true}:{})};
       addingPage=false;change(()=>{pages.push(p);curId=p.id;sel=null});return}
     if(d.pgGo)return go(d.pgGo);
     if(d.pgSet){pageOpen=pageOpen===d.pgSet?null:d.pgSet;return drawPages()}
@@ -489,6 +509,7 @@
     if(d.pgTitle){const p=pageById(d.pgTitle);if(p)change(()=>{p.title=t.value.trim().slice(0,60)||p.title})}
     if(d.pgSlug){const p=pageById(d.pgSlug);if(p)change(()=>{p.slug=uniqueSlug(t.value||p.title,p)})}
     if(d.pgNav){const p=pageById(d.pgNav);if(p)change(()=>{p.nav=t.checked})}
+    if(d.pgMembers){const p=pageById(d.pgMembers);if(p)change(()=>{if(t.checked)p.members=true;else delete p.members})}
   });
 
   /* ---------- top bar and the frame's bar ---------- */
@@ -812,7 +833,7 @@
 
   window.LodgeNetSite=Object.assign(window.LodgeNetSite||{},{
     snapshot:()=>{syncLive();return Object.assign({siteLayout:layout},window.LodgeNetSite.qrSnapshot?window.LodgeNetSite.qrSnapshot():{siteQrs:CFG.siteQrs})},
-    publicExtra,preview:()=>{drawSoon();if(!$("#wov").hidden&&!$("#wov").contains(document.activeElement))clearTimeout(ovTimer),ovTimer=setTimeout(drawOverview,300)},fromImport,
+    publicExtra,publicPrivate,preview:()=>{drawSoon();if(!$("#wov").hidden&&!$("#wov").contains(document.activeElement))clearTimeout(ovTimer),ovTimer=setTimeout(drawOverview,300)},fromImport,
     pages:()=>pages,pageById,fundById,fundraisers,ensureFids,targetOptions,linkName,isUrl,ROOT,SLUG,slugify
   });
   let ovTimer=0;

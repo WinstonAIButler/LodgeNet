@@ -23,6 +23,10 @@
     classic:{name:"Classic",head:'"Playfair Display",Georgia,serif',body:'"Source Sans 3",system-ui,sans-serif',q:"family=Playfair+Display:wght@600;700&family=Source+Sans+3:wght@400;600"},
     heritage:{name:"Heritage",head:"Cinzel,Georgia,serif",body:'"EB Garamond",Georgia,serif',q:"family=Cinzel:wght@600;700&family=EB+Garamond:wght@400;500;600"}
   };
+  const payUrl=(p,n,note)=>{const enc=encodeURIComponent,amt=v=>(+v||0).toFixed(2);
+    return p.k==="cashapp"?`https://cash.app/$${enc(p.v)}/${amt(n)}`:p.k==="paypal"?`https://paypal.me/${enc(p.v)}/${amt(n)}USD`
+      :p.k==="venmo"?`https://venmo.com/?txn=pay&recipients=${enc(p.v)}&amount=${amt(n)}&note=${enc(note)}`:p.k==="link"?safeHref(p.v):""};
+  const LOCK='<svg class="ls-lock" viewBox="0 0 20 20" aria-hidden="true"><rect x="4.5" y="9" width="11" height="8" rx="1.5"/><path d="M7 9V6.5a3 3 0 0 1 6 0V9"/></svg>';
   const fontHref=k=>"https://fonts.googleapis.com/css2?"+(FONTS[k]||FONTS.modern).q+"&display=swap";
   const THEME={font:"modern",btn:"rounded",header:"center"};
 
@@ -44,6 +48,7 @@
     charities:{name:"Charities",group:"Lodge",make:()=>({heading:"The causes we support",body:"Every fundraiser and store purchase helps these funds and charities."})},
     sponsors:{name:"Sponsors",group:"Lodge",make:()=>({heading:"Thank you to our sponsors",body:"These local businesses help make our work possible."})},
     news:{name:"News",group:"Lodge",make:()=>({heading:"Lodge news",count:6})},
+    dues:{name:"Pay dues",group:"Lodge",make:()=>({heading:"Pay your dues",body:"Pay online with the button you prefer. Put your name and the year in the payment note so the Secretary can mark you paid."})},
     html:{name:"Custom HTML",group:"Advanced",make:()=>({html:""})}
   };
   const newSection=(type,over)=>Object.assign({id:uid(),type,bg:"plain"},SECTIONS[type].make(),over||{});
@@ -61,17 +66,50 @@
   }
   const pagesOf=s=>s.layout&&Array.isArray(s.layout.pages)&&s.layout.pages.length?s.layout.pages:[defaultHome(s)];
 
-  /* page templates for "Add page" */
+  /* page templates for "Add page", in groups. A template with members:true makes a members-only page. */
+  const TEMPLATE_GROUPS=["Basics","Lodge life","Giving","Members"];
   const TEMPLATES={
-    blank:{name:"Blank page",title:"New page",make:()=>[newSection("text")]},
-    about:{name:"About the lodge",title:"About",make:()=>[newSection("hero",{heading:"About the lodge",height:"short"}),newSection("imageText"),newSection("features",{bg:"tint"}),newSection("officers",{bg:"plain"})]},
-    join:{name:"Become a Mason",title:"Become a Mason",make:()=>[newSection("hero",{heading:"Become a Mason",sub:"To be one, ask one.",height:"short"}),
+    blank:{name:"Blank page",group:"Basics",title:"New page",make:()=>[newSection("text")]},
+    about:{name:"About the lodge",group:"Basics",title:"About",make:()=>[newSection("hero",{heading:"About the lodge",height:"short"}),newSection("imageText"),newSection("features",{bg:"tint"}),newSection("officers",{bg:"plain"})]},
+    history:{name:"Our history",group:"Basics",title:"Our history",make:()=>[newSection("hero",{heading:"Our history",sub:"More than a century of brotherly love, relief and truth.",height:"short"}),
+      newSection("imageText",{heading:"How it began",body:"Tell the story of the lodge's charter: the year, the founding brethren and the first place the lodge met."}),
+      newSection("text",{heading:"Through the years",body:"Share the moments the lodge is proud of: new halls, centennials, service to the town and brethren who made a difference.",bg:"tint"}),
+      newSection("text",{heading:"Past Masters",body:"List the brethren who have served as Worshipful Master, one per line, with their years."}),newSection("gallery",{heading:"From the archives"})]},
+    contact:{name:"Contact",group:"Basics",title:"Contact",make:()=>[newSection("hero",{heading:"Contact the lodge",height:"short"}),newSection("contact"),newSection("give",{bg:"tint"})]},
+    events:{name:"Events",group:"Lodge life",title:"Events",make:()=>[newSection("hero",{heading:"Events",sub:"Stated Communications, degree nights and public events.",height:"short"}),newSection("events",{count:"12"}),newSection("fundraisers",{bg:"tint"})]},
+    join:{name:"Become a Mason",group:"Lodge life",title:"Become a Mason",make:()=>[newSection("hero",{heading:"Become a Mason",sub:"To be one, ask one.",height:"short"}),
       newSection("text",{heading:"Who can join",body:"Freemasonry welcomes good men of every background who believe in a Supreme Being and want to make themselves and their communities better.\n\nA man must be of lawful age, of good character and recommended by members of the lodge."}),
       newSection("features",{heading:"How it works",bg:"tint",items:[{title:"Ask",body:"Talk with any member, or send us a note below."},{title:"Meet",body:"Have dinner with the brethren and get to know us."},{title:"Petition",body:"When you're ready, fill out a petition to join."}]}),
-      newSection("cta",{heading:"Ready to talk?",body:"We'd be glad to answer your questions.",button:{label:"Contact the lodge",link:""}})]},
-    events:{name:"Events",title:"Events",make:()=>[newSection("hero",{heading:"Events",height:"short"}),newSection("events",{count:12}),newSection("fundraisers",{bg:"tint"})]},
-    contact:{name:"Contact",title:"Contact",make:()=>[newSection("hero",{heading:"Contact the lodge",height:"short"}),newSection("contact"),newSection("give",{bg:"tint"})]},
-    fundraiser:{name:"Fundraiser",title:"Fundraiser",make:()=>[newSection("hero",{heading:"Our fundraiser",sub:"Join us and support a good cause.",height:"short"}),newSection("text",{heading:"What it's for",body:"Tell supporters what the money will do."}),newSection("fundraisers"),newSection("give",{bg:"tint"})]}
+      newSection("cta",{heading:"Ready to talk?",body:"We'd be glad to answer your questions.",button:{label:"Email the lodge",link:"email"}})]},
+    visitors:{name:"Visiting brethren",group:"Lodge life",title:"Visiting brethren",make:()=>[newSection("hero",{heading:"Visiting brethren",sub:"Traveling Masons are always welcome.",height:"short"}),
+      newSection("text",{heading:"Before you come",body:"Bring your current dues card. Dinner is served before each Stated Communication, and dress is coat and tie.\n\nLet us know you're coming and a brother will meet you at the door."}),
+      newSection("contact",{heading:"When and where",body:"",bg:"tint"}),newSection("events",{heading:"Coming up",count:"6"})]},
+    officers:{name:"Officers",group:"Lodge life",title:"Officers",make:()=>[newSection("hero",{heading:"Our officers",height:"short"}),newSection("officers",{bg:"plain"}),newSection("contact",{bg:"tint"})]},
+    newsletter:{name:"Newsletter (Trestleboard)",group:"Lodge life",title:"Trestleboard",make:()=>[newSection("hero",{heading:"The Trestleboard",sub:"News and notes from the lodge.",height:"short"}),
+      newSection("text",{body:"Our newsletter keeps brethren, families and friends up to date: the Worshipful Master's message, upcoming degrees, birthdays, and news from around the lodge.",align:"center"}),
+      newSection("news",{heading:"Latest news",count:"12"}),
+      newSection("cta",{heading:"Get the Trestleboard by email",body:"Send us your name and email address and we'll add you to the list.",button:{label:"Subscribe by email",link:"email"},bg:"color"})]},
+    gallery:{name:"Photo gallery",group:"Lodge life",title:"Photos",make:()=>[newSection("hero",{heading:"Photos",sub:"Life at the lodge.",height:"short"}),newSection("gallery",{heading:"Lodge events"}),newSection("gallery",{heading:"In the community",bg:"tint"})]},
+    donations:{name:"Donations",group:"Giving",title:"Donate",make:()=>[newSection("hero",{heading:"Support our work",sub:"Every gift stays in our community.",height:"short"}),
+      newSection("give",{heading:"Give online",body:"Choose the way you'd like to give. Put the fund or cause in the payment note."}),
+      newSection("features",{heading:"Where your gift goes",bg:"tint",items:[{title:"Scholarships",body:"Helping local students reach college and trade school."},{title:"Relief",body:"Quiet help for brethren, widows and neighbors in need."},{title:"Community",body:"Food drives, child ID programs and service across town."}]}),
+      newSection("charities"),newSection("fundraisers",{bg:"tint"})]},
+    fundraiser:{name:"Fundraiser",group:"Giving",title:"Fundraiser",make:()=>[newSection("hero",{heading:"Our fundraiser",sub:"Join us and support a good cause.",height:"short"}),newSection("text",{heading:"What it's for",body:"Tell supporters what the money will do."}),newSection("fundraisers"),newSection("give",{bg:"tint"})]},
+    dues:{name:"Pay dues",group:"Giving",title:"Pay dues",make:()=>[newSection("hero",{heading:"Pay your dues",sub:"Thank you for keeping the lodge strong.",height:"short"}),newSection("dues"),
+      newSection("text",{heading:"Questions about dues?",body:"Dues are payable by December 31. If you're facing hardship, speak with the Worshipful Master or Secretary in confidence.",bg:"tint"}),newSection("contact",{heading:"Contact the Secretary"})]},
+    scholarships:{name:"Scholarships",group:"Giving",title:"Scholarships",make:()=>[newSection("hero",{heading:"Scholarships",sub:"Investing in the next generation.",height:"short"}),
+      newSection("text",{heading:"Who can apply",body:"Describe who's eligible (for example, graduating seniors in the county), the amount awarded and the deadline."}),
+      newSection("features",{heading:"How to apply",bg:"tint",items:[{title:"Request a form",body:"Email the lodge for this year's application."},{title:"Send it in",body:"Return it with your transcript and a short essay."},{title:"Hear back",body:"Winners are announced in the spring."}]}),
+      newSection("cta",{heading:"Ask for an application",button:{label:"Email the lodge",link:"email"}})]},
+    store:{name:"Lodge store",group:"Giving",title:"Store",make:()=>[newSection("hero",{heading:"Lodge store",sub:"Every purchase supports our lodge and its charities.",height:"short"}),newSection("store"),newSection("give",{bg:"tint"})]},
+    rental:{name:"Hall rental",group:"Giving",title:"Rent our hall",make:()=>[newSection("hero",{heading:"Rent our hall",sub:"A welcoming space for meetings, parties and receptions.",height:"short"}),
+      newSection("imageText",{heading:"The space",body:"Describe the hall: how many people it seats, the kitchen, parking and what's included."}),
+      newSection("features",{heading:"Good to know",bg:"tint",items:[{title:"Capacity",body:"Seats up to 120 for dinner."},{title:"Kitchen",body:"Full kitchen available."},{title:"Parking",body:"Free parking on site."}]}),
+      newSection("cta",{heading:"Check a date",body:"Tell us the date and the event and we'll get back to you.",button:{label:"Email the lodge",link:"email"}})]},
+    members:{name:"Members only",group:"Members",title:"Members",members:true,make:()=>[newSection("hero",{heading:"Brethren's corner",sub:"For members of the lodge. Signed-in brethren only.",height:"short"}),
+      newSection("text",{heading:"Welcome, Brother",body:"Share what brethren need: the Worshipful Master's message, the degree schedule, who to call for relief, and reminders for the month."}),
+      newSection("news",{heading:"Lodge news",bg:"tint"}),newSection("events",{heading:"On the calendar"}),newSection("dues",{bg:"tint"}),
+      newSection("text",{heading:"Lodge documents",body:"List the by-laws, minutes and forms brethren can ask the Secretary for, or link to them with buttons."})]}
   };
 
   /* whole-site designs a lodge can start from (the Website overview and Design panel) */
@@ -130,6 +168,7 @@
     if(link==="home")return root||"/";
     if(link.startsWith("page:")){const p=pagesOf(site).find(x=>x.id===link.slice(5));return p?root+(p.slug?"/"+p.slug:""):""}
     if(link.startsWith("fund:")){const f=(site.funds||[]).find(x=>x.id===link.slice(5));return f?root+"/fundraiser/"+f.id:""}
+    if(link==="email")return /^[^@\s"<>]+@[^@\s"<>]+\.[a-z]{2,}$/i.test(site.email||"")?"mailto:"+site.email:"";
     return /^\/site\//.test(link)?"":safeHref(link);
   }
 
@@ -223,6 +262,12 @@
       news:s=>{const n=(site.news||[]).slice(0,+s.count||6);
         return `<div class="ls-wrap ls-narrow">${head(s)}${n.length?`<div class="ls-news">${n.map(x=>`<article><span class="ls-tag">${esc(parse(x.d).toLocaleDateString("en-US",{month:"long",day:"numeric",year:"numeric"}))}</span><h3 class="ls-h3">${esc(x.subject)}</h3>${x.body?`<div class="ls-body">${esc(x.body)}</div>`:""}</article>`).join("")}</div>`
           :empty("No news posted yet.")}${E?'<p class="ls-hint">Posts come from Communications → Announcements, when the audience is Public.</p>':""}</div>`},
+      dues:s=>{const d=site.dues||{},amt=+d.amount||0,pay=site.pay||[],note=`${d.year||new Date().getFullYear()} dues`;
+        const links=amt?pay.map(p=>{const u=payUrl(p,amt,note+" from "+full);return u?`<a class="ls-btn" href="${esc(u)}" target="_blank" rel="noopener">${esc(p.label)}</a>`:""}).join(""):"";
+        const notes=pay.filter(p=>p.k==="zelle"||p.k==="check").map(p=>`<p class="ls-note"><b>${esc(p.label)}:</b> ${esc(p.k==="zelle"?(amt?"send "+money(amt)+" to ":"send to ")+p.v:"mail "+(amt?money(amt)+" ":"")+"to "+p.v)}</p>`).join("");
+        return `<div class="ls-wrap ls-narrow ls-al-center">${head(s)}${amt?`<p class="ls-dues"><span>${esc(note.replace(/^\w/,c=>c.toUpperCase()))}</span><b>${money(amt)}</b></p>`:""}${B(s.body)}
+          ${links?`<div class="ls-btns">${links}</div>`:""}${notes}${!amt&&!E?empty("Ask the Secretary for this year's dues."):""}
+          ${E?`<p class="ls-hint">${amt?"The amount comes from Treasury → Dues.":"Set the yearly dues in Treasury → Dues to show the amount and pay buttons."} Payment buttons come from Settings → Payment options.</p>`:""}</div>`},
       html:s=>String(s.html||"").trim()?`<iframe class="ls-frame" title="Lodge content" sandbox="allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation" referrerpolicy="no-referrer" srcdoc="${esc(frameDoc(s.html))}" style="height:140px"></iframe>`
         :E?'<div class="ls-wrap"><div class="ls-noimg ls-video-empty"><span>Paste your HTML in the panel on the left</span></div></div>':""
     };
@@ -239,11 +284,14 @@
           ${over?'<p><b>This fundraiser has ended. Thank you to everyone who came out and gave.</b></p>':""}
           ${g?`<h2 class="ls-h2">${over?"You can still give to the lodge":"Give now"}</h2>${g}<p class="ls-note">Put "${esc(f.t)}" in the payment note so it's counted.</p>`:""}</div></section>`}
       else body=`<section class="ls-sec ls-bg-plain"><div class="ls-wrap ls-narrow"><h1 class="ls-h1 ls-dark">That fundraiser isn't here</h1><p><a class="ls-btn" href="${esc(root||"/")}">Go to the home page</a></p></div></section>`;
+    }else if(o.view==="gate"){const g=o.gate||{};
+      body=`<section class="ls-sec ls-bg-plain"><div class="ls-wrap ls-narrow ls-al-center ls-gate"><span class="ls-gate-ic">${LOCK}</span><h1 class="ls-h1 ls-dark">${esc(g.title||"Members only")}</h1>
+        <p class="ls-lead">${esc(g.text||"This page is for members of the lodge.")}</p>${g.button?`<p><a class="ls-btn" href="${esc(g.button[1])}">${esc(g.button[0])}</a></p>`:""}${g.small?`<p class="ls-note">${esc(g.small)}</p>`:""}</div></section>`;
     }else if(o.view==="404")body=`<section class="ls-sec ls-bg-plain"><div class="ls-wrap ls-narrow"><h1 class="ls-h1 ls-dark">That page isn't here</h1><p class="ls-lead">It may have moved or been taken down.</p><p><a class="ls-btn" href="${esc(root||"/")}">Go to the home page</a></p></div></section>`;
     else{const p=o.page||pages[0];body=(p.sections||[]).map(section).join("")||(E?"":empty("This page is being written. Check back soon."))}
 
     const cur=o.page&&o.page.id;
-    const nav=pages.filter(p=>p.nav!==false).map(p=>`<a href="${esc(root+(p.slug?"/"+p.slug:""))}"${p.id===cur?' aria-current="page"':""}${E?` data-goto="${esc(p.id)}"`:""}>${esc(p.title)}</a>`).join("");
+    const nav=pages.filter(p=>p.nav!==false).map(p=>`<a href="${esc(root+(p.slug?"/"+p.slug:""))}"${p.id===cur?' aria-current="page"':""}${E?` data-goto="${esc(p.id)}"`:""}${p.members?' title="Members only"':""}>${p.members?LOCK:""}${esc(p.title)}</a>`).join("");
     const logo=okImg((site.images||{}).logo)?`<img class="ls-logo" src="${esc(site.images.logo)}" alt="">`:`<span class="ls-crest">${CREST}</span>`;
     const soc=(site.social||[]).filter(x=>safeHref(x.url));
     return `<div class="lsite" data-font="${esc(th.font)}" data-btn="${th.btn==="square"?"square":"rounded"}" data-head="${th.header==="left"?"left":"center"}" style="--c:${color};--hf:${esc(F.head)};--bf:${esc(F.body)}">
@@ -256,5 +304,5 @@
     </div>`;
   }
 
-  window.LodgeSite={render,resolve,SITE_TEMPLATES,SECTIONS,TEMPLATES,FONTS,THEME,fontHref,newSection,defaultHome,pagesOf,esc,safeHref,okImg,videoSrc,HTML_MAX};
+  window.LodgeSite={render,resolve,SITE_TEMPLATES,TEMPLATE_GROUPS,SECTIONS,TEMPLATES,FONTS,THEME,fontHref,newSection,defaultHome,pagesOf,esc,safeHref,okImg,videoSrc,HTML_MAX};
 })();
