@@ -335,14 +335,87 @@
     const s=tab==="edit"&&secOf(sel);$("#bld-side-title").textContent=s?L.SECTIONS[s.type].name:TITLES[tab]||"";
     if(tab==="add")drawAdd();if(tab==="edit")drawEdit();if(tab==="design")drawDesign();if(tab==="pages"){drawPages();fitMinis($("#bld-pages"))}
   }
+  /* ---------- Build it with AI: the Add panel's assistant (api/site-assist.js) ---------- */
+  const AI={busy:false,mode:"section",prompt:"",msg:"",err:false};
+  const aiOn=()=>!!(CLOUD&&CLOUD.canEdit&&window.LodgeNetAuth&&window.LodgeNetAuth.ai);
+  const AI_IDEAS=[["section","A scholarship section with who can apply and how"],["section","Three columns about what we do in the community"],["section","A call to action to visit a meeting"],
+    ["page","A page for our pancake breakfast fundraiser with tickets"],["page","A page for visiting brethren with meeting times and dress"],["page","A Hall rental page with a way to ask about dates"]];
+  function aiCard(){
+    const on=aiOn(),why=!CLOUD?"Sign in to your lodge to build with AI.":!CLOUD.canEdit?"The lodge's officers can build with AI.":!on?"The AI assistant needs Claude switched on for LodgeNet (the same setting as AI minutes).":"";
+    return `<div class="bld-ai"><div class="bld-ai-h"><span class="bld-ai-ic" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="M10 2.5l1.6 4.4 4.4 1.6-4.4 1.6L10 14.5l-1.6-4.4L4 8.5l4.4-1.6z"/><path d="M15.5 13l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7z"/></svg></span><b>Build it with AI</b></div>
+      <div class="bld-seg bld-seg-full" role="group" aria-label="What to build"><button type="button" data-ai-mode="section" aria-pressed="${String(AI.mode==="section")}">Add to this page</button><button type="button" data-ai-mode="page" aria-pressed="${String(AI.mode==="page")}">Make a new page</button></div>
+      <textarea data-ai-prompt rows="3" placeholder="${AI.mode==="page"?"Describe the page, e.g. a page for our annual golf outing with sponsors and sign-up":"Describe what to add, e.g. a section about our scholarship and how to apply"}" aria-label="Describe what to build"${on&&!AI.busy?"":" disabled"}>${esc(AI.prompt)}</textarea>
+      <div class="bld-ai-ideas">${AI_IDEAS.filter(([m])=>m===AI.mode).map(([,t])=>`<button type="button" data-ai-idea="${esc(t)}"${on&&!AI.busy?"":" disabled"}>${esc(t)}</button>`).join("")}</div>
+      <button type="button" class="bld-ai-go" data-ai-go${on&&!AI.busy?"":" disabled"}>${AI.busy?'<span class="wov-spin" aria-hidden="true"></span>Building…':(AI.mode==="page"?"Build the page":"Build and add")}</button>
+      ${why?`<p class="bld-ai-msg">${esc(why)}</p>`:AI.msg?`<p class="bld-ai-msg${AI.err?" err":""}" role="status">${esc(AI.msg)}</p>`:`<p class="bld-ai-msg">Uses your lodge's own events, fundraisers, store, giving, dues and officers. You can change everything it makes, and Undo takes it out.</p>`}</div>`;
+  }
+  /* an answer's sections, in the builder's shape, with buttons pointed at real pages */
+  function aiSections(list,newPage){
+    const target=t=>{t=String(t||"").trim();if(!t)return "";const lo=t.toLowerCase();
+      if(lo==="email"||lo==="home")return lo;if(/^https:\/\//i.test(t))return L.safeHref(t)?t:"";
+      if(lo.startsWith("fundraiser:")){const n=lo.slice(11).trim(),f=fundraisers().find(e=>e.t.toLowerCase()===n||e.t.toLowerCase().includes(n));ensureFids();return f?"fund:"+f.fid:""}
+      if(newPage&&newPage.title.toLowerCase()===lo)return "page:"+newPage.id;
+      const p=pages.find(x=>x.title.toLowerCase()===lo)||pages.find(x=>lo.includes(x.title.toLowerCase())||x.title.toLowerCase().includes(lo));
+      return p?(p.id==="home"?"home":"page:"+p.id):""};
+    return list.map(x=>{const S=L.newSection(L.SECTIONS[x.type]?x.type:"text");
+      if("heading" in S)S.heading=x.heading||S.heading;
+      if(x.type==="hero"){S.heading=x.heading||"";S.sub=x.body||"";S.layout=["center","left","split"].includes(x.layout)?x.layout:"center";if(newPage)S.height="short"}
+      else if("body" in S&&!["events","officers","store","sponsors","news","gallery"].includes(x.type))S.body=x.body||S.body||"";
+      if(x.type==="imageText")S.side=x.layout==="right"?"right":"left";
+      if(x.type==="text")S.align=x.layout==="center"?"center":"left";
+      if(x.type==="features"&&(x.items||[]).length)S.items=x.items.slice(0,4).map(it=>({title:it.title||"",body:it.body||""}));
+      if(S.button)S.button={label:x.button_label||"",link:target(x.button_target)||(x.button_label?"home":"")};
+      if(x.type!=="hero"&&x.type!=="html")S.bg=x.bg||"plain";
+      return S});
+  }
+  async function aiBuild(){
+    if(AI.busy||!aiOn())return;
+    const prompt=AI.prompt.trim();if(prompt.length<4){AI.msg="Describe what you'd like, in a sentence or two.";AI.err=true;return drawAdd()}
+    AI.busy=true;AI.msg="";AI.err=false;drawAdd();
+    const site=A.publicSite(),O=window.LodgeOrg&&window.LodgeOrg.current||{};
+    try{
+      const s2=await window.LodgeNetAuth.session();
+      const r=await fetch("/api/site-assist",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+(s2&&s2.access_token)},
+        body:JSON.stringify({lodge_id:CLOUD.lodgeId,prompt,mode:AI.mode,context:{lodge:site.full,org:O.name||"Blue Lodge",unit:O.unit||"Lodge",meetings:O.meetings||"Stated Communications",members:O.members||"Brethren",
+          email:!!site.email,page:curPage().title,pages:pages.map(p=>p.title),fundraisers:fundraisers().filter(e=>e.d>=A.isoDay(new Date())).map(e=>e.t)}})});
+      const d=await r.json().catch(()=>({}));
+      if(!r.ok)throw new Error(d.error||"The assistant couldn't answer just now. Try again.");
+      AI.busy=false;
+      if(d.mode==="page"){
+        if(pages.length>=MAX_PAGES)throw new Error(`A site can have up to ${MAX_PAGES} pages.`);
+        const title=String(d.title||"New page").slice(0,60),p={id:"p"+rid(7),title,slug:uniqueSlug(title),nav:true,sections:[]};
+        p.sections=aiSections(d.sections,p);
+        change(()=>{pages.push(p);curId=p.id;sel=p.sections[0]&&p.sections[0].id;tab="edit"});
+        AI.msg=`Made the "${title}" page with ${p.sections.length} sections.${d.notes?" "+d.notes:""}`;
+      }else{
+        const arr=curPage().sections,made=aiSections(d.sections,null);
+        if(arr.length+made.length>MAX_SECTIONS)throw new Error(`A page can hold up to ${MAX_SECTIONS} sections.`);
+        const at=insertAt!=null?insertAt:sel&&secOf(sel)?arr.findIndex(x=>x.id===sel)+1:arr.length;
+        change(()=>{arr.splice(Math.max(0,Math.min(at,arr.length)),0,...made);sel=made[0].id;insertAt=null;tab="edit"});
+        AI.msg=`Added ${made.length} ${made.length===1?"section":"sections"}.${d.notes?" "+d.notes:""}`;
+      }
+      AI.prompt="";AI.err=false;
+      reveal(sel);toastAI(AI.msg);
+    }catch(e){AI.busy=false;AI.msg=e.message;AI.err=true;tab="add";panelOpen=true;drawPanel()}
+  }
+  function toastAI(t){let el=$("#bld-toast");if(!el){el=document.createElement("div");el.id="bld-toast";el.className="bld-toast";el.setAttribute("role","status");$("#bld").appendChild(el)}
+    el.innerHTML=`<span>${esc(t)} Press Undo to take it out.</span><button type="button" class="bld-icon" aria-label="Dismiss"><svg viewBox="0 0 20 20"><path d="M5 5l10 10M15 5 5 15"/></svg></button>`;el.hidden=false;
+    el.querySelector("button").onclick=()=>{el.hidden=true};clearTimeout(el._t);el._t=setTimeout(()=>{el.hidden=true},12000)}
   function drawAdd(){
     const groups={};Object.entries(L.SECTIONS).forEach(([k,v])=>(groups[v.group]=groups[v.group]||[]).push([k,v]));
-    $("#bld-add").innerHTML=`<p class="bld-lead">${insertAt!=null?"<b>Choose a section</b> to add where the gold line is.":"<b>Click a section</b> to add it to this page, or <b>drag it</b> to where you want it."}</p>
+    $("#bld-add").innerHTML=aiCard()+`<p class="bld-lead">${insertAt!=null?"<b>Choose a section</b> to add where the gold line is.":"<b>Click a section</b> to add it to this page, or <b>drag it</b> to where you want it."}</p>
       ${Object.entries(groups).map(([g,list])=>`<h3 class="bld-h">${g==="Lodge"?"Lodge sections (fill themselves in)":g}</h3>
         <div class="bld-lib">${list.map(([k,v])=>`<button type="button" class="bld-card" draggable="true" data-add="${k}">${thumb(k)}<span>${esc(v.name)}</span></button>`).join("")}</div>`).join("")}`;
   }
 
-  $("#bld-add").addEventListener("click",e=>{const c=e.target.closest("[data-add]");if(c)addSection(c.dataset.add,insertAt)});
+  $("#bld-add").addEventListener("click",e=>{
+    const b=e.target.closest("button");if(!b)return;
+    if(b.dataset.aiMode){AI.mode=b.dataset.aiMode;AI.msg="";return drawAdd()}
+    if(b.dataset.aiIdea){AI.prompt=b.dataset.aiIdea;drawAdd();const t=$("[data-ai-prompt]");if(t){t.focus();t.setSelectionRange(t.value.length,t.value.length)}return}
+    if("aiGo" in b.dataset)return aiBuild();
+    const c=e.target.closest("[data-add]");if(c)addSection(c.dataset.add,insertAt)});
+  $("#bld-add").addEventListener("input",e=>{if(e.target.matches("[data-ai-prompt]"))AI.prompt=e.target.value});
+  $("#bld-add").addEventListener("keydown",e=>{if(e.target.matches("[data-ai-prompt]")&&e.key==="Enter"&&(e.metaKey||e.ctrlKey)){e.preventDefault();aiBuild()}});
 
   /* the editor for the selected section */
   const FIELDS={
