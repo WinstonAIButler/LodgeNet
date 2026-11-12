@@ -320,7 +320,7 @@
 
     </section>
 
-    <section class="sec" data-sec="charities" hidden><div class="panel" id="p-char"></div></section>
+    <section class="sec" data-sec="charities" hidden><div class="panel" id="p-zeffy"></div><div class="panel" id="p-char"></div></section>
 
     <!-- SETTINGS -->
     <section class="sec" data-sec="settings" hidden>
@@ -348,6 +348,7 @@
               <div class="field"><label for="f-zelle">Zelle</label><input id="f-zelle" value="" placeholder="Email or phone the lodge's bank account uses"></div>
               <div class="field"><label for="f-link">Other online payment link</label><input id="f-link" type="url" value="" placeholder="https://square.link/… or a Stripe, Givebutter or bank pay link"><a class="pay-test" data-test="link" target="_blank" rel="noopener" hidden></a></div>
               <div class="field"><label for="f-link-label">Button name for that link</label><input id="f-link-label" value="" placeholder="Square, Stripe, Pay online…"></div>
+              <div class="field wide"><label for="f-zeffy">Zeffy form link <span class="hint">(free for nonprofits: no platform or card fees)</span></label><input id="f-zeffy" type="url" value="" autocapitalize="off" spellcheck="false" placeholder="https://www.zeffy.com/en-US/donation-form/…"><a class="pay-test" data-test="zeffy" target="_blank" rel="noopener" hidden></a></div>
               <div class="field wide"><label for="f-check">Checks</label><input id="f-check" value="" placeholder="Payable to Murrells Inlet Lodge No. 368, mail to PO Box …"></div>
             </form>
           </div>
@@ -425,6 +426,6 @@
   window.LODGE=Object.assign(blank,SEEDS[m[1]]||{},{slug:m[1],fromAccount:true});
 })();
 </script>
-<script src="/assets/auth.js" data-app="/assets/vendor/qrcode.min.js /assets/org.js /assets/site-render.js /assets/demo.js /assets/site-builder.js /assets/site-qr.js /assets/custom-tabs.js /assets/dash.js"></script>
+<script src="/assets/auth.js" data-app="/assets/vendor/qrcode.min.js /assets/org.js /assets/site-render.js /assets/zeffy.js /assets/demo.js /assets/site-builder.js /assets/site-qr.js /assets/custom-tabs.js /assets/dash.js"></script>
 </body>
 </html>

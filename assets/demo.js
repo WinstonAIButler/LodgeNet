@@ -84,17 +84,20 @@
      PayPal, Venmo and Cash App open with the amount filled in, the "other" link (Square, Stripe…) opens as given,
      and Zelle and checks show the buyer where to send the money. */
   const safeUrl=u=>/^https:\/\/[^\s"<>]+$/i.test(u)?u:"";
+  const zeffyUrl=u=>window.LodgeNetZeffy?window.LodgeNetZeffy.clean(u):"";
   const PAY=[
     {k:"cashapp",label:"Cash App",field:"#f-cash",url:(u,a,n)=>`https://cash.app/$${encodeURIComponent(u)}/${a.toFixed(2)}`,home:u=>`https://cash.app/$${encodeURIComponent(u)}`},
     {k:"paypal",label:"PayPal",field:"#f-pp",url:(u,a,n)=>`https://paypal.me/${encodeURIComponent(u)}/${a.toFixed(2)}USD`,home:u=>`https://paypal.me/${encodeURIComponent(u)}`},
     {k:"venmo",label:"Venmo",field:"#f-venmo",url:(u,a,n)=>`https://venmo.com/?txn=pay&recipients=${encodeURIComponent(u)}&amount=${a.toFixed(2)}&note=${encodeURIComponent(n)}`,home:u=>`https://venmo.com/u/${encodeURIComponent(u)}`},
     {k:"zelle",label:"Zelle",field:"#f-zelle",raw:true,note:(u,a)=>`Send ${money(a)} with Zelle to ${u}`},
     {k:"link",label:"Pay online",field:"#f-link",raw:true,url:u=>safeUrl(u),home:u=>safeUrl(u)},
+    /* Zeffy (assets/zeffy.js): free for nonprofits; opens the lodge's Zeffy form, where the donor picks the amount */
+    {k:"zeffy",label:"Donate with Zeffy",field:"#f-zeffy",raw:true,url:u=>zeffyUrl(u),home:u=>zeffyUrl(u)},
     {k:"check",label:"Check by mail",field:"#f-check",raw:true,note:(u,a)=>`Mail a check for ${money(a)}: ${u}`}
   ];
   const payVal=p=>p.raw?fieldVal(p.field):handle(p.field);
   const payLabel=p=>p.k==="link"&&fieldVal("#f-link-label")?fieldVal("#f-link-label"):p.label;
-  const payOn=p=>p.k==="link"?!!safeUrl(fieldVal(p.field)):!!payVal(p);
+  const payOn=p=>p.k==="link"?!!safeUrl(fieldVal(p.field)):p.k==="zeffy"?!!zeffyUrl(fieldVal(p.field)):!!payVal(p);
   const payButtons=(attr)=>{
     const on=PAY.filter(payOn);
     return on.length?on.map(p=>`<button type="button" class="paybtn ${p.k}" ${attr}="${p.k}">${esc(payLabel(p))}</button>`).join("")
@@ -297,7 +300,7 @@
     if(window.LodgeNetSite)window.LodgeNetSite.preview();
     $("#pv-events").innerHTML=up.map(e=>`<li><b>${fmt(parse(e.d),{month:"short",day:"numeric"})}</b> · ${esc(e.t)}</li>`).join("");
   }
-  ["#f-name","#f-num","#f-jur","#f-gl","#f-city","#f-sched","#f-email","#f-fb","#f-ig","#f-x","#f-yt","#f-tt","#f-pp","#f-venmo","#f-cash","#f-zelle","#f-link","#f-link-label","#f-check"].filter(s=>$(s)).forEach(s=>$(s).addEventListener("input",()=>{renderSite();renderMinutes()}));
+  ["#f-name","#f-num","#f-jur","#f-gl","#f-city","#f-sched","#f-email","#f-fb","#f-ig","#f-x","#f-yt","#f-tt","#f-pp","#f-venmo","#f-cash","#f-zelle","#f-link","#f-link-label","#f-zeffy","#f-check"].filter(s=>$(s)).forEach(s=>$(s).addEventListener("input",()=>{renderSite();renderMinutes()}));
   $("#swatches").addEventListener("click",e=>{const b=e.target.closest(".swatch");if(!b)return;siteColor=b.dataset.c;document.querySelectorAll(".swatch").forEach(s=>s.setAttribute("aria-pressed",s===b));renderSite()});
   ["#f-state","#f-family"].forEach(id=>$(id).addEventListener("change",()=>{fillGrandLodge();renderSite();renderMinutes()}));
   ["#f-week","#f-day","#f-time"].forEach(id=>$(id).addEventListener("change",()=>{
@@ -438,7 +441,8 @@
       social:[["Facebook","#f-fb","https://facebook.com/"],["Instagram","#f-ig","https://instagram.com/"],["X","#f-x","https://x.com/"],["YouTube","#f-yt","https://youtube.com/@"],["TikTok","#f-tt","https://tiktok.com/@"]]
         .filter(([,f])=>handle(f)).map(([n,f,base])=>({name:n,url:base+handle(f)})),
       give:PAY.filter(payOn).map(p=>{const h=p.home&&p.home(payVal(p));return h?{k:p.k,label:payLabel(p),url:h}:{k:p.k,label:payLabel(p),note:payVal(p)}}),
-      pay:PAY.filter(payOn).map(p=>({k:p.k,label:payLabel(p),v:payVal(p)})),
+      /* the public site shows Zeffy as an ordinary link button */
+      pay:PAY.filter(payOn).map(p=>p.k==="zeffy"?{k:"link",label:payLabel(p),v:zeffyUrl(payVal(p))}:{k:p.k,label:payLabel(p),v:payVal(p)}),
       about:fieldVal("#f-about"),images:{hero:pics.hero,logo:pics.logo,gallery:pics.gallery.slice()},
       store:siteStoreOn&&(CLOUD?CFG.plan:plan)!=="starter"?products.filter(x=>!x.off).map(x=>({id:x.id,n:x.n,p:+x.p||0,img:x.img||"",tag:x.tag||"",sizes:x.sizes||"",colors:x.colors||"",kind:x.kind||""})):[],
       /* the builder's pages and theme, fundraisers, store and QR codes, from assets/site-builder.js */
