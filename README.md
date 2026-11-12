@@ -73,6 +73,8 @@ The type sets:
 - the membership pipeline's stages and the stats on Members, Communications and Pipelines;
 - the website's joining page and the "Past Masters" wording.
 
+Every member also has a **Masonic degree** (`mdeg`), whatever the type, chosen from one grouped list (`LodgeOrg.MASONIC`): Blue Lodge, Scottish Rite (14°, 18°, 30°, 32°, KCCH, 33°), York Rite (the Chapter, Council and Commandery degrees), and Other (Candidate, Not a Mason, Not recorded). It sits beside the body's own column ("Lodge degree", "Rite degree", "Standing" for a club and so on). It's filled in from that column for existing members, and rises on its own when the pipeline or the body's column advances someone (`LodgeOrg.raise`). The Master Masons count on Members uses it, counting anyone with a Scottish or York Rite degree too.
+
 A club also gets a Tax ID (EIN) field, shown beside its giving buttons. The import sends the type's chairs to Claude, so a Valley's officers match its own chairs.
 
 Choosing a type saves and reloads the dashboard. Members, events, money, minutes and the website stay. Seated officers are kept by chair and return if the type is switched back.

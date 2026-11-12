@@ -138,7 +138,13 @@
   /* ---------- members & officer seats ---------- */
   let nextMember=1;
   const DUES_YEAR=new Date().getFullYear();
-  const M=(name,deg,pm,dues)=>({id:nextMember++,name,deg:deg||ORGX.office,pm:!!pm,title:pm?(TITLES[1]||TITLES[0])[0]:TITLES[0][0],dues:dues||"Paid 2026",active:true});
+  const OG=window.LodgeOrg;
+  const MASONIC=OG?OG.MASONIC:[["Blue Lodge",["Entered Apprentice","Fellowcraft","Master Mason"]],["Other",["Not recorded"]]];
+  const raiseM=m=>OG?OG.raise(m):(m.mdeg=m.mdeg||m.deg,m);
+  const M=(name,deg,pm,dues,mdeg)=>raiseM({id:nextMember++,name,deg:deg||ORGX.office,mdeg:mdeg||"",pm:!!pm,title:pm?(TITLES[1]||TITLES[0])[0]:TITLES[0][0],dues:dues||"Paid 2026",active:true});
+  /* the Masonic degree picker: Blue Lodge, Scottish Rite, York Rite and Other, keeping any value saved before the list changed */
+  const masonicSelect=(attr,cur,label,id)=>{const all=MASONIC.flatMap(g=>g[1]);
+    return `<select ${attr}${id?` id="${id}"`:""} aria-label="${esc(label)}">${MASONIC.map(([g,list])=>`<optgroup label="${esc(g)}">${list.map(d=>`<option${d===cur?" selected":""}>${esc(d)}</option>`).join("")}</optgroup>`).join("")}${cur&&!all.includes(cur)?`<option selected>${esc(cur)}</option>`:""}</select>`};
   /* a brother's title: B. (Brother), WB. (Worshipful Brother) or RWB. (Right Worshipful Brother); WB. and RWB. count as Past Masters */
   const TITLES=ORG?ORG.titles:[["B.","Brother"],["WB.","Worshipful Brother"],["RWB.","Right Worshipful Brother"]];
   const DEGREES=ORG?ORG.degrees:["Master Mason","Fellowcraft","Entered Apprentice"];
@@ -151,6 +157,7 @@
   ];
   nextMember=Math.max(0,...members.map(m=>m.id))+1;
   members.forEach(m=>{if(!TITLES.some(t=>t[0]===m.title))m.title=m.pm?"WB.":"B.";m.pm=m.title!=="B."});
+  members.forEach(m=>{if(!m.mdeg){m.mdeg="";raiseM(m);if(!m.mdeg)m.mdeg="Not recorded"}});
   const SEATS=ORG?ORG.seats:[
     {k:"WM",ab:"WM",t:"Worshipful Master"},{k:"SW",ab:"SW",t:"Senior Warden"},{k:"JW",ab:"JW",t:"Junior Warden"},
     {k:"TREAS",ab:"Treas.",t:"Treasurer"},{k:"SEC",ab:"Sec.",t:"Secretary"},{k:"SD",ab:"SD",t:"Senior Deacon"},
@@ -177,13 +184,15 @@
   }
   function renderMembers(){
     const act=members.filter(m=>m.active);
-    if(!act.length){$("#mem-count").textContent="No members yet";$("#mem-rows").innerHTML=`<tr><td colspan="6" class="hint">Add your first ${esc((ORG?ORG.member:"brother").toLowerCase())} below. Anyone on this list can be seated in a chair.</td></tr>`;renderSeatDefaults();return}
-    $("#mem-count").textContent=`${act.length} members · ${act.filter(m=>m.deg===ORGX.office).length} ${ORGX.office==="Master Mason"?"Master Masons":"can hold office"}`;
+    if(!act.length){$("#mem-count").textContent="No members yet";$("#mem-rows").innerHTML=`<tr><td colspan="7" class="hint">Add your first ${esc((ORG?ORG.member:"brother").toLowerCase())} below. Anyone on this list can be seated in a chair.</td></tr>`;renderSeatDefaults();return}
+    const mm=act.filter(m=>OG?OG.isMM(m):m.deg==="Master Mason").length;
+    $("#mem-count").textContent=`${act.length} members · ${mm} ${mm===1?"Master Mason":"Master Masons"}`;
     const seatOf=id=>SEATS.filter(x=>+officers[x.k]===id).map(x=>x.ab).join(", ");
     const contact=m=>[m.email,m.phone].filter(Boolean).map(esc).join(" · ");
     $("#mem-rows").innerHTML=act.map(m=>`<tr${+editing===m.id?' class="editing"':""}>
       <td class="nm">${esc(pre(m)+m.name)}${contact(m)?`<span class="mem-contact">${contact(m)}</span>`:""}</td>
-      <td><select data-mdeg="${m.id}" aria-label="Degree for ${esc(m.name)}">${(DEGREES.includes(m.deg)?DEGREES:DEGREES.concat(m.deg)).map(d=>`<option${d===m.deg?" selected":""}>${esc(d)}</option>`).join("")}</select></td>
+      <td>${masonicSelect(`data-mmas="${m.id}"`,m.mdeg||"Not recorded","Masonic degree for "+m.name)}</td>
+      <td><select data-mdeg="${m.id}" aria-label="${esc((ORG&&ORG.degLabel)||"Degree")} for ${esc(m.name)}">${(DEGREES.includes(m.deg)?DEGREES:DEGREES.concat(m.deg)).map(d=>`<option${d===m.deg?" selected":""}>${esc(d)}</option>`).join("")}</select></td>
       <td><select data-mtitle="${m.id}" aria-label="Title for ${esc(m.name)}">${TITLES.map(([v,l])=>`<option value="${v}" title="${l}"${v===m.title?" selected":""}>${v}</option>`).join("")}</select></td>
       <td>${seatOf(m.id)?`<span class="pill gold">${seatOf(m.id)}</span>`:'<span class="hint">None</span>'}</td>
       <td><select data-mdues="${m.id}" class="dues ${m.dues.startsWith("Paid")?"ok":m.dues.startsWith("Owes")?"warn":""}" aria-label="Dues for ${esc(m.name)}">${[...new Set([m.dues,"Paid "+DUES_YEAR,"Owes "+DUES_YEAR,"Not recorded"])].map(d=>`<option${d===m.dues?" selected":""}>${esc(d)}</option>`).join("")}</select></td>
@@ -194,7 +203,7 @@
   let editing=null;
   const MFIELDS=[["name","Full name","text"],["email","Email","email"],["phone","Phone","tel"],["addr","Mailing address","text"],["raised","Raised","date"],["notes","Notes","text"]];
   function editRow(m){
-    return `<tr class="mem-edit"><td colspan="6"><form class="mem-edit-form" data-mid="${m.id}" autocomplete="off">
+    return `<tr class="mem-edit"><td colspan="7"><form class="mem-edit-form" data-mid="${m.id}" autocomplete="off">
       ${MFIELDS.map(([k,l,t])=>`<div class="field${k==="addr"||k==="notes"?" wide":""}"><label for="me-${k}">${l}</label><input id="me-${k}" name="${k}" type="${t}" value="${esc(m[k]||"")}"${k==="name"?" required":""}></div>`).join("")}
       <div class="mem-edit-acts"><button class="btn sm" type="submit">Save</button><button class="btn line sm" type="button" data-mcancel>Cancel</button></div>
     </form></td></tr>`;
@@ -208,7 +217,8 @@
   });
   $("#mem-rows").addEventListener("change",e=>{
     const t=e.target;if(t.closest(".mem-edit-form"))return;
-    if(t.dataset.mdeg){const m=member(t.dataset.mdeg);m.deg=t.value}
+    if(t.dataset.mdeg){const m=member(t.dataset.mdeg);m.deg=t.value;raiseM(m);refreshPeople()}
+    if(t.dataset.mmas){const m=member(t.dataset.mmas);m.mdeg=t.value}
     if(t.dataset.mtitle){const m=member(t.dataset.mtitle);m.title=t.value;m.pm=m.title!=="B."}
     if(t.dataset.mdues)member(t.dataset.mdues).dues=t.value;
     refreshPeople();
@@ -225,7 +235,7 @@
   $("#seat-defaults").addEventListener("change",e=>{const k=e.target.dataset.sdef;if(k){officers[k]=e.target.value;refreshPeople()}});
   $("#mem-form").addEventListener("submit",e=>{
     e.preventDefault();const n=$("#m-name").value.trim();if(!n)return;
-    const nm=M(n,$("#m-deg").value,$("#m-title").value!==TITLES[0][0],"Paid 2026");nm.title=$("#m-title").value;members.push(nm);
+    const nm=M(n,$("#m-deg").value,$("#m-title").value!==TITLES[0][0],"Paid 2026",$("#m-mas")&&$("#m-mas").value);nm.title=$("#m-title").value;members.push(nm);
     $("#m-name").value="";$("#m-title").value=TITLES[0][0];refreshPeople();
   });
   function refreshPeople(){renderMembers();renderSite();if(typeof renderMinutes==="function")renderMinutes()}
@@ -1158,6 +1168,14 @@
     location.reload();
   });
 
+  (function addMasonicField(){
+    const d=document.getElementById("m-deg");if(!d||document.getElementById("m-mas"))return;
+    const f=document.createElement("div");f.className="field";
+    f.innerHTML=`<label for="m-mas">Masonic degree</label>${masonicSelect("",ORGX.key==="club"?"Not recorded":"Master Mason","Masonic degree","m-mas")}`;
+    d.closest(".field").before(f);
+    const th=document.querySelector("#mem-rows")&&document.querySelector("#mem-rows").closest("table").querySelector("thead th:nth-child(2)");
+    if(th&&th.textContent.trim()==="Degree"){th.id="th-deg";const n=document.createElement("th");n.scope="col";n.textContent="Masonic degree";th.before(n)}
+  })();
   /* words on the page that follow the organization type */
   (function orgLabels(){
     if(!ORG)return;
@@ -1174,6 +1192,7 @@
     const tm=document.getElementById("t-min");if(tm&&tm.textContent.trim()==="Stated Communications")tm.textContent=ORG.notes;
     const mt=document.getElementById("m-title");if(mt)mt.innerHTML=TITLES.map(([v,l])=>`<option value="${esc(v)}">${esc(v)} · ${esc(l)}</option>`).join("");
     const md=document.getElementById("m-deg");if(md)md.innerHTML=DEGREES.map(d=>`<option>${esc(d)}</option>`).join("");
+    lab("m-deg",ORG.degLabel||"Degree");const rt=document.getElementById("roster-title");if(rt)rt.textContent=ORG.unit+" roster";const th=document.getElementById("th-deg");if(th)th.textContent=ORG.degLabel||"Degree";
     const place=document.getElementById("lodge-place");if(place)place.textContent=place.textContent.replace(/^Lodge dashboard/,ORG.unit+" dashboard");
   })();
   renderMembers();renderGmail();regenStated();renderPics();renderSite();siteState();
