@@ -1,4 +1,4 @@
-/* The signed-in lodge dashboard (lodge.html): a sidebar of ten sections with key figures on top of each.
+/* The signed-in lodge dashboard (lodge.html): a sidebar of sections with key figures on top of each.
    Website, Members, Merchandise and the Calendar and Minutes under Communications are the tools in assets/demo.js; this file adds
    Announcements, Treasury, Fundraiser, Pipelines, Sponsors, Charities and Settings. Their records save with the rest of the lodge's
    data (demo.js snapshot() asks LodgeNetDash for them), so every officer sees the same figures. */
@@ -37,7 +37,7 @@
 
   /* ---------- sections ---------- */
   const TITLES={website:"Website",members:"Members",communications:"Communications",treasury:"Treasury",fundraiser:"Fundraiser",qrcodes:"QR codes",
-    pipelines:"Pipelines",sponsors:"Sponsors",merchandise:"Merchandise",charities:"Charities",settings:"Settings"};
+    pipelines:"Pipelines",sponsors:"Sponsors",merchandise:"Merchandise",charities:"Charities",district:"District",settings:"Settings"};
   const OLD={site:"website",store:"merchandise",calendar:"communications",minutes:"communications"};
   let cur="website";
   function show(sec){
@@ -88,6 +88,7 @@
           ["To charity",money(O.reduce((t,o)=>t+o.toCharity,0)),"From these sales"],["To fill",O.filter(o=>o.status!=="Fulfilled").length,"Not yet handed over or shipped"]]})(),
       charities:[["Charities",D.charities.length,"Funds and causes"],["Raised",money(D.charities.reduce((t,c)=>t+raisedFor(c.name),0)),"Donations and fundraisers"],
         ["Given",money(D.charities.reduce((t,c)=>t+givenFor(c.name),0)),"Paid out from the ledger"],["Fundraisers",fr.filter(e=>e.charity).length,"Tied to a charity"]],
+      district:window.LodgeNetDistrict?window.LodgeNetDistrict.figures():null,
       settings:null
     }[sec];
     box.hidden=!F;
@@ -674,7 +675,7 @@
 
   const RENDER={communications:()=>{if(!$("#p-ann").innerHTML)renderAnn()},treasury:renderTreasury,fundraiser:renderFund,
     qrcodes:()=>{if(window.LodgeNetSite)window.LodgeNetSite.renderQr()},pipelines:renderPipe,
-    sponsors:renderSpon,charities:renderChar,settings:renderSet,merchandise:()=>{renderOrders();renderProd()}};
+    sponsors:renderSpon,charities:renderChar,district:()=>{if(window.LodgeNetDistrict)window.LodgeNetDistrict.render()},settings:renderSet,merchandise:()=>{renderOrders();renderProd()}};
 
   /* ---------- sidebar: who's signed in, sign out, other lodges ---------- */
   (async()=>{
