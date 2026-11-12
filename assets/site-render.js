@@ -66,6 +66,7 @@
   }
   const pagesOf=s=>s.layout&&Array.isArray(s.layout.pages)&&s.layout.pages.length?s.layout.pages:[defaultHome(s)];
 
+  const orgJoin=()=>(window.LodgeOrg&&window.LodgeOrg.current&&window.LodgeOrg.current.join)||{title:"Become a Mason",sub:"To be one, ask one.",who:"Freemasonry welcomes good men of every background who believe in a Supreme Being and want to make themselves and their communities better.\n\nA man must be of lawful age, of good character and recommended by members of the lodge."};
   /* page templates for "Add page", in groups. A template with members:true makes a members-only page. */
   const TEMPLATE_GROUPS=["Basics","Lodge life","Giving","Members"];
   const TEMPLATES={
@@ -77,8 +78,8 @@
       newSection("text",{heading:"Past Masters",body:"List the brethren who have served as Worshipful Master, one per line, with their years."}),newSection("gallery",{heading:"From the archives"})]},
     contact:{name:"Contact",group:"Basics",title:"Contact",make:()=>[newSection("hero",{heading:"Contact the lodge",height:"short"}),newSection("contact"),newSection("give",{bg:"tint"})]},
     events:{name:"Events",group:"Lodge life",title:"Events",make:()=>[newSection("hero",{heading:"Events",sub:"Stated Communications, degree nights and public events.",height:"short"}),newSection("events",{count:"12"}),newSection("fundraisers",{bg:"tint"})]},
-    join:{name:"Become a Mason",group:"Lodge life",title:"Become a Mason",make:()=>[newSection("hero",{heading:"Become a Mason",sub:"To be one, ask one.",height:"short"}),
-      newSection("text",{heading:"Who can join",body:"Freemasonry welcomes good men of every background who believe in a Supreme Being and want to make themselves and their communities better.\n\nA man must be of lawful age, of good character and recommended by members of the lodge."}),
+    join:{get name(){return orgJoin().title},group:"Lodge life",get title(){return orgJoin().title},make:()=>[newSection("hero",{heading:orgJoin().title,sub:orgJoin().sub,height:"short"}),
+      newSection("text",{heading:"Who can join",body:orgJoin().who}),
       newSection("features",{heading:"How it works",bg:"tint",items:[{title:"Ask",body:"Talk with any member, or send us a note below."},{title:"Meet",body:"Have dinner with the brethren and get to know us."},{title:"Petition",body:"When you're ready, fill out a petition to join."}]}),
       newSection("cta",{heading:"Ready to talk?",body:"We'd be glad to answer your questions.",button:{label:"Email the lodge",link:"email"}})]},
     visitors:{name:"Visiting brethren",group:"Lodge life",title:"Visiting brethren",make:()=>[newSection("hero",{heading:"Visiting brethren",sub:"Traveling Masons are always welcome.",height:"short"}),
@@ -181,6 +182,8 @@
     const today=new Date();today.setHours(0,0,0,0);
     const place=[site.city,site.state].filter(Boolean).join(", ");
     const full=site.full||site.name||"Our Lodge";
+    /* the regular meeting's name follows the organization type: Stated Communications, Stated Meetings, Club Meetings… */
+    const MEET=site.meetings||"Stated Communications";
     const href=link=>resolve(site,link,root);
     /* text the builder can type into: in the editor it's always there (with a hint when empty); on the live site empty text is left out */
     const T=(tag,cls,f,val,ph)=>E?`<${tag} class="${cls}" data-f="${f}" data-ph="${esc(ph||"")}">${esc(val||"")}</${tag}>`:(String(val||"").trim()?`<${tag} class="${cls}">${esc(val)}</${tag}>`:"");
@@ -193,11 +196,12 @@
     const empty=t=>`<p class="ls-empty">${esc(t)}</p>`;
     const giveBtns=()=>{const g=site.give||[],links=g.filter(x=>safeHref(x.url));
       return (links.length?`<div class="ls-btns">${links.map(x=>`<a class="ls-btn" href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.label)}</a>`).join("")}</div>`:"")
-        +g.filter(x=>!safeHref(x.url)&&x.note).map(x=>`<p class="ls-note"><b>${esc(x.label)}:</b> ${esc(x.note)}</p>`).join("")};
+        +g.filter(x=>!safeHref(x.url)&&x.note).map(x=>`<p class="ls-note"><b>${esc(x.label)}:</b> ${esc(x.note)}</p>`).join("")
+        +(site.ein&&/^[0-9 -]{9,12}$/.test(site.ein)?`<p class="ls-note">${esc(full)} is a nonprofit organization. Tax ID (EIN): ${esc(site.ein)}.</p>`:"")};
     const head=s=>T("h2","ls-h2","heading",s.heading,"Section heading");
 
     const R={
-      hero:s=>{const sub=s.sub||[place,site.schedule?"Stated Communications "+site.schedule:""].filter(Boolean).join(" · ");
+      hero:s=>{const sub=s.sub||[place,site.schedule?MEET+" "+site.schedule:""].filter(Boolean).join(" · ");
         const lay=s.layout||(s.align==="left"?"left":"center");
         if(lay==="split")return `<div class="ls-hs ls-h-${s.height==="short"?"short":"tall"}"><div class="ls-wrap ls-hs-in">
           <div class="ls-hs-txt"><div class="ls-hs-card">${T("h1","ls-h1","heading",s.heading||full,"Page heading")}${T("p","ls-sub","sub",sub,"A short line under the heading")}</div>${btn(s.button,"button","ls-btn-block")}</div>
@@ -232,7 +236,7 @@
         :empty("Officers to be announced.")}${E?'<p class="ls-hint">Officers come from the chairs on Members.</p>':""}</div>`,
       contact:s=>{const soc=(site.social||[]).filter(x=>safeHref(x.url));
         return `<div class="ls-wrap ls-split ls-split-even"><div>${head(s)}${B(s.body)}</div><div class="ls-contact">
-          ${site.schedule?`<div><span class="ls-lbl">Stated Communications</span><b>${esc(site.schedule)}</b></div>`:""}
+          ${site.schedule?`<div><span class="ls-lbl">${esc(MEET)}</span><b>${esc(site.schedule)}</b></div>`:""}
           ${place?`<div><span class="ls-lbl">Where</span><b>${esc(place)}</b></div>`:""}
           ${site.email?`<div><span class="ls-lbl">Email</span><a href="mailto:${esc(site.email)}">${esc(site.email)}</a></div>`:""}
           ${soc.length?`<div class="ls-btns">${soc.map(x=>`<a class="ls-btn ls-btn-line" href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.name)}</a>`).join("")}</div>`:""}
@@ -298,7 +302,7 @@
       <header class="ls-head"><div class="ls-wrap ls-head-in"><a class="ls-brand" href="${esc(root||"/")}"${E?' data-goto="home"':""}>${logo}<span><b>${esc(full)}</b>${site.jur||site.grandLodge?`<small>${esc([site.jur,site.grandLodge].filter(Boolean).join(" · "))}</small>`:""}</span></a>
         ${nav&&pages.length>1?`<nav class="ls-nav" aria-label="Site">${nav}</nav>`:""}</div></header>
       <main>${body}</main>
-      <footer class="ls-foot"><div class="ls-wrap"><div><b>${esc(full)}</b>${site.schedule?`<span>Stated Communications ${esc(site.schedule)}</span>`:""}${place?`<span>${esc(place)}</span>`:""}</div>
+      <footer class="ls-foot"><div class="ls-wrap"><div><b>${esc(full)}</b>${site.schedule?`<span>${esc(MEET)} ${esc(site.schedule)}</span>`:""}${place?`<span>${esc(place)}</span>`:""}</div>
         ${soc.length?`<div class="ls-foot-soc">${soc.map(x=>`<a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.name)}</a>`).join("")}</div>`:""}
         <small>© ${new Date().getFullYear()} ${esc(full)} · Website by <a href="https://www.lodgenet.app/">LodgeNet</a></small></div></footer>
     </div>`;

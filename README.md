@@ -57,6 +57,26 @@ The middle of the editor is the real site, drawn by `assets/site-render.js` with
 - **QR codes** have their own sidebar tab (`assets/site-qr.js`). Each code encodes `/site/<slug>/qr/<id>` and the published site redirects it to wherever it's assigned: Home, a page, a fundraiser (`/site/<slug>/fundraiser/<id>`) or a link. Reassigning a printed code only takes Publish. Codes download as PNG or SVG. Fundraiser cards have a QR code button. Deleting a page points its codes at Home.
 - Photos are kept as data URLs inside the lodge's one JSON document, so a site with many pictures makes every save larger. Supabase Storage is the next step if lodges hit that.
 
+### Organization types
+
+Settings → **Organization type** sets what kind of Masonic body the dashboard serves (`assets/org.js`, saved as `org` in the lodge's data):
+- **Craft Lodges:** Blue Lodge, Prince Hall Lodge.
+- **Scottish Rite:** Scottish Rite Valley, Scottish Rite Club (nonprofit).
+- **York Rite:** Royal Arch Chapter, Cryptic Council, Commandery of Knights Templar, or all York Rite bodies together.
+
+The type sets:
+- the unit's name and whether it's numbered;
+- the officer chairs (and how Members lays them out);
+- the regular meeting's name (Stated Communication, Stated Meeting, Stated Convocation, Stated Assembly, Stated Conclave, Club Meeting) on the calendar, the minutes tab and write-ups ("Meeting notes" for a club), and the website;
+- the governing body, filled in from the state: a Valley gets its Orient and the Supreme Council, Northern Masonic Jurisdiction for the 15 NMJ states and Southern Jurisdiction for the rest; York Rite bodies get their Grand Chapter, Council or Commandery;
+- the roll's degrees and honorifics, and who can hold office;
+- the membership pipeline's stages and the stats on Members, Communications and Pipelines;
+- the website's joining page and the "Past Masters" wording.
+
+A club also gets a Tax ID (EIN) field, shown beside its giving buttons. The import sends the type's chairs to Claude, so a Valley's officers match its own chairs.
+
+Choosing a type saves and reloads the dashboard. Members, events, money, minutes and the website stay. Seated officers are kept by chair and return if the type is switched back.
+
 ## Accounts
 
 Lodges sign in with Supabase (Auth for email and password, Postgres for the lodge's data). `/api/config` gives the browser the project URL and public key from Vercel's environment (`SUPABASE_URL` and `SUPABASE_ANON_KEY`, or the `NEXT_PUBLIC_` / publishable-key names the Vercel Supabase integration sets). With neither set, the site runs browser-only exactly as before and `/login` says sign-in isn't switched on.

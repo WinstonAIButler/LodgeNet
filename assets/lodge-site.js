@@ -53,7 +53,7 @@
     document.title=(name?name+" · ":"")+title;
     const place=[site.city,site.state].filter(Boolean).join(", ");
     const md=document.querySelector('meta[name="description"]');
-    if(md)md.content=`${title}${place?", "+place:""}.${site.schedule?" Stated Communications "+site.schedule+".":""}`;
+    if(md)md.content=`${title}${place?", "+place:""}.${site.schedule?" "+(site.meetings||"Stated Communications")+" "+site.schedule+".":""}`;
     const th=Object.assign({},L.THEME,(site.layout&&site.layout.theme)||{});
     if(th.font!=="modern"){const f=document.createElement("link");f.rel="stylesheet";f.href=L.fontHref(th.font);document.head.appendChild(f)}
     if(o.page&&o.page.members)return membersPage(site,o,cfg);
