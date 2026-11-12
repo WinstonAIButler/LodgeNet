@@ -151,7 +151,12 @@
   /* a brother's title: B. (Brother), WB. (Worshipful Brother) or RWB. (Right Worshipful Brother); WB. and RWB. count as Past Masters */
   const TITLES=ORG?ORG.titles:[["B.","Brother"],["WB.","Worshipful Brother"],["RWB.","Right Worshipful Brother"]];
   const DEGREES=ORG?ORG.degrees:["Master Mason","Fellowcraft","Entered Apprentice"];
-  const pre=m=>(m.title||"B.")+" ";
+  /* a name always reads "B. Justin Joslin, 32°": the honorific before the name and the Masonic degree after it, wherever a member
+     is shown (roster, chairs, minutes, the website). Blue Lodge degrees and "Not recorded" add nothing after the name. */
+  const DEG_AFTER={"14° Perfect Elu":"14°","18° Knight Rose Croix":"18°","30° Knight Kadosh":"30°","32° Master of the Royal Secret":"32°","32° KCCH":"32°, KCCH",
+    "33° Inspector General Honorary":"33°","Mark Master":"MMM","Past Master (Virtual)":"RAM","Most Excellent Master":"RAM","Royal Arch Mason":"RAM",
+    "Royal Master":"R&SM","Select Master":"R&SM","Super Excellent Master":"R&SM","Order of the Red Cross":"KT","Order of Malta":"KT","Knight Templar":"KT"};
+  const named=m=>m?(m.title?m.title+" ":"")+m.name+(DEG_AFTER[m.mdeg]?", "+DEG_AFTER[m.mdeg]:""):"";
   const members=CFG.membersFull?CFG.membersFull.map(m=>({...m})):CFG.members?CFG.members.map(a=>M(...a)):[
     M("Daniel R. Ortega"),M("Marcus Hale"),M("Peter Lindqvist"),M("Walter Simms","",1),M("James Whitfield","",1),
     M("Andre Baptiste"),M("Kevin O'Rourke"),M("Samuel Carter"),M("Luis Ferreira"),M("Harold Benson","",1),
@@ -170,7 +175,7 @@
   /* chairs are kept by key, so switching the organization type and back keeps each body's officers */
   const officers=CFG.officers||(ORGX.key==="blue"||ORGX.key==="pha"?{WM:1,SW:2,JW:3,TREAS:4,SEC:5,SD:6,JD:7,STW1:8,STW2:9,TILER:10,CHAP:11}:{});
   const member=id=>members.find(m=>m.id===+id);
-  const fullName=id=>{const m=member(id);return m?pre(m)+m.name:""};
+  const fullName=id=>named(member(id));
   /* every chair can be filled from anyone on the roll, whatever the organization type or their degree */
   const eligible=()=>members.filter(m=>m.active).sort((a,b)=>a.name.split(" ").pop().localeCompare(b.name.split(" ").pop()));
   /* the Members page lays the chairs out in rows: the three principal officers, then the line officers, then the stewards and Tiler */
@@ -197,7 +202,7 @@
   function seatSelect(attr,seat,cur,cls){
     const opts=eligible();
     if(cur&&!opts.some(m=>m.id===+cur)&&member(cur))opts.unshift(member(cur));
-    return `<select ${attr}="${seat.k}" class="${cls||""}" aria-label="${seat.t}"><option value="">${cls?"":"Vacant"}</option>${opts.map(m=>`<option value="${m.id}"${+cur===m.id?" selected":""}>${esc(pre(m)+m.name)}</option>`).join("")}</select>`;
+    return `<select ${attr}="${seat.k}" class="${cls||""}" aria-label="${seat.t}"><option value="">${cls?"":"Vacant"}</option>${opts.map(m=>`<option value="${m.id}"${+cur===m.id?" selected":""}>${esc(named(m))}</option>`).join("")}</select>`;
   }
   function renderMembers(){
     const act=members.filter(m=>m.active);
@@ -207,7 +212,7 @@
     const seatOf=id=>SEATS.filter(x=>+officers[x.k]===id).map(x=>x.ab).join(", ");
     const contact=m=>[m.email,m.phone].filter(Boolean).map(esc).join(" · ");
     $("#mem-rows").innerHTML=act.map(m=>`<tr${+editing===m.id?' class="editing"':""}>
-      <td class="nm">${m.no?`<span class="mem-no">No. ${esc(m.no)}</span>`:""}${esc(pre(m)+m.name)}${contact(m)?`<span class="mem-contact">${contact(m)}</span>`:""}</td>
+      <td class="nm">${m.no?`<span class="mem-no">No. ${esc(m.no)}</span>`:""}${esc(named(m))}${contact(m)?`<span class="mem-contact">${contact(m)}</span>`:""}</td>
       <td>${masonicSelect(`data-mmas="${m.id}"`,m.mdeg||"Not recorded","Masonic degree for "+m.name)}</td>
       <td><select data-mdeg="${m.id}" aria-label="${esc((ORG&&ORG.degLabel)||"Degree")} for ${esc(m.name)}">${(DEGREES.includes(m.deg)?DEGREES:DEGREES.concat(m.deg)).map(d=>`<option${d===m.deg?" selected":""}>${esc(d)}</option>`).join("")}</select></td>
       <td><select data-mtitle="${m.id}" aria-label="Title for ${esc(m.name)}">${TITLES.map(([v,l])=>`<option value="${v}" title="${l}"${v===m.title?" selected":""}>${v}</option>`).join("")}</select></td>
@@ -279,7 +284,7 @@
     if(CLOUD&&(window.LODGE||{}).slug)$("#pv-url").textContent=location.host+"/site/"+window.LODGE.slug;
     $("#cb-name").textContent=full;
     $("#pv-officers").innerHTML=SEATS.slice(0,5).map(x=>{const m=member(officers[x.k]);
-      return `<dt>${esc(x.t)}</dt><dd>${m?esc(m.name+(m.pm&&x.k!==SEATS[0].k&&BLUE?", PM":"")):"Vacant"}</dd>`}).join("");
+      return `<dt>${esc(x.t)}</dt><dd>${m?esc(named(m)):"Vacant"}</dd>`}).join("");
     $("#site-preview").style.setProperty("--site",siteColor);
     {const h=document.querySelector("#site-preview .site-hero");if(h){
       h.classList.toggle("has-img",!!pics.hero);h.style.backgroundImage=pics.hero?`linear-gradient(rgba(0,0,0,.45),rgba(0,0,0,.55)),url("${pics.hero}")`:"";
@@ -436,7 +441,7 @@
     const name=fieldVal("#f-name")||"Your Lodge",num=fieldVal("#f-num"),now=isoDay(new Date());
     return {org:ORGX.key,unit:ORGX.unit,meetings:ORGX.meetings,ein:fieldVal("#f-ein"),name,number:ORGX.numbered?num:"",full:name+(ORGX.numbered&&num?" No. "+num:""),jur:fieldVal("#f-jur"),grandLodge:fieldVal("#f-gl"),
       city:fieldVal("#f-city"),state:fieldVal("#f-state"),schedule:fieldVal("#f-sched"),color:siteColor,email:fieldVal("#f-email"),
-      officers:SEATS.map(x=>{const m=member(officers[x.k]);return m?{seat:x.t,name:m.name+(m.pm&&x.k!==SEATS[0].k&&BLUE?", PM":"")}:null}).filter(Boolean),
+      officers:SEATS.map(x=>{const m=member(officers[x.k]);return m?{seat:x.t,name:named(m)}:null}).filter(Boolean),
       events:events.filter(e=>e.d>=now).sort((a,b)=>a.d<b.d?-1:1).slice(0,12).map(e=>({d:e.d,t:e.t,time:e.time||"",fund:e.k==="fund",...(e.k==="fund"&&e.fid?{fid:e.fid}:{})})),
       social:[["Facebook","#f-fb","https://facebook.com/"],["Instagram","#f-ig","https://instagram.com/"],["X","#f-x","https://x.com/"],["YouTube","#f-yt","https://youtube.com/@"],["TikTok","#f-tt","https://tiktok.com/@"]]
         .filter(([,f])=>handle(f)).map(([n,f,base])=>({name:n,url:base+handle(f)})),
@@ -715,7 +720,7 @@
   const longDate=d=>fmt(parse(d),{month:"long",day:"numeric",year:"numeric"});
   const timeLC=t=>time12(t).toLowerCase();
   const money2=v=>{const n=parseFloat(String(v).replace(/[$,]/g,""));return isNaN(n)?String(v):n.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})};
-  const bro=id=>{const m=member(id);return m?({"WB.":"W Bro. ","RWB.":"R.W. Bro. "}[m.title]||"Bro. ")+m.name:""};
+  const bro=id=>named(member(id));
   const val=(m,k)=>{const v=m.s[k];return Array.isArray(v)?v.filter(r=>Object.values(r).some(x=>String(x||"").trim())):String(v||"").trim()};
   const list=(m,k)=>Array.isArray(m.s[k])?val(m,k):[];
   const listJoin=a=>a.length<2?a.join(""):a.slice(0,-1).join(", ")+" and "+a[a.length-1];
@@ -738,8 +743,8 @@
       .filter(r=>r[0]||r[1]);
     if(rows.length)B.push({t:"seats",rows});
     const head0=SEATS[0].k,wm=member(m.seats[head0]),t=val(m,"opening.time");
-    if(BLUE)P(`The Worshipful Master${wm?`, W Bro. ${wm.name}${proTem("WM")?" (pro tem)":""},`:""} opened the Lodge${t?` at ${timeLC(t)}`:""} in due form on the ${deg} degree of Masonry.`,{align:"justify"});
-    else P(`The ${SEATS[0].t.replace(/,.*$/,"")}${wm?`, ${pre(wm)}${wm.name}${proTem(head0)?" (pro tem)":""},`:""} opened the ${ORGX.meeting}${t?` at ${timeLC(t)}`:""}.`,{align:"justify"});
+    if(BLUE)P(`The Worshipful Master${wm?`, ${named(wm)}${proTem("WM")?" (pro tem)":""},`:""} opened the Lodge${t?` at ${timeLC(t)}`:""} in due form on the ${deg} degree of Masonry.`,{align:"justify"});
+    else P(`The ${SEATS[0].t.replace(/,.*$/,"")}${wm?`, ${named(wm)}${proTem(head0)?" (pro tem)":""},`:""} opened the ${ORGX.meeting}${t?` at ${timeLC(t)}`:""}.`,{align:"justify"});
     const tot=val(m,"attend.total"),vis=val(m,"attend.visitors"),pms=val(m,"attend.pms"),vl=list(m,"attend.vlist");
     if(tot||vis||pms||vl.length){
       let s=vis||pms||vl.length?"The Worshipful Master welcomed visiting brothers and the Past Masters visiting and of the Lodge.":"";
@@ -786,7 +791,7 @@
     const ct=val(m,"closing.time");
     P(`There being no further business, the Lodge was closed in due form${ct?` at ${timeLC(ct)}`:""} on the ${deg} degree of Masonry.`,{gap:18,align:"justify"});
     const coll=[["dinner","Dinner"],["wo","W & O"]].filter(([k])=>val(m,"closing."+k)).map(([k,n])=>`${n}: $${money2(val(m,"closing."+k))}`);
-    B.push({t:"sig",sec:fullName(m.seats.SEC),wm:wm?pre(wm)+wm.name:"",coll,approved:m.status==="Approved"});
+    B.push({t:"sig",sec:fullName(m.seats.SEC),wm:named(wm),coll,approved:m.status==="Approved"});
     return B;
   }
 
@@ -877,7 +882,7 @@
   /* ---------- short form ---------- */
   function memberOptions(cur){
     const opts=members.filter(x=>x.active).sort((a,b)=>a.name.split(" ").pop().localeCompare(b.name.split(" ").pop()));
-    return `<option value=""></option>`+opts.map(x=>`<option value="${x.id}"${+cur===x.id?" selected":""}>${esc(pre(x)+x.name)}</option>`).join("");
+    return `<option value=""></option>`+opts.map(x=>`<option value="${x.id}"${+cur===x.id?" selected":""}>${esc(named(x))}</option>`).join("");
   }
   function input(type,k,v,label,opts,attrs){
     const a=`aria-label="${esc(label)}" ${attrs||""}`;
