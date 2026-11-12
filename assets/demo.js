@@ -15,6 +15,11 @@
   const MOVE_LOCAL=!!(CLOUD&&CLOUD.canEdit&&!CLOUD.data&&LOCAL);
   const SAVED=CLOUD?(CLOUD.data||(MOVE_LOCAL?LOCAL:null)):LOCAL;
   const CFG=Object.assign({},window.LODGE||{},SAVED||{},CLOUD?{plan:CLOUD.plan}:{});
+  /* the kind of Masonic body (Blue Lodge, Prince Hall, Scottish Rite Valley, York Rite, Scottish Rite Club): assets/org.js.
+     Its chairs, meeting name, degrees, titles and governing body run through this file and the rest of the dashboard. */
+  const ORG=window.LodgeOrg?window.LodgeOrg.use(CFG.org):null;
+  const BLUE=!ORG||ORG.key==="blue"||ORG.key==="pha";
+  const ORGX=ORG||{key:"blue",unit:"Lodge",numbered:true,meeting:"Stated Communication",meetings:"Stated Communications",members:"Brethren",office:"Master Mason"};
   /* ---------- states and their Grand Lodges ----------
      style: F = Free and Accepted Masons (F.&A.M.), A = Ancient Free and Accepted Masons (A.F.&A.M.) */
   const STATES=[["AL","Alabama","F"],["AK","Alaska","F"],["AZ","Arizona","F"],["AR","Arkansas","F"],["CA","California","F"],
@@ -39,7 +44,11 @@
     const def=sel.dataset.default!==undefined?sel.dataset.default:"OH";
     sel.innerHTML=(def===""?'<option value="">Choose your state</option>':"")+STATES.map(([c,n,t])=>`<option value="${c}">${n} (${STYLE[t][1]})</option>`).join("");
     sel.value=def;})();
-  function fillGrandLodge(){const g=grandLodge(document.getElementById("f-state").value,document.getElementById("f-family").value);
+  function fillGrandLodge(){
+    const st=document.getElementById("f-state").value;
+    if(ORG&&ORG.gov){const g=ORG.gov(st);if(g&&(g.gl||g.jur)){document.getElementById("f-gl").value=g.gl;document.getElementById("f-jur").value=g.jur}return}
+    if(ORG&&ORG.pha)document.getElementById("f-family").value="pha";
+    const g=grandLodge(st,document.getElementById("f-family").value);
     if(g){document.getElementById("f-gl").value=g.gl;document.getElementById("f-jur").value=g.jur}}
 
   /* ---------- Stated Communication schedule ---------- */
@@ -129,9 +138,10 @@
   /* ---------- members & officer seats ---------- */
   let nextMember=1;
   const DUES_YEAR=new Date().getFullYear();
-  const M=(name,deg,pm,dues)=>({id:nextMember++,name,deg:deg||"Master Mason",pm:!!pm,title:pm?"WB.":"B.",dues:dues||"Paid 2026",active:true});
+  const M=(name,deg,pm,dues)=>({id:nextMember++,name,deg:deg||ORGX.office,pm:!!pm,title:pm?(TITLES[1]||TITLES[0])[0]:TITLES[0][0],dues:dues||"Paid 2026",active:true});
   /* a brother's title: B. (Brother), WB. (Worshipful Brother) or RWB. (Right Worshipful Brother); WB. and RWB. count as Past Masters */
-  const TITLES=[["B.","Brother"],["WB.","Worshipful Brother"],["RWB.","Right Worshipful Brother"]];
+  const TITLES=ORG?ORG.titles:[["B.","Brother"],["WB.","Worshipful Brother"],["RWB.","Right Worshipful Brother"]];
+  const DEGREES=ORG?ORG.degrees:["Master Mason","Fellowcraft","Entered Apprentice"];
   const pre=m=>(m.title||"B.")+" ";
   const members=CFG.membersFull?CFG.membersFull.map(m=>({...m})):CFG.members?CFG.members.map(a=>M(...a)):[
     M("Daniel R. Ortega"),M("Marcus Hale"),M("Peter Lindqvist"),M("Walter Simms","",1),M("James Whitfield","",1),
@@ -141,19 +151,20 @@
   ];
   nextMember=Math.max(0,...members.map(m=>m.id))+1;
   members.forEach(m=>{if(!TITLES.some(t=>t[0]===m.title))m.title=m.pm?"WB.":"B.";m.pm=m.title!=="B."});
-  const SEATS=[
+  const SEATS=ORG?ORG.seats:[
     {k:"WM",ab:"WM",t:"Worshipful Master"},{k:"SW",ab:"SW",t:"Senior Warden"},{k:"JW",ab:"JW",t:"Junior Warden"},
     {k:"TREAS",ab:"Treas.",t:"Treasurer"},{k:"SEC",ab:"Sec.",t:"Secretary"},{k:"SD",ab:"SD",t:"Senior Deacon"},
     {k:"JD",ab:"JD",t:"Junior Deacon"},{k:"STW1",ab:"Stwd",t:"Senior Steward"},{k:"STW2",ab:"Stwd",t:"Junior Steward"},
     {k:"TILER",ab:"Tiler",t:"Tiler"},{k:"CHAP",ab:"Chap.",t:"Chaplain"}
   ];
-  const officers=CFG.officers||{WM:1,SW:2,JW:3,TREAS:4,SEC:5,SD:6,JD:7,STW1:8,STW2:9,TILER:10,CHAP:11};
+  /* chairs are kept by key, so switching the organization type and back keeps each body's officers */
+  const officers=CFG.officers||(ORGX.key==="blue"||ORGX.key==="pha"?{WM:1,SW:2,JW:3,TREAS:4,SEC:5,SD:6,JD:7,STW1:8,STW2:9,TILER:10,CHAP:11}:{});
   const member=id=>members.find(m=>m.id===+id);
   const fullName=id=>{const m=member(id);return m?pre(m)+m.name:""};
-  const eligible=()=>members.filter(m=>m.active&&m.deg==="Master Mason").sort((a,b)=>a.name.split(" ").pop().localeCompare(b.name.split(" ").pop()));
+  const eligible=()=>members.filter(m=>m.active&&m.deg===ORGX.office).sort((a,b)=>a.name.split(" ").pop().localeCompare(b.name.split(" ").pop()));
   /* the Members page lays the chairs out in rows: the three principal officers, then the line officers, then the stewards and Tiler */
-  const SEAT_ROWS=[["WM","SW","JW"],["SEC","TREAS","SD","JD"],["STW1","STW2","TILER","CHAP"]];
-  const SEAT_LABEL={WM:"Worshipful Master",SW:"Sr. Warden",JW:"Jr. Warden",SEC:"Secretary",TREAS:"Treasurer",SD:"Sr. Deacon",JD:"Jr. Deacon",STW1:"Steward 1",STW2:"Steward 2",TILER:"Tiler",CHAP:"Chaplain"};
+  const SEAT_ROWS=ORG?ORG.seatRows:[["WM","SW","JW"],["SEC","TREAS","SD","JD"],["STW1","STW2","TILER","CHAP"]];
+  const SEAT_LABEL=ORG&&ORGX.key!=="blue"&&ORGX.key!=="pha"?ORG.seatLabel:{WM:"Worshipful Master",SW:"Sr. Warden",JW:"Jr. Warden",SEC:"Secretary",TREAS:"Treasurer",SD:"Sr. Deacon",JD:"Jr. Deacon",STW1:"Steward 1",STW2:"Steward 2",TILER:"Tiler",CHAP:"Chaplain"};
   function renderSeatDefaults(){
     $("#seat-defaults").innerHTML=SEAT_ROWS.map(r=>`<div class="seat-line">${r.map(k=>{const x=SEATS.find(s=>s.k===k);
       return `<div class="seat-row"><label for="sd-${k}">${SEAT_LABEL[k]}</label>${seatSelect("data-sdef",x,officers[k]).replace("<select ",`<select id="sd-${k}" `)}</div>`}).join("")}</div>`).join("");
@@ -165,13 +176,13 @@
   }
   function renderMembers(){
     const act=members.filter(m=>m.active);
-    if(!act.length){$("#mem-count").textContent="No members yet";$("#mem-rows").innerHTML='<tr><td colspan="6" class="hint">Add your first brother below. Officers are picked from Master Masons on this list.</td></tr>';renderSeatDefaults();return}
-    $("#mem-count").textContent=`${act.length} members · ${act.filter(m=>m.deg==="Master Mason").length} Master Masons`;
+    if(!act.length){$("#mem-count").textContent="No members yet";$("#mem-rows").innerHTML=`<tr><td colspan="6" class="hint">Add your first ${esc((ORG?ORG.member:"brother").toLowerCase())} below. Officers are picked from ${esc(ORGX.office==="Master Mason"?"Master Masons":ORGX.office==="Member"?"members":"those marked "+ORGX.office)} on this list.</td></tr>`;renderSeatDefaults();return}
+    $("#mem-count").textContent=`${act.length} members · ${act.filter(m=>m.deg===ORGX.office).length} ${ORGX.office==="Master Mason"?"Master Masons":"can hold office"}`;
     const seatOf=id=>SEATS.filter(x=>+officers[x.k]===id).map(x=>x.ab).join(", ");
     const contact=m=>[m.email,m.phone].filter(Boolean).map(esc).join(" · ");
     $("#mem-rows").innerHTML=act.map(m=>`<tr${+editing===m.id?' class="editing"':""}>
       <td class="nm">${esc(pre(m)+m.name)}${contact(m)?`<span class="mem-contact">${contact(m)}</span>`:""}</td>
-      <td><select data-mdeg="${m.id}" aria-label="Degree for ${esc(m.name)}">${["Master Mason","Fellowcraft","Entered Apprentice"].map(d=>`<option${d===m.deg?" selected":""}>${d}</option>`).join("")}</select></td>
+      <td><select data-mdeg="${m.id}" aria-label="Degree for ${esc(m.name)}">${(DEGREES.includes(m.deg)?DEGREES:DEGREES.concat(m.deg)).map(d=>`<option${d===m.deg?" selected":""}>${esc(d)}</option>`).join("")}</select></td>
       <td><select data-mtitle="${m.id}" aria-label="Title for ${esc(m.name)}">${TITLES.map(([v,l])=>`<option value="${v}" title="${l}"${v===m.title?" selected":""}>${v}</option>`).join("")}</select></td>
       <td>${seatOf(m.id)?`<span class="pill gold">${seatOf(m.id)}</span>`:'<span class="hint">None</span>'}</td>
       <td><select data-mdues="${m.id}" class="dues ${m.dues.startsWith("Paid")?"ok":m.dues.startsWith("Owes")?"warn":""}" aria-label="Dues for ${esc(m.name)}">${[...new Set([m.dues,"Paid "+DUES_YEAR,"Owes "+DUES_YEAR,"Not recorded"])].map(d=>`<option${d===m.dues?" selected":""}>${esc(d)}</option>`).join("")}</select></td>
@@ -196,7 +207,7 @@
   });
   $("#mem-rows").addEventListener("change",e=>{
     const t=e.target;if(t.closest(".mem-edit-form"))return;
-    if(t.dataset.mdeg){const m=member(t.dataset.mdeg);m.deg=t.value;if(m.deg!=="Master Mason")for(const k in officers)if(+officers[k]===m.id)officers[k]="";}
+    if(t.dataset.mdeg){const m=member(t.dataset.mdeg);m.deg=t.value;if(m.deg!==ORGX.office)for(const k in officers)if(+officers[k]===m.id)officers[k]="";}
     if(t.dataset.mtitle){const m=member(t.dataset.mtitle);m.title=t.value;m.pm=m.title!=="B."}
     if(t.dataset.mdues)member(t.dataset.mdues).dues=t.value;
     refreshPeople();
@@ -213,8 +224,8 @@
   $("#seat-defaults").addEventListener("change",e=>{const k=e.target.dataset.sdef;if(k){officers[k]=e.target.value;refreshPeople()}});
   $("#mem-form").addEventListener("submit",e=>{
     e.preventDefault();const n=$("#m-name").value.trim();if(!n)return;
-    const nm=M(n,$("#m-deg").value,$("#m-title").value!=="B.","Paid 2026");nm.title=$("#m-title").value;members.push(nm);
-    $("#m-name").value="";$("#m-title").value="B.";refreshPeople();
+    const nm=M(n,$("#m-deg").value,$("#m-title").value!==TITLES[0][0],"Paid 2026");nm.title=$("#m-title").value;members.push(nm);
+    $("#m-name").value="";$("#m-title").value=TITLES[0][0];refreshPeople();
   });
   function refreshPeople(){renderMembers();renderSite();if(typeof renderMinutes==="function")renderMinutes()}
 
@@ -228,12 +239,12 @@
     const full=name+(num?" No. "+num:"");
     $("#pv-title").textContent=full+(jur?", "+jur:"");
     const town=[$("#f-city").value.trim(),$("#f-state").value].filter(Boolean).join(", ");
-    $("#pv-sub").textContent=[town,"Stated Communications "+$("#f-sched").value.trim()].filter(Boolean).join(" · ");
+    $("#pv-sub").textContent=[town,ORGX.meetings+" "+$("#f-sched").value.trim()].filter(Boolean).join(" · ");
     $("#pv-url").textContent=(name==="Your Lodge"&&!num)?"yourlodge.lodgenet.org":(name.toLowerCase().replace(/lodge/g,"").replace(/[^a-z0-9]/g,"")+num)+".lodgenet.org";
     if(CLOUD&&(window.LODGE||{}).slug)$("#pv-url").textContent=location.host+"/site/"+window.LODGE.slug;
     $("#cb-name").textContent=full;
-    $("#pv-officers").innerHTML=["WM","SW","JW","TREAS","SEC"].map(k=>{const x=SEATS.find(s=>s.k===k),m=member(officers[k]);
-      return `<dt>${x.t}</dt><dd>${m?esc(m.name+(m.pm&&k!=="WM"?", PM":"")):"Vacant"}</dd>`}).join("");
+    $("#pv-officers").innerHTML=SEATS.slice(0,5).map(x=>{const m=member(officers[x.k]);
+      return `<dt>${esc(x.t)}</dt><dd>${m?esc(m.name+(m.pm&&x.k!==SEATS[0].k&&BLUE?", PM":"")):"Vacant"}</dd>`}).join("");
     $("#site-preview").style.setProperty("--site",siteColor);
     {const h=document.querySelector("#site-preview .site-hero");if(h){
       h.classList.toggle("has-img",!!pics.hero);h.style.backgroundImage=pics.hero?`linear-gradient(rgba(0,0,0,.45),rgba(0,0,0,.55)),url("${pics.hero}")`:"";
@@ -388,9 +399,9 @@
   const isoDay=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
   function publicSite(){
     const name=fieldVal("#f-name")||"Your Lodge",num=fieldVal("#f-num"),now=isoDay(new Date());
-    return {name,number:num,full:name+(num?" No. "+num:""),jur:fieldVal("#f-jur"),grandLodge:fieldVal("#f-gl"),
+    return {org:ORGX.key,unit:ORGX.unit,meetings:ORGX.meetings,ein:fieldVal("#f-ein"),name,number:ORGX.numbered?num:"",full:name+(ORGX.numbered&&num?" No. "+num:""),jur:fieldVal("#f-jur"),grandLodge:fieldVal("#f-gl"),
       city:fieldVal("#f-city"),state:fieldVal("#f-state"),schedule:fieldVal("#f-sched"),color:siteColor,email:fieldVal("#f-email"),
-      officers:SEATS.map(x=>{const m=member(officers[x.k]);return m?{seat:x.t,name:m.name+(m.pm&&x.k!=="WM"?", PM":"")}:null}).filter(Boolean),
+      officers:SEATS.map(x=>{const m=member(officers[x.k]);return m?{seat:x.t,name:m.name+(m.pm&&x.k!==SEATS[0].k&&BLUE?", PM":"")}:null}).filter(Boolean),
       events:events.filter(e=>e.d>=now).sort((a,b)=>a.d<b.d?-1:1).slice(0,12).map(e=>({d:e.d,t:e.t,time:e.time||"",fund:e.k==="fund",...(e.k==="fund"&&e.fid?{fid:e.fid}:{})})),
       social:[["Facebook","#f-fb","https://facebook.com/"],["Instagram","#f-ig","https://instagram.com/"],["X","#f-x","https://x.com/"],["YouTube","#f-yt","https://youtube.com/@"],["TikTok","#f-tt","https://tiktok.com/@"]]
         .filter(([,f])=>handle(f)).map(([n,f,base])=>({name:n,url:base+handle(f)})),
@@ -528,14 +539,15 @@
   /* Stated Communications on the calendar follow the schedule; notes on a matching date are kept */
   let nextStated=CFG.nextStated||"";
   function regenStated(){
-    const keep={};events.filter(e=>e.t==="Stated Communication").forEach(e=>keep[e.d]=e);
-    events=events.filter(e=>e.t!=="Stated Communication");
+    const MT=window.LodgeOrg?window.LodgeOrg.MEETINGS:["Stated Communication"];
+    const keep={};events.filter(e=>MT.includes(e.t)).forEach(e=>keep[e.d]=e);
+    events=events.filter(e=>!MT.includes(e.t));
     const n=+$("#f-week").value,day=$("#f-day").value,tm=time12($("#f-time").value)||"Time not set";
     const iso=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
     const gen=[];
     for(let k=-2;k<=8;k++){const base=new Date(TODAY.getFullYear(),TODAY.getMonth()+k,1);
       const d=iso(nthWeekday(base.getFullYear(),base.getMonth(),n,day)),old=keep[d];
-      gen.push({d,t:"Stated Communication",k:"lodge",time:tm,note:old?old.note:"Regular Communication on the third degree."});}
+      gen.push({d,t:ORGX.meeting,k:"lodge",time:tm,note:old?old.note:ORGX.key==="blue"||ORGX.key==="pha"?"Regular Communication on the third degree.":"Regular "+ORGX.meeting+"."});}
     events=events.concat(gen);
     nextStated=(gen.find(e=>parse(e.d)>=TODAY)||{}).d||nextStated;
     if(selected&&!events.includes(selected))selected=events.find(e=>e.d===selected.d)||gen.find(e=>parse(e.d)>=TODAY);
@@ -609,7 +621,7 @@
     {id:"bills",title:"Bills",def:false,fields:[["items","Bills presented","list",[["payee","Payee"],["amt","Amount $"]]],["action","The bills were","sel",["","approved and ordered paid","referred to the Finance Committee"]]]},
     {id:"old",title:"Old Business",fields:[["motions","Motions","motions"],["notes","Notes","area"]]},
     {id:"new",title:"New Business",fields:[["motions","Motions","motions"],["notes","Notes","area"]]},
-    {id:"degree",title:"Degree Work",def:false,fields:[["deg","Degree","sel",["","Entered Apprentice","Fellowcraft","Master Mason"]],["cands","Candidates"],["by","Conferred by"]]},
+    {id:"degree",title:"Degree Work",def:false,fields:[["deg","Degree","sel",["",...(ORGX.key==="blue"||ORGX.key==="pha"?["Entered Apprentice","Fellowcraft","Master Mason"]:(ORG?ORG.degrees.filter(d=>!/candidate|prospective/i.test(d)).reverse():[]))]],["cands","Candidates"],["by","Conferred by"]]},
     {id:"mw",title:"Masters & Wardens",fields:[["notes","Notes","area"]]},
     {id:"edu",title:"Masonic Education",fields:[["by","Presented by","member"],["topic","Topic"],["notes","Notes","area"]]},
     {id:"sick",title:"Sick & Distressed",fields:[["items","Brethren and families","list",[["name","Name"],["note","Note"]]]]},
@@ -658,7 +670,10 @@
   let current=minutes[0],minView="short",nextMin=Math.max(0,...minutes.map(m=>m.id))+1,showSections=false;
   const lodgeParts=()=>{
     const raw=$("#f-name").value.trim()||"Your Lodge";
-    return {base:raw.replace(/\s+lodge$/i,""),num:$("#f-num").value.trim(),abbr:$("#f-jur").value.split(" ")[0],gl:$("#f-gl").value.trim()||"Grand Lodge"};
+    /* "Murrells Inlet" + "Lodge No." + "368", or "Valley of Charleston" with nothing after it */
+    const unitNo=ORGX.numbered?ORGX.unit+" No.":"";
+    return {base:ORGX.numbered?raw.replace(new RegExp("\\s+"+ORGX.unit+"$","i"),""):raw,num:ORGX.numbered?$("#f-num").value.trim():"",unitNo,
+      abbr:$("#f-jur").value.split(" ")[0],gl:$("#f-gl").value.trim()||(ORG?ORG.governing:"Grand Lodge")};
   };
   function statusPill(s){return `<span class="pill ${s==="Approved"?"ok":s==="Draft"?"":"warn"}">${s}</span>`}
   const longDate=d=>fmt(parse(d),{month:"long",day:"numeric",year:"numeric"});
@@ -678,13 +693,17 @@
     const proTem=k=>m.seats[k]&&officers[k]&&+m.seats[k]!==+officers[k];
     B.push({t:"lh",L});
     P(longDate(m.date),{gap:24});
-    P(`At a Stated Communication of ${L.base} Lodge No. ${L.num}${L.abbr?", "+L.abbr:""}, the following brethren filled the chairs:`);
-    const rows=[["WM","SD"],["SW","JD"],["JW","STW1"],["TREAS","STW2"],["SEC","TILER"],[null,"CHAP"]]
+    P(`At a ${ORGX.meeting} of ${L.base}${L.unitNo?" "+L.unitNo+" "+L.num:""}${L.abbr?", "+L.abbr:""}, the following ${ORGX.members.toLowerCase()} filled the chairs:`);
+    /* Blue Lodges keep the traditional two columns; other bodies pair their chairs in order */
+    const pairs=ORGX.key==="blue"||ORGX.key==="pha"?[["WM","SD"],["SW","JD"],["JW","STW1"],["TREAS","STW2"],["SEC","TILER"],[null,"CHAP"]]
+      :(()=>{const k=SEATS.map(x=>x.k),h=Math.ceil(k.length/2);return k.slice(0,h).map((a,i)=>[a,k[h+i]||null])})();
+    const rows=pairs
       .map(r=>r.map(k=>k&&m.seats[k]?{name:fullName(m.seats[k])+(proTem(k)?" (pro tem)":""),ab:SEATS.find(x=>x.k===k).ab}:null))
       .filter(r=>r[0]||r[1]);
     if(rows.length)B.push({t:"seats",rows});
-    const wm=member(m.seats.WM),t=val(m,"opening.time");
-    P(`The Worshipful Master${wm?`, W Bro. ${wm.name}${proTem("WM")?" (pro tem)":""},`:""} opened the Lodge${t?` at ${timeLC(t)}`:""} in due form on the ${deg} degree of Masonry.`,{align:"justify"});
+    const head0=SEATS[0].k,wm=member(m.seats[head0]),t=val(m,"opening.time");
+    if(BLUE)P(`The Worshipful Master${wm?`, W Bro. ${wm.name}${proTem("WM")?" (pro tem)":""},`:""} opened the Lodge${t?` at ${timeLC(t)}`:""} in due form on the ${deg} degree of Masonry.`,{align:"justify"});
+    else P(`The ${SEATS[0].t.replace(/,.*$/,"")}${wm?`, ${pre(wm)}${wm.name}${proTem(head0)?" (pro tem)":""},`:""} opened the ${ORGX.meeting}${t?` at ${timeLC(t)}`:""}.`,{align:"justify"});
     const tot=val(m,"attend.total"),vis=val(m,"attend.visitors"),pms=val(m,"attend.pms"),vl=list(m,"attend.vlist");
     if(tot||vis||pms||vl.length){
       let s=vis||pms||vl.length?"The Worshipful Master welcomed visiting brothers and the Past Masters visiting and of the Lodge.":"";
@@ -696,7 +715,7 @@
     }
     const pa=val(m,"prev.action"),pn=val(m,"prev.notes");
     if(pa||pn){const earlier=minutes.filter(x=>x.date<m.date).sort((a,b)=>a.date<b.date?1:-1)[0];
-      P(pa?`The minutes of the previous Stated Communication${earlier?` of ${longDate(earlier.date)}`:""} were ${pa}.${pn?" "+pn:""}`:`The minutes of the previous communication – ${pn}`,{align:"justify"})}
+      P(pa?`The minutes of the previous ${ORGX.meeting}${earlier?` of ${longDate(earlier.date)}`:""} were ${pa}.${pn?" "+pn:""}`:`The minutes of the previous communication – ${pn}`,{align:"justify"})}
     const on=id=>secOn(MS.find(x=>x.id===id));
     if(on("corr")){const it=list(m,"corr.items"),n=val(m,"corr.notes");
       if(it.length||n)P("Correspondence was read – "+[it.map(r=>[r.from&&`from ${r.from}`,r.about&&`regarding ${r.about}`].filter(Boolean).join(" ")).join("; ")+(it.length?".":""),n].filter(Boolean).join(" "),{align:"justify"})}
@@ -739,7 +758,7 @@
   function longHTML(m){
     const runHTML=r=>r.map(([t,st])=>st?`<span class="${st.includes("b")?"b ":""}${st.includes("u")?"u":""}">${esc(t)}</span>`:esc(t)).join("").replace(/\n/g,"<br>");
     return longForm(m).map(b=>{
-      if(b.t==="lh")return `<div class="lh"><div class="lh-name">${esc(b.L.base)} <span class="scap">Lodge No.</span> ${esc(b.L.num)}</div><div class="lh-rule" aria-hidden="true"><i></i>★<i></i></div><div class="lh-gl">${esc(b.L.gl)}</div></div>`;
+      if(b.t==="lh")return `<div class="lh"><div class="lh-name">${esc(b.L.base)}${b.L.unitNo?` <span class="scap">${esc(b.L.unitNo)}</span> ${esc(b.L.num)}`:""}</div><div class="lh-rule" aria-hidden="true"><i></i>★<i></i></div><div class="lh-gl">${esc(b.L.gl)}</div></div>`;
       if(b.t==="seats")return `<table class="seats"><tbody>${b.rows.map(r=>`<tr>${r.map(c=>c?`<td>${esc(c.name)}</td><td class="ab">${c.ab}</td>`:"<td></td><td></td>").join("")}</tr>`).join("")}</tbody></table>`;
       if(b.t==="sig")return `<div class="sig2"><div class="attest">${b.wm?`<p>Attest:</p><p class="line"></p><p>${esc(b.wm)}, Worshipful Master</p>`:""}</div>
         <div class="right"><p>Fraternally Submitted,</p><p class="line"></p><p>${b.sec?esc(b.sec)+", ":""}Secretary</p>${b.coll.map(c=>`<p>${esc(c)}</p>`).join("")}</div></div>`;
@@ -764,7 +783,7 @@
     const blocks=longForm(m);
     for(const b of blocks){
       if(b.t==="lh"){
-        const head=[...[...(b.L.base+" ")].map(c=>[c,26]),...scSegs("Lodge No.",26,20),...[...(" "+b.L.num)].map(c=>[c,26])];
+        const head=b.L.unitNo?[...[...(b.L.base+" ")].map(c=>[c,26]),...scSegs(b.L.unitNo,26,20),...[...(" "+b.L.num)].map(c=>[c,26])]:[...b.L.base].map(c=>[c,26]);
         let w=segWidth(head);drawSegs(head,(PW-w)/2,y+20);y+=34;
         const cx=PW/2;doc.setLineWidth(1);doc.line(cx-170,y,cx-14,y);doc.line(cx+14,y,cx+170,y);
         const R=7,r=2.9,pts=[];for(let i=0;i<10;i++){const a=-Math.PI/2+i*Math.PI/5,rad=i%2?r:R;pts.push([cx+rad*Math.cos(a),y-1+rad*Math.sin(a)])}
@@ -814,7 +833,7 @@
   async function downloadPdf(){
     const btn=$('[data-act="pdf"]');if(btn){btn.disabled=true;btn.textContent="Making PDF…"}
     try{await loadPdfLib();const L=lodgeParts();
-      buildPdf(current).save(`${(L.base+" Lodge "+L.num).trim().replace(/[^A-Za-z0-9]+/g,"-")}-Minutes-${current.date}.pdf`);
+      buildPdf(current).save(`${(L.base+" "+(L.unitNo?ORGX.unit+" "+L.num:"")).trim().replace(/[^A-Za-z0-9]+/g,"-")}-Minutes-${current.date}.pdf`);
     }catch(e){alert("The PDF couldn't be made: "+e.message)}
     finally{renderMinutes()}
   }
@@ -838,7 +857,7 @@
     const dis=locked?"disabled":"";
     const seatRows=SEATS.map(x=>`<label class="sf-seat"><span title="${x.t}">${x.ab}</span>${seatSelect("data-seat",x,m.seats[x.k]).replace("<select ",`<select ${dis} `)}</label>`).join("");
     let h=`<fieldset class="sf-sec"><legend>Meeting</legend><div class="sf-grid">
-      <label class="sf-f"><span>Date of the Stated Communication</span><input type="date" data-date value="${m.date}" ${dis}></label></div>
+      <label class="sf-f"><span>Date of the ${esc(ORGX.meeting)}</span><input type="date" data-date value="${m.date}" ${dis}></label></div>
       <p class="hint" style="margin-top:10px">Officers in the chairs. Anyone filling in for the regular officer is marked "pro tem".</p>
       <div class="sf-seats">${seatRows}</div></fieldset>`;
     for(const sec of MS){
@@ -869,13 +888,13 @@
     if(!current){
       $("#min-list").innerHTML='<p class="hint">Nothing written up yet.</p>';
       $("#min-toolbar").innerHTML="";
-      $("#min-doc").innerHTML='<p style="text-align:center;margin:2in 0">Click "'+esc($("#min-new").textContent)+'" to start the write-up for your next Stated Communication.</p>';
+      $("#min-doc").innerHTML='<p style="text-align:center;margin:2in 0">Click "'+esc($("#min-new").textContent)+'" to start the write-up for your next '+esc(ORGX.meeting)+'.</p>';
       return;
     }
     const m=current,locked=m.status==="Approved";
     if(locked)minView="long";
     $("#min-list").innerHTML=minutes.map(x=>`<button type="button" class="min-item" data-id="${x.id}" aria-current="${x===current}">
-      <b>Stated Communication</b><span>${longDate(x.date)}</span>${statusPill(x.status)}</button>`).join("");
+      <b>${esc(ORGX.key==="club"?"Meeting notes":ORGX.meeting)}</b><span>${longDate(x.date)}</span>${statusPill(x.status)}</button>`).join("");
     const seg=`<span class="seg" role="group" aria-label="View"><button type="button" data-view="short" aria-pressed="${minView==="short"}"${locked?" disabled":""}>Short form</button><button type="button" data-view="long" aria-pressed="${minView==="long"}">Full write-up</button></span>`;
     const acts=[`<button class="btn sm" type="button" data-act="pdf">Save as PDF</button>`];
     if(!locked){acts.unshift(`<button class="btn line sm" type="button" data-act="sections" aria-expanded="${showSections}">Sections</button>`);
@@ -1079,6 +1098,7 @@
   function snapshot(){
     const form={};document.querySelectorAll("#site-form input[id]:not([type=checkbox]),#site-form select[id],#site-form textarea[id],#pay-form input[id]").forEach(el=>{if(!el.closest("[data-nosnap]"))form[el.id]=el.value});
     return {app:"LodgeNet",version:1,page:STORE_KEY,savedAt:new Date().toISOString(),form,color:siteColor,
+      org:ORGX.key,
       membersFull:members,officers,events,minutes,minuteSections,gmail,nextStated,products,orders,published,siteImages:pics,siteStore:siteStoreOn,...(plan?{plan}:{}),
       /* site-builder.js and site-qr.js own these; without them (the public demo) they pass through untouched */
       ...(window.LodgeNetSite?window.LodgeNetSite.snapshot():{siteLayout:CFG.siteLayout,siteQrs:CFG.siteQrs}),
@@ -1137,6 +1157,24 @@
     location.reload();
   });
 
+  /* words on the page that follow the organization type */
+  (function orgLabels(){
+    if(!ORG)return;
+    const lab=(id,t)=>{const l=document.querySelector(`label[for="${id}"]`);if(l)l.textContent=t};
+    const fieldOf=id=>{const el=document.getElementById(id);return el&&el.closest(".field")};
+    lab("f-name",ORG.unit+" name");lab("f-num",ORG.unit+" number");lab("f-gl",ORG.governing+" name");lab("f-jur",ORG.key==="club"?"Abbreviation":"Jurisdiction");
+    const nm=document.getElementById("f-name");if(nm&&ORG.key!=="blue")nm.placeholder={pha:"e.g. King Solomon Lodge",sr:"e.g. Valley of Charleston",chapter:"e.g. Palmetto Chapter",council:"e.g. Palmetto Council",commandery:"e.g. Palmetto Commandery",yorkrite:"e.g. Charleston York Rite Bodies",club:"e.g. Grand Strand Scottish Rite Club"}[ORG.key]||"";
+    const num=fieldOf("f-num");if(num)num.hidden=!ORG.numbered;
+    /* only a Blue Lodge chooses between its state's Grand Lodge and Prince Hall; every other body knows which it is */
+    const fam=fieldOf("f-family");if(fam)fam.hidden=ORG.key!=="blue";
+    const glHint=document.querySelector(".auto-gl .hint");if(glHint)glHint.textContent=ORG.key==="club"?"The Valley that sponsors your club, if any.":"Filled in from the state. Edit them if your charter reads differently.";
+    const lg=document.querySelector("fieldset.sched legend");if(lg)lg.textContent=ORG.meetings;
+    const ein=fieldOf("f-ein");if(ein)ein.hidden=!ORG.nonprofit;
+    const tm=document.getElementById("t-min");if(tm&&tm.textContent.trim()==="Stated Communications")tm.textContent=ORG.notes;
+    const mt=document.getElementById("m-title");if(mt)mt.innerHTML=TITLES.map(([v,l])=>`<option value="${esc(v)}">${esc(v)} · ${esc(l)}</option>`).join("");
+    const md=document.getElementById("m-deg");if(md)md.innerHTML=DEGREES.map(d=>`<option>${esc(d)}</option>`).join("");
+    const place=document.getElementById("lodge-place");if(place)place.textContent=place.textContent.replace(/^Lodge dashboard/,ORG.unit+" dashboard");
+  })();
   renderMembers();renderGmail();regenStated();renderPics();renderSite();siteState();
   renderCal();renderCart();renderMinutes();
   /* the signed-in dashboard (assets/dash.js) builds its other sections on the same lodge data and saves through queueSave */
@@ -1148,6 +1186,8 @@
     refresh(){renderCal();refreshPeople()},
     get orders(){return orders},set orders(v){orders=v},renderProducts,
     drawProducts,payLink,payButtons,save:queueSave,
+    ORG:ORGX,async setOrg(k){if(!(window.LodgeOrg&&window.LodgeOrg.TYPES[k]))return false;
+      const prevKey=ORGX.key;ORGX.key=k;clearTimeout(saveTimer);const ok=await save();if(ok===false){ORGX.key=prevKey;return false}location.reload();return true},
     SLUG,siteState,shrinkPic,fileUrl,publicSite,pics,applyImport,SEATS_TITLES:()=>SEATS.map(x=>x.t),isoDay,
     /* the Website builder's Design panel (assets/site-builder.js) picks any color, not just the swatches */
     get siteColor(){return siteColor},
