@@ -22,6 +22,70 @@
   const telHref=p=>"tel:+1"+String(p).replace(/\D/g,"").replace(/^1/,"");
   const dirHref=a=>"https://www.google.com/maps/dir/?api=1&destination="+encodeURIComponent(a);
 
+  /* ---------- officers: this year's and next year's, for every lodge and body in the district ----------
+     Saved with the lodge's data as districtOfficers[district][body][year] = [{t:office,n:name,p:phone}].
+     A booklet tab (the Blue Book) lays them out with Add district officers (assets/booklet.js). */
+  const YEAR=new Date().getFullYear(),YEARS=[YEAR,YEAR+1];
+  const A=()=>window.LodgeNetApp||{};
+  const canEdit=()=>{const c=A().CLOUD;return !c||!!c.canEdit};
+  const OFF=C().districtOfficers&&typeof C().districtOfficers==="object"?JSON.parse(JSON.stringify(C().districtOfficers)):{};
+  const bid=b=>b.id||b.name.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
+  const OFFICES={
+    blue:["Worshipful Master","Senior Warden","Junior Warden","Treasurer","Secretary","Senior Deacon","Junior Deacon","Chaplain","Senior Steward","Junior Steward","Tiler"],
+    chapter:["Excellent High Priest","King","Scribe","Captain of the Host","Principal Sojourner","Royal Arch Captain","Master of the 3rd Veil","Master of the 2nd Veil","Master of the 1st Veil","Treasurer","Secretary","Sentinel"],
+    council:["Illustrious Master","Deputy Master","Principal Conductor of the Work","Treasurer","Recorder","Captain of the Guard","Conductor of the Council","Steward","Sentinel"],
+    commandery:["Eminent Commander","Generalissimo","Captain General","Prelate","Senior Warden","Junior Warden","Treasurer","Recorder","Standard Bearer","Sword Bearer","Warder","Sentinel"],
+    oes:["Worthy Matron","Worthy Patron","Associate Matron","Associate Patron","Secretary","Treasurer","Conductress","Associate Conductress","Chaplain","Marshal","Organist","Warder","Sentinel"],
+    rainbow:["Worthy Advisor","Worthy Associate Advisor","Charity","Hope","Faith","Recorder","Treasurer","Chaplain","Drill Leader","Mother Advisor","Advisory Board Chair"],
+    demolay:["Master Councilor","Senior Councilor","Junior Councilor","Scribe","Treasurer","Chapter Advisor","Advisory Council Chairman"],
+    amaranth:["Royal Matron","Royal Patron","Associate Matron","Associate Patron","Secretary","Treasurer","Conductress","Associate Conductress"],
+    club:["President","Vice President","Secretary","Treasurer"],
+    scottish:["President","Vice President","Secretary","Treasurer"]};
+  const officesFor=b=>b.k==="york"?OFFICES[/chapter/i.test(b.name)?"chapter":/council/i.test(b.name)?"council":"commandery"]
+    :b.k==="shrine"?OFFICES.club:OFFICES[b.k]||OFFICES.club;
+  const roster=(k,b,y)=>(((OFF[k]||{})[bid(b)]||{})[y])||null;
+  const filled=r=>(r||[]).filter(x=>x.n&&x.n.trim());
+  /* the usual offices, with the contact the district published put in his chair */
+  function starter(b){
+    const m=String(b.contact||"").match(/^(.*?)\s+([A-Z][\w.'-]*(?:\s+[A-Z][\w.'-]*)*)$/);
+    return officesFor(b).map(t=>{
+      const hit=m&&m[1]&&(t.toLowerCase()===m[1].toLowerCase()||t.toLowerCase().endsWith(m[1].toLowerCase()));
+      return {t,n:hit?m[2]:"",p:hit&&b.phone?b.phone:""}});
+  }
+  function setRoster(k,b,y,r){((OFF[k]=OFF[k]||{})[bid(b)]=OFF[k][bid(b)]||{})[y]=r;saveSoon()}
+  function saveSoon(){clearTimeout(saveSoon.t);saveSoon.t=setTimeout(()=>{const a=A();if(a.save)a.save()},500)}
+  const offOpen={};let offYear=YEAR;
+
+  function offPanel(d,b,i){
+    const r=roster(key,b,offYear),ed=canEdit(),prev=roster(key,b,offYear-1);
+    const rows=r||[];
+    return `<div class="dist-off-h">
+        <div class="dist-yr" role="group" aria-label="Officers for">${YEARS.map(y=>`<button type="button" data-yr="${y}" aria-pressed="${y===offYear}">${y}${y===YEAR?" · current":" · next year"}</button>`).join("")}</div>
+      </div>
+      ${rows.length?`<table class="dist-off-t"><thead><tr><th>Office</th><th>Name</th><th>Phone</th>${ed?'<th><span class="sr">Remove</span></th>':""}</tr></thead><tbody>
+        ${rows.map((x,j)=>ed?`<tr><td><input data-o="${j}" data-f="t" value="${esc(x.t)}" aria-label="Office"></td><td><input data-o="${j}" data-f="n" value="${esc(x.n)}" placeholder="Name" aria-label="${esc(x.t)} name"></td><td><input data-o="${j}" data-f="p" value="${esc(x.p)}" placeholder="Phone" inputmode="tel" aria-label="${esc(x.t)} phone"></td><td><button type="button" class="link-btn" data-orm="${j}" aria-label="Remove ${esc(x.t)}">✕</button></td></tr>`
+          :`<tr><td>${esc(x.t)}</td><td>${esc(x.n)||'<span class="hint">Not entered</span>'}</td><td>${x.p?`<a href="${telHref(x.p)}">${esc(x.p)}</a>`:""}</td></tr>`).join("")}
+      </tbody></table>`:`<p class="hint" style="margin:0">No ${offYear} officers entered yet.</p>`}
+      ${ed?`<div class="row-acts">
+        ${rows.length?'<button type="button" class="btn line sm" data-oadd>Add an office</button>':'<button type="button" class="btn sm" data-ostart>Start with the usual offices</button>'}
+        ${prev&&filled(prev).length?`<button type="button" class="btn line sm" data-ocopy>Copy ${offYear-1}'s list</button>`:""}
+      </div>`:""}`;
+  }
+  function wireOff(el,d,b,i){
+    const draw=()=>{el.innerHTML=offPanel(d,b,i);wireOff(el,d,b,i);const s=el.closest(".dist-card").querySelector(".dist-offsum");if(s)s.innerHTML=offSum(b)};
+    el.querySelectorAll("[data-yr]").forEach(x=>x.addEventListener("click",()=>{offYear=+x.dataset.yr;draw()}));
+    const r=()=>roster(key,b,offYear)||[];
+    el.querySelectorAll("[data-o]").forEach(inp=>inp.addEventListener("input",()=>{const rr=r();rr[+inp.dataset.o][inp.dataset.f]=inp.value;setRoster(key,b,offYear,rr);
+      const s=el.closest(".dist-card").querySelector(".dist-offsum");if(s)s.innerHTML=offSum(b)}));
+    el.querySelectorAll("[data-orm]").forEach(x=>x.addEventListener("click",()=>{const rr=r();rr.splice(+x.dataset.orm,1);setRoster(key,b,offYear,rr);draw()}));
+    const on=(sel,f)=>{const x=el.querySelector(sel);if(x)x.addEventListener("click",()=>{f();draw();const f1=el.querySelector('input[data-f="n"]');if(f1&&sel!=="[data-oadd]")f1.focus()})};
+    on("[data-oadd]",()=>{const rr=r();rr.push({t:"",n:"",p:""});setRoster(key,b,offYear,rr)});
+    on("[data-ostart]",()=>setRoster(key,b,offYear,offYear===YEAR?starter(b):officesFor(b).map(t=>({t,n:"",p:""}))));
+    on("[data-ocopy]",()=>{if(r().some(x=>x.n)&&!confirm(`Replace the ${offYear} list with ${offYear-1}'s?`))return;
+      setRoster(key,b,offYear,(roster(key,b,offYear-1)||[]).map(x=>({...x})))});
+  }
+  const offSum=b=>YEARS.map(y=>{const n=filled(roster(key,b,y)).length;return `<span class="pill${n?" ok":""}">${y}: ${n?n+" officer"+(n>1?"s":""):"none yet"}</span>`}).join(" ");
+
   function loadLeaflet(){
     if(window.L)return Promise.resolve(window.L);
     if(loadLeaflet.p)return loadLeaflet.p;
@@ -46,7 +110,10 @@
         ${b.mail?`<dt>Mail</dt><dd>${esc(b.mail)}</dd>`:""}
       </dl>
       ${b.note?`<p class="hint" style="margin:0">${esc(b.note)}</p>`:""}
+      <div class="dist-offsum">${offSum(b)}</div>
+      <div class="dist-off" data-off="${i}"${offOpen[bid(b)]?"":" hidden"}></div>
       <div class="row-acts">
+        <button class="btn sm" type="button" data-offbtn="${i}" aria-expanded="${!!offOpen[bid(b)]}">Officers</button>
         <button class="btn line sm" type="button" data-show="${i}">Show on map</button>
         ${h.addr?`<a class="btn line sm" href="${dirHref(h.addr)}" target="_blank" rel="noopener">Directions</a>`:""}
         ${b.web?`<a class="btn line sm" href="${esc(b.web)}" target="_blank" rel="noopener">Website</a>`:""}
@@ -110,6 +177,11 @@
     const L=shown(d),el=$("#dist-list");if(!el)return;
     const all=d.bodies;
     el.innerHTML=L.length?L.map(b=>card(d,b,all.indexOf(b))).join(""):'<div class="empty">Nothing matches that search.</div>';
+    el.querySelectorAll(".dist-off:not([hidden])").forEach(o=>{const b=all[+o.dataset.off];o.innerHTML=offPanel(d,b);wireOff(o,d,b)});
+    el.querySelectorAll("[data-offbtn]").forEach(btn=>btn.addEventListener("click",()=>{
+      const b=all[+btn.dataset.offbtn],o=el.querySelector(`.dist-off[data-off="${btn.dataset.offbtn}"]`),open=o.hidden;
+      offOpen[bid(b)]=open;o.hidden=!open;btn.setAttribute("aria-expanded",open);
+      if(open){o.innerHTML=offPanel(d,b);wireOff(o,d,b)}}));
     el.querySelectorAll("[data-show]").forEach(btn=>btn.addEventListener("click",()=>{
       const b=all[+btn.dataset.show],m=pins[b.hall];if(!m||!map)return;
       map.setView(m.getLatLng(),14);m.openPopup();
@@ -117,7 +189,19 @@
     drawPins(d,L);
   }
 
-  window.LodgeNetDistrict={render,
+  /* booklet entries for one year: each lodge and body, its meeting and its officers, in the district's order */
+  function entries(year,kinds,skipEmpty){
+    const D=window.LodgeNetDistricts,k=districtKey(),d=k&&D[k];if(!d)return [];
+    return d.bodies.filter(b=>!kinds||kinds.includes(b.k)).map(b=>{
+      const h=d.halls[b.hall]||{},r=filled(roster(k,b,year));
+      if(skipEmpty&&!r.length)return null;
+      const lines=[`Meets: ${b.meets}${b.meal?` (meal ${b.meal})`:""}`,h.addr?`At: ${h.addr}`:"",b.mail?`Mail: ${b.mail}`:"",b.web?`Web: ${b.web}`:""].filter(Boolean);
+      const offs=r.length?r.map(x=>`${x.t||"Officer"}: ${x.n}${x.p?`, ${x.p}`:""}`).join("\n"):"Officers not entered yet.";
+      return {id:`dist-${k}-${bid(b)}-${year}`,title:`${b.name}`,body:lines.join("\n")+`\n\n${year} OFFICERS\n`+offs,images:[],sources:[`${d.name} officers, ${year}`],at:new Date().toISOString().slice(0,10),kind:b.k};
+    }).filter(Boolean);
+  }
+  window.LodgeNetDistrict={render,entries,years:()=>YEARS,data:()=>OFF,kinds:()=>KINDS.map(([k,l])=>[k,l]),
+    has:()=>!!districtKey(),name:()=>{const k=districtKey();return k?window.LodgeNetDistricts[k].name:""},
     figures(){const D=window.LodgeNetDistricts,k=districtKey(),d=k&&D[k];if(!d)return null;
       const n=x=>d.bodies.filter(b=>b.k===x).length;
       return [["District",d.name.replace(/ Masonic District$/,""),d.area],["Blue lodges",n("blue"),"In the district"],

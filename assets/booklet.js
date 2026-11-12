@@ -45,9 +45,11 @@
         <div class="bk-seg" role="group" aria-label="Booklet view"><button type="button" data-mode="entries" aria-pressed="${s.mode==="entries"}">Entries</button><button type="button" data-mode="pages" aria-pressed="${s.mode==="pages"}">A5 pages</button></div>
         <span class="hint bk-count"></span><span class="bk-sp"></span>
         ${canEdit?'<button type="button" class="btn sm" data-new>Add an entry</button>':""}
+        ${canEdit&&window.LodgeNetDistrict&&window.LodgeNetDistrict.has()?'<button type="button" class="btn line sm" data-dist>Add district officers</button>':""}
         <button type="button" class="btn line sm" data-out>Download A5 PDF</button>
       </div>
       <p class="hint bk-msg" role="status"></p>
+      <div class="bk-dist-slot"></div>
       <div class="bk-comp-slot"></div>
       <div class="bk-main"></div>
     </div>`;
@@ -62,6 +64,32 @@
     const nb=$("[data-new]");if(nb)nb.addEventListener("click",()=>{if(!s.draft)s.draft={id:null,title:"",body:"",images:[],sources:[]};drawComposer();
       const h=$(".bk-comp [data-d=title]");if(h)h.focus()});
     $("[data-out]").addEventListener("click",download);
+
+    /* ---------- Add district officers: one entry per lodge and body for the chosen year (assets/district.js) ---------- */
+    const db=$("[data-dist]");if(db)db.addEventListener("click",()=>{
+      const slot=$(".bk-dist-slot"),X=window.LodgeNetDistrict;
+      if(slot.innerHTML){slot.innerHTML="";return}
+      const ys=X.years();
+      slot.innerHTML=`<div class="bk-comp"><h4>Add ${esc(X.name())} officers</h4>
+        <div class="field"><label>Year</label><select data-dy>${ys.map((y,i)=>`<option value="${y}"${i===ys.length-1?" selected":""}>${y}${i?" (next year)":" (current)"}</option>`).join("")}</select></div>
+        <fieldset class="bk-dk"><legend class="hint">Which bodies</legend>${X.kinds().map(([k,l])=>`<label><input type="checkbox" value="${k}" checked> ${esc(l)}</label>`).join("")}</fieldset>
+        <label><input type="checkbox" data-dskip checked> Leave out bodies with no officers entered for that year</label>
+        <p class="hint" style="margin:0">Officers are entered on the <a href="#district">District</a> tab. Adding again updates the same entries instead of making copies.</p>
+        <div class="bk-acts"><span class="bk-sp"></span><button type="button" class="link-btn" data-dx>Cancel</button><button type="button" class="btn sm" data-dgo>Add to booklet</button></div></div>`;
+      slot.querySelector("[data-dx]").addEventListener("click",()=>slot.innerHTML="");
+      slot.querySelector("[data-dgo]").addEventListener("click",()=>{
+        const y=+slot.querySelector("[data-dy]").value,ks=[...slot.querySelectorAll(".bk-dk input:checked")].map(x=>x.value);
+        const add=X.entries(y,ks,slot.querySelector("[data-dskip]").checked);
+        if(!add.length)return msg(`No officers are entered for ${y} yet. Add them on the District tab first.`,true);
+        let n=0,u=0;add.forEach(e=>{delete e.kind;const i=E.findIndex(x=>x.id===e.id);if(i>=0){E[i]=e;u++}else{E.push(e);n++}});
+        /* keep that year's district entries in the district's order, in the places they already hold */
+        const ord=new Map(X.entries(y,null,false).map((e,i)=>[e.id,i])),slots=[];
+        E.forEach((e,i)=>{if(ord.has(e.id))slots.push(i)});
+        slots.map(i=>E[i]).sort((p,q)=>ord.get(p.id)-ord.get(q.id)).forEach((e,j)=>E[slots[j]]=e);
+        save();slot.innerHTML="";count();drawMain();
+        msg([n?`Added ${n} ${n===1?"entry":"entries"}`:"",u?`updated ${u}`:""].filter(Boolean).join(", ")+` for ${y}.`);
+      });
+    });
 
     /* ---------- the entries, and the A5 pages ---------- */
     function drawMain(){ s.mode==="pages"?drawPages():drawList() }
@@ -361,6 +389,7 @@
 .bk-thumbs img{width:100%;height:100%;object-fit:cover}
 .bk-thumbs button{position:absolute;top:3px;right:3px;width:24px;height:24px;border:0;border-radius:50%;background:rgba(0,0,0,.62);color:#fff;cursor:pointer;padding:0;line-height:24px}
 .bk-drop{border:1.5px dashed var(--line);padding:10px;text-align:center;color:var(--muted);font-size:13px;margin-top:8px}.bk-drop.over{border-color:var(--ct);color:var(--ct)}
+.bk-dk{display:flex;flex-wrap:wrap;gap:6px 14px;border:0;margin:0;padding:0}.bk-dk legend{padding:0;margin-bottom:4px}
 .bk-src{margin:0}.bk-src:empty{display:none}
 .bk-acts{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.bk-acts label.btn{cursor:pointer}
 .bk-pdf{display:grid;gap:8px;border-top:1px solid var(--line);padding-top:12px}.bk-pdf p{margin:0}
