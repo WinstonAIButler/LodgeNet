@@ -161,7 +161,8 @@
   const officers=CFG.officers||(ORGX.key==="blue"||ORGX.key==="pha"?{WM:1,SW:2,JW:3,TREAS:4,SEC:5,SD:6,JD:7,STW1:8,STW2:9,TILER:10,CHAP:11}:{});
   const member=id=>members.find(m=>m.id===+id);
   const fullName=id=>{const m=member(id);return m?pre(m)+m.name:""};
-  const eligible=()=>members.filter(m=>m.active&&m.deg===ORGX.office).sort((a,b)=>a.name.split(" ").pop().localeCompare(b.name.split(" ").pop()));
+  /* every chair can be filled from anyone on the roll, whatever the organization type or their degree */
+  const eligible=()=>members.filter(m=>m.active).sort((a,b)=>a.name.split(" ").pop().localeCompare(b.name.split(" ").pop()));
   /* the Members page lays the chairs out in rows: the three principal officers, then the line officers, then the stewards and Tiler */
   const SEAT_ROWS=ORG?ORG.seatRows:[["WM","SW","JW"],["SEC","TREAS","SD","JD"],["STW1","STW2","TILER","CHAP"]];
   const SEAT_LABEL=ORG&&ORGX.key!=="blue"&&ORGX.key!=="pha"?ORG.seatLabel:{WM:"Worshipful Master",SW:"Sr. Warden",JW:"Jr. Warden",SEC:"Secretary",TREAS:"Treasurer",SD:"Sr. Deacon",JD:"Jr. Deacon",STW1:"Steward 1",STW2:"Steward 2",TILER:"Tiler",CHAP:"Chaplain"};
@@ -176,7 +177,7 @@
   }
   function renderMembers(){
     const act=members.filter(m=>m.active);
-    if(!act.length){$("#mem-count").textContent="No members yet";$("#mem-rows").innerHTML=`<tr><td colspan="6" class="hint">Add your first ${esc((ORG?ORG.member:"brother").toLowerCase())} below. Officers are picked from ${esc(ORGX.office==="Master Mason"?"Master Masons":ORGX.office==="Member"?"members":"those marked "+ORGX.office)} on this list.</td></tr>`;renderSeatDefaults();return}
+    if(!act.length){$("#mem-count").textContent="No members yet";$("#mem-rows").innerHTML=`<tr><td colspan="6" class="hint">Add your first ${esc((ORG?ORG.member:"brother").toLowerCase())} below. Anyone on this list can be seated in a chair.</td></tr>`;renderSeatDefaults();return}
     $("#mem-count").textContent=`${act.length} members · ${act.filter(m=>m.deg===ORGX.office).length} ${ORGX.office==="Master Mason"?"Master Masons":"can hold office"}`;
     const seatOf=id=>SEATS.filter(x=>+officers[x.k]===id).map(x=>x.ab).join(", ");
     const contact=m=>[m.email,m.phone].filter(Boolean).map(esc).join(" · ");
@@ -207,7 +208,7 @@
   });
   $("#mem-rows").addEventListener("change",e=>{
     const t=e.target;if(t.closest(".mem-edit-form"))return;
-    if(t.dataset.mdeg){const m=member(t.dataset.mdeg);m.deg=t.value;if(m.deg!==ORGX.office)for(const k in officers)if(+officers[k]===m.id)officers[k]="";}
+    if(t.dataset.mdeg){const m=member(t.dataset.mdeg);m.deg=t.value}
     if(t.dataset.mtitle){const m=member(t.dataset.mtitle);m.title=t.value;m.pm=m.title!=="B."}
     if(t.dataset.mdues)member(t.dataset.mdues).dues=t.value;
     refreshPeople();
