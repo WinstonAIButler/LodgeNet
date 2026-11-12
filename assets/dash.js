@@ -6,6 +6,7 @@
   const A=window.LodgeNetApp;if(!A)return;
   const $=s=>document.querySelector(s),esc=A.esc,CFG=A.CFG,CLOUD=A.CLOUD;
   const money=n=>(n<0?"−":"")+A.money(Math.abs(+n||0)).replace(/\.00$/,"");
+  const ORG=A.ORG||{key:"blue",meeting:"Stated Communication",office:"Master Mason"};
   const many=(n,one,more)=>n+" "+(n===1?one:more||one+"s");
   const iso=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
   const NOW=new Date(),TODAY=iso(NOW),YEAR=NOW.getFullYear();
@@ -63,9 +64,9 @@
       website:[["Website",CLOUD&&!CLOUD.paid?"Preview only":A.published?"Published":"Ready to publish",CLOUD&&!CLOUD.paid?"Publishing comes with a paid level":A.published&&A.CFG.slug?"/site/"+A.CFG.slug:"Press Publish above the page"],
         ["Plan",($("#plan-line").textContent.split(" · ")[0]||"Lodge Starter"),"Change it under Settings"],
         ["Upcoming events",up.length,"On the calendar"],["Officer chairs",`${seats} of ${A.SEATS.length}`,"Filled on Members"]],
-      members:[["Members",act.length,"On the roll"],["Master Masons",act.filter(m=>m.deg==="Master Mason").length,"Eligible for office"],
-        ["Past Masters",act.filter(m=>m.pm).length,""],["Dues owed",owe.length,paid.length+" paid"]],
-      communications:[["Next Stated",A.nextStated?day(A.nextStated):"Not set","From the meeting schedule"],["Upcoming events",up.length,""],
+      members:[["Members",act.length,"On the roll"],[ORG.office==="Master Mason"?"Master Masons":"Can hold office",act.filter(m=>m.deg===ORG.office).length,ORG.office==="Master Mason"?"Eligible for office":ORG.office],
+        [ORG.past||"Past Masters",act.filter(m=>m.pm).length,""],["Dues owed",owe.length,paid.length+" paid"]],
+      communications:[["Next "+(ORG.meeting||"meeting").replace(/^Stated /,"Stated "),A.nextStated?day(A.nextStated):"Not set","From the meeting schedule"],["Upcoming events",up.length,""],
         ["Write-ups to approve",A.minutes.filter(m=>m.status!=="Approved").length,A.minutes.filter(m=>m.status==="Approved").length+" approved"],
         ["Announcements",D.announcements.filter(a=>a.status==="Posted").length,D.announcements.filter(a=>a.status!=="Posted").length+" drafts"]],
       treasury:[["Balance",money(ledgerSum()),"All funds, from the ledger"],["Dues collected",money(paid.length*D.treasury.dues),many(paid.length,"brother")+" paid"],
@@ -76,8 +77,9 @@
       qrcodes:(()=>{const Q=window.LodgeNetSite?window.LodgeNetSite.snapshot().siteQrs:[],nf=Q.filter(q=>(q.to||"").startsWith("fund:")).length;
         return [["QR codes",Q.length,"Made for this lodge"],["Fundraiser codes",nf,"Point at a fundraiser"],["General codes",Q.length-nf,"Home, a page or a link"],
           ["Website",A.published?"Published":"Not published",A.published?"Codes work once published":"Publish so codes open the site"]]})(),
-      pipelines:[["In progress",D.pipeline.filter(c=>c.stage<RAISED).length,many(D.pipeline.filter(c=>c.stage===0).length,"new inquiry","new inquiries")],["Petitions",D.pipeline.filter(c=>c.stage>=1&&c.stage<=3).length,"Received, investigating or at ballot"],
-        ["In degrees",D.pipeline.filter(c=>c.stage===4||c.stage===5).length,"Entered Apprentice or Fellowcraft"],["Follow-ups due",D.ptasks.filter(t=>!t.done&&t.due&&t.due<=TODAY).length,many(D.ptasks.filter(t=>!t.done).length,"open task")]],
+      pipelines:[["In progress",D.pipeline.filter(c=>c.stage<RAISED).length,many(D.pipeline.filter(c=>c.stage===0).length,"new inquiry","new inquiries")],[ORG.key==="club"?"Applications":"Petitions",D.pipeline.filter(c=>c.stage>=1&&c.stage<JOIN).length,STAGES.slice(1,JOIN).join(", ")||"Received"],
+        RAISED>JOIN?["In degrees",D.pipeline.filter(c=>c.stage>=JOIN&&c.stage<RAISED).length,STAGES.slice(JOIN,RAISED).join(", ")]
+          :["Joined",D.pipeline.filter(c=>c.stage===RAISED).length,"Now on the roll"],["Follow-ups due",D.ptasks.filter(t=>!t.done&&t.due&&t.due<=TODAY).length,many(D.ptasks.filter(t=>!t.done).length,"open task")]],
       sponsors:[["Active sponsors",live.length,""],["Yearly support",money(live.reduce((t,s)=>t+(+s.amt||0),0)),"From active sponsors"],
         ["Renewals due",live.filter(s=>s.renew&&s.renew<=soon).length,"In the next 60 days"],["Prospects",D.sponsors.filter(s=>s.status==="Prospect").length,""]],
       merchandise:(()=>{const O=A.orders.filter(o=>o.status!=="Cancelled");
@@ -208,8 +210,10 @@
   /* ---------- Pipelines: prospective brethren from first inquiry to raising, laid out like a lead database:
      tabs for Prospects, Lists and Tasks; filters on the left; a sortable table with bulk actions; a detail card per prospect.
      Nothing is found or scored automatically: officers add prospects and set the fit themselves. ---------- */
-  const STAGES=["Inquiry","Petition received","Investigation","Ballot","Entered Apprentice","Fellowcraft","Raised","Not proceeding"];
-  const RAISED=6,NOPE=7,DEGREE={4:"Entered Apprentice",5:"Fellowcraft",6:"Master Mason"};
+  /* the stages follow the organization type (assets/org.js): a Blue Lodge raises, a Valley confers the 32°, a club approves */
+  const PL=(window.LodgeOrg&&window.LodgeOrg.current||{}).pipeline||{stages:["Inquiry","Petition received","Investigation","Ballot","Entered Apprentice","Fellowcraft","Raised","Not proceeding"],deg:{4:"Entered Apprentice",5:"Fellowcraft",6:"Master Mason"},join:4,done:6};
+  const STAGES=PL.stages;
+  const RAISED=PL.done,NOPE=STAGES.length-1,DEGREE=PL.deg,JOIN=PL.join;
   const KINDS_P=["Prospective member","Affiliation","Reinstatement"],SOURCES=["Brother's referral","Website","Event","Walk-in","Other"];
   const FITS=[["strong","Strong (80+)",f=>f>=80],["possible","Possible (50–79)",f=>f>=50&&f<80],["weak","Weak (under 50)",f=>f!=null&&f<50],["none","Not scored yet",f=>f==null]];
   const CONTACT=[["email","Has an email",c=>!!c.email],["phone","Has a phone",c=>!!c.phone],["by","Recommended by a brother",c=>!!c.by]];
@@ -323,7 +327,7 @@
           <div class="field"><label for="pt-d">Due</label><input id="pt-d" type="date"></div>
           <button class="btn" type="submit"${D.pipeline.length?"":" disabled"}>Add follow-up</button></form></div>`;
     }
-    $("#p-pipe").innerHTML=tabs+body+(PF.view==="search"?"":`<p class="hint" style="margin:14px 0 0">Moving a prospect to Entered Apprentice adds him to the roster on Members, and Fellowcraft and Raised update his degree there.</p>`);
+    $("#p-pipe").innerHTML=tabs+body+(PF.view==="search"?"":`<p class="hint" style="margin:14px 0 0">Moving a prospect to ${esc(STAGES[JOIN])} adds them to the roll on Members${RAISED>JOIN?`, and ${esc(STAGES.slice(JOIN+1,RAISED+1).join(" and "))} update their standing there`:""}.</p>`);
     wirePipe();
   }
   function detail(){
@@ -548,10 +552,32 @@
 
   /* ---------- Settings ---------- */
   const ROLE={owner:"account owner",officer:"an officer",member:"a member"};
+  /* Settings → Organization type: Blue Lodge, Prince Hall, Scottish Rite Valley or Club, or a York Rite body (assets/org.js).
+     Choosing one saves and reloads, so every tab starts over with that body's chairs, meetings, degrees and words. */
+  function renderOrg(){
+    const box=$("#set-org"),OR=window.LodgeOrg;if(!box||!OR)return;
+    const canEdit=!CLOUD||CLOUD.canEdit,cur=ORG.key;
+    const ICON={blue:'<path d="M10 3 4 15M10 3l6 12"/><path d="M3 11l7 6 7-6"/><path d="M6.5 15h7"/>',pha:'<path d="M10 3 4 15M10 3l6 12"/><path d="M3 11l7 6 7-6"/><path d="M6.5 15h7"/>',
+      sr:'<path d="M10 2.5 12 7l5 .5-3.8 3.3 1.2 4.9L10 13l-4.4 2.7 1.2-4.9L3 7.5 8 7z"/>',club:'<circle cx="7" cy="7.5" r="2.5"/><circle cx="13" cy="7.5" r="2.5"/><path d="M2.5 16c.5-2.6 2.3-4 4.5-4s4 1.4 4.5 4M8.5 16c.5-2.6 2.3-4 4.5-4s4 1.4 4.5 4"/>',
+      chapter:'<path d="M3 16h14M5 16V9l5-5 5 5v7"/><path d="M8.5 16v-4h3v4"/>',council:'<path d="M4 16V7l6-4 6 4v9z"/><path d="M8 16v-5h4v5"/>',
+      commandery:'<path d="M10 2.5v15M5 7h10"/><path d="M6 12.5c1.2 1.6 2.5 2.5 4 2.5s2.8-.9 4-2.5"/>',yorkrite:'<path d="M3 16h14M4.5 16V9.5L10 5l5.5 4.5V16"/><path d="M10 9v7M7 12h6"/>'};
+    box.innerHTML=`<div class="row-sp"><div><h4>Organization type</h4><p class="hint" style="margin:2px 0 0">The whole dashboard follows this: officer chairs, the name of your meetings and their write-ups, degrees and titles on the roll, the membership pipeline, and the website's wording.</p></div>
+        <span class="pill ok">${esc(ORG.name||"Blue Lodge")}</span></div>
+      ${OR.GROUPS.map(g=>`<h5 class="org-g">${esc(g)}</h5><div class="org-grid">${Object.entries(OR.TYPES).filter(([,t])=>t.group===g).map(([k,t])=>`<button type="button" class="org-opt" data-org="${k}" aria-pressed="${String(k===cur)}"${canEdit?"":" disabled"}>
+          <span class="org-ic" aria-hidden="true"><svg viewBox="0 0 20 20">${ICON[k]||ICON.blue}</svg></span><span class="org-t"><b>${esc(t.name)}</b><small>${esc(t.desc)}</small>
+          <small class="org-eg">${esc(t.seats.slice(0,3).map(x=>x.t.replace(/,.*$/,"")).join(" · "))} · ${esc(t.meetings)}</small></span></button>`).join("")}</div>`).join("")}
+      ${canEdit?"":'<p class="hint">Officers can change the organization type.</p>'}`;
+    box.onclick=async e=>{const b=e.target.closest("[data-org]");if(!b||b.dataset.org===cur||!canEdit)return;
+      const t=OR.TYPES[b.dataset.org];
+      if(!confirm(`Switch this dashboard to ${t.name}?\n\nOfficer chairs, meeting names, degrees, titles and the membership pipeline change to a ${t.unit}'s. Your members, events, money, minutes and website stay. Officers you've seated are kept, and come back if you switch back.`))return;
+      b.disabled=true;b.querySelector("b").textContent="Switching…";
+      if(!(await A.setOrg(b.dataset.org))){b.disabled=false;renderOrg();alert("Couldn't save the change. Check your connection and try again.")}};
+  }
   function renderSet(){
     if(window.LodgeNetTabs)window.LodgeNetTabs.settings();
     const plan=$("#plan-line").textContent.split(" · ")[0]||"Lodge Starter";
     $("#set-plan").textContent=CLOUD?`${plan}. ${CLOUD.paid?"Paid up, so the website can be published.":"The website can be published once a paid level is active."}`:`${plan}.`;
+    renderOrg();
     $("#set-role").textContent=CLOUD?`You're signed in as ${CLOUD.email}, ${ROLE[CLOUD.role]||CLOUD.role} of this lodge. Officers can change the dashboard; members can read it.`:"Sign in to manage who can open this dashboard.";
   }
 

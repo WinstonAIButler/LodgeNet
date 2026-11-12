@@ -102,7 +102,7 @@
   const CONNECTED={
     events:{name:"Events",tab:"Communications",icon:'<rect x="3" y="4.5" width="14" height="12" rx="1.5"/><path d="M3 8h14M7 3v3M13 3v3"/>',
       count:()=>{const n=A.events.filter(e=>e.d>=today()).length;return n+" upcoming "+(n===1?"event":"events")},
-      make:()=>[L.newSection("hero",{heading:"Events",sub:"Stated Communications, degree nights and public events.",height:"short"}),L.newSection("events",{count:"12"}),L.newSection("fundraisers",{bg:"tint"})]},
+      make:()=>[L.newSection("hero",{heading:"Events",sub:((window.LodgeOrg&&LodgeOrg.current&&LodgeOrg.current.meetings)||"Stated Communications")+((window.LodgeOrg&&LodgeOrg.current&&LodgeOrg.current.key)==="club"?", socials and public events.":", degree nights and public events."),height:"short"}),L.newSection("events",{count:"12"}),L.newSection("fundraisers",{bg:"tint"})]},
     fundraisers:{name:"Fundraisers",tab:"Fundraiser",icon:'<path d="M10 16.5s-6.5-3.8-6.5-8.3A3.4 3.4 0 0 1 10 6.3a3.4 3.4 0 0 1 6.5 1.9c0 4.5-6.5 8.3-6.5 8.3z"/>',
       count:()=>{const n=fundraisers().filter(e=>e.d>=today()).length;return n+" upcoming "+(n===1?"fundraiser":"fundraisers")},
       make:()=>[L.newSection("hero",{heading:"Fundraisers",sub:"Every dollar stays in our community.",height:"short"}),L.newSection("fundraisers",{heading:"Coming up"}),L.newSection("give",{bg:"tint"})]},
@@ -733,8 +733,8 @@
     if(want.give&&!all().includes("give"))home.push(L.newSection("give",{bg:"tint"}));
     if(want.store&&!all().includes("store")&&built.length<MAX_PAGES){let s2="store";while(built.some(p=>p.slug===s2))s2+="-2";
       built.push({id:"p"+rid(7),slug:s2,title:"Store",nav:true,sections:[L.newSection("hero",{heading:"Lodge store",sub:"Every purchase supports our lodge and its charities.",height:"short"}),L.newSection("store"),L.newSection("give",{bg:"tint"})]})}
-    if(want.join&&!built.some(p=>/mason|join|member/i.test(p.title))&&built.length<MAX_PAGES){const t=L.TEMPLATES.join;let s2="become-a-mason";while(built.some(p=>p.slug===s2))s2+="-2";
-      const pg={id:"p"+rid(7),slug:s2,title:"Become a Mason",nav:true,sections:t.make()};
+    if(want.join&&!built.some(p=>/mason|join|member/i.test(p.title))&&built.length<MAX_PAGES){const t=L.TEMPLATES.join;let s2=slugify(t.title);while(built.some(p=>p.slug===s2))s2+="-2";
+      const pg={id:"p"+rid(7),slug:s2,title:t.title,nav:true,sections:t.make()};
       const contact=built.find(p=>/contact|visit/i.test(p.title));pg.sections.forEach(x=>{if(x.button&&x.button.label&&!x.button.link)x.button.link=contact?"page:"+contact.id:"home"});built.push(pg)}
     commit();
     pages.splice(0,pages.length,...built);
