@@ -25,7 +25,9 @@
       {id:"c2",name:"Widows & Orphans Fund",kind:"Lodge fund",note:"Help for the families of departed brethren."},
       {id:"c3",name:"Lodge Building Fund",kind:"Lodge fund",note:"Upkeep of the lodge hall."}]
   };
-  window.LodgeNetDash={snapshot:()=>({treasury:D.treasury,sponsors:D.sponsors,pipeline:D.pipeline,bsearch:D.bsearch,plists:D.plists,ptasks:D.ptasks,announcements:D.announcements,charities:D.charities})};
+  window.LodgeNetDash={snapshot:()=>({treasury:D.treasury,sponsors:D.sponsors,pipeline:D.pipeline,bsearch:D.bsearch,plists:D.plists,ptasks:D.ptasks,announcements:D.announcements,charities:D.charities,
+    /* the lodge's own tabs (assets/custom-tabs.js) */
+    ...(window.LodgeNetTabs?{customTabs:window.LodgeNetTabs.data()}:{})})};
   const changed=()=>{A.save();kpis(cur)};
   const funds=()=>["General Fund",...D.charities.map(c=>c.name)];
   const fundraisers=()=>A.events.filter(e=>e.k==="fund").sort((a,b)=>a.d<b.d?1:-1);
@@ -38,11 +40,12 @@
   const OLD={site:"website",store:"merchandise",calendar:"communications",minutes:"communications"};
   let cur="website";
   function show(sec){
-    sec=OLD[sec]||sec;if(!TITLES[sec])sec="website";cur=sec;
+    const T=window.LodgeNetTabs,own=T&&T.has(sec);
+    sec=OLD[sec]||sec;if(!TITLES[sec]&&!own)sec="website";cur=sec;
     document.querySelectorAll(".sec").forEach(s=>s.hidden=s.dataset.sec!==sec);
     document.querySelectorAll(".nav-i").forEach(a=>a.toggleAttribute("aria-current",a.dataset.sec===sec));
-    $("#sec-title").textContent=TITLES[sec];
-    kpis(sec);(RENDER[sec]||(()=>{}))();
+    $("#sec-title").textContent=TITLES[sec]||T.title(sec);
+    kpis(sec);(RENDER[sec]||(own?()=>T.render(sec):()=>{}))();
     if(sec==="merchandise")requestAnimationFrame(A.drawProducts);
     const on=document.querySelector(".nav-i[aria-current]");if(on&&on.scrollIntoView)on.scrollIntoView({block:"nearest",inline:"nearest"});
   }
@@ -590,6 +593,7 @@
       if(!(await A.setOrg(b.dataset.org))){b.disabled=false;renderOrg();alert("Couldn't save the change. Check your connection and try again.")}};
   }
   function renderSet(){
+    if(window.LodgeNetTabs)window.LodgeNetTabs.settings();
     const plan=$("#plan-line").textContent.split(" · ")[0]||"Lodge Starter";
     $("#set-plan").textContent=CLOUD?`${plan}. ${CLOUD.paid?"Paid up, so the website can be published.":"The website can be published once a paid level is active."}`:`${plan}.`;
     renderOrg();
