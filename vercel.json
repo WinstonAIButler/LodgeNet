@@ -50,6 +50,9 @@
     },
     "api/site-import.js": {
       "maxDuration": 300
+    },
+    "api/site-assist.js": {
+      "maxDuration": 120
     }
   }
 }
