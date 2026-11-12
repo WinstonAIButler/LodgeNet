@@ -64,7 +64,7 @@
       website:[["Website",CLOUD&&!CLOUD.paid?"Preview only":A.published?"Published":"Ready to publish",CLOUD&&!CLOUD.paid?"Publishing comes with a paid level":A.published&&A.CFG.slug?"/site/"+A.CFG.slug:"Press Publish above the page"],
         ["Plan",($("#plan-line").textContent.split(" · ")[0]||"Lodge Starter"),"Change it under Settings"],
         ["Upcoming events",up.length,"On the calendar"],["Officer chairs",`${seats} of ${A.SEATS.length}`,"Filled on Members"]],
-      members:[["Members",act.length,"On the roll"],[ORG.office==="Master Mason"?"Master Masons":"Can hold office",act.filter(m=>m.deg===ORG.office).length,ORG.office==="Master Mason"?"Eligible for office":ORG.office],
+      members:[["Members",act.length,"On the roll"],["Master Masons",act.filter(m=>window.LodgeOrg?window.LodgeOrg.isMM(m):m.deg==="Master Mason").length,"Including Scottish and York Rite"],
         [ORG.past||"Past Masters",act.filter(m=>m.pm).length,""],["Dues owed",owe.length,paid.length+" paid"]],
       communications:[["Next "+(ORG.meeting||"meeting").replace(/^Stated /,"Stated "),A.nextStated?day(A.nextStated):"Not set","From the meeting schedule"],["Upcoming events",up.length,""],
         ["Write-ups to approve",A.minutes.filter(m=>m.status!=="Approved").length,A.minutes.filter(m=>m.status==="Approved").length+" approved"],
@@ -248,7 +248,7 @@
   const PAGE=25;
   const tier=f=>f==null?["none","Not scored"]:f>=80?["strong","Strong"]:f>=50?["possible","Possible"]:["weak","Weak"];
   function syncDegree(c){const deg=DEGREE[c.stage],m=c.member&&A.member(c.member);
-    if(deg&&m){m.deg=deg;A.refresh()}else if(deg&&!m)c.member=A.addMember(c.name,deg).id}
+    if(deg&&m){m.deg=deg;if(window.LodgeOrg)window.LodgeOrg.raise(m);A.refresh()}else if(deg&&!m)c.member=A.addMember(c.name,deg).id}
   function filtered(){
     const q=PF.q.toLowerCase();
     let L=D.pipeline.filter(c=>(!PF.stage.size||PF.stage.has(c.stage))&&(!PF.kind.size||PF.kind.has(c.kind))&&(!PF.list||c.lists.includes(PF.list))
