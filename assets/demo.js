@@ -182,7 +182,7 @@
     const seatOf=id=>SEATS.filter(x=>+officers[x.k]===id).map(x=>x.ab).join(", ");
     const contact=m=>[m.email,m.phone].filter(Boolean).map(esc).join(" · ");
     $("#mem-rows").innerHTML=act.map(m=>`<tr${+editing===m.id?' class="editing"':""}>
-      <td class="nm">${esc(pre(m)+m.name)}${contact(m)?`<span class="mem-contact">${contact(m)}</span>`:""}</td>
+      <td class="nm">${m.no?`<span class="mem-no">No. ${esc(m.no)}</span>`:""}${esc(pre(m)+m.name)}${contact(m)?`<span class="mem-contact">${contact(m)}</span>`:""}</td>
       <td><select data-mdeg="${m.id}" aria-label="Degree for ${esc(m.name)}">${(DEGREES.includes(m.deg)?DEGREES:DEGREES.concat(m.deg)).map(d=>`<option${d===m.deg?" selected":""}>${esc(d)}</option>`).join("")}</select></td>
       <td><select data-mtitle="${m.id}" aria-label="Title for ${esc(m.name)}">${TITLES.map(([v,l])=>`<option value="${v}" title="${l}"${v===m.title?" selected":""}>${v}</option>`).join("")}</select></td>
       <td>${seatOf(m.id)?`<span class="pill gold">${seatOf(m.id)}</span>`:'<span class="hint">None</span>'}</td>
@@ -192,7 +192,7 @@
   }
   /* Edit opens the brother's details under his row: name, title, degree and how to reach him */
   let editing=null;
-  const MFIELDS=[["name","Full name","text"],["email","Email","email"],["phone","Phone","tel"],["addr","Mailing address","text"],["raised","Raised","date"],["notes","Notes","text"]];
+  const MFIELDS=[["name","Full name","text"],["no","Member no.","text"],["email","Email","email"],["phone","Phone","tel"],["addr","Mailing address","text"],["raised","Raised","date"],["notes","Notes","text"]];
   function editRow(m){
     return `<tr class="mem-edit"><td colspan="6"><form class="mem-edit-form" data-mid="${m.id}" autocomplete="off">
       ${MFIELDS.map(([k,l,t])=>`<div class="field${k==="addr"||k==="notes"?" wide":""}"><label for="me-${k}">${l}</label><input id="me-${k}" name="${k}" type="${t}" value="${esc(m[k]||"")}"${k==="name"?" required":""}></div>`).join("")}
@@ -203,6 +203,8 @@
     const f=e.target.closest(".mem-edit-form");if(!f)return;e.preventDefault();
     const m=member(f.dataset.mid),fd=new FormData(f);
     const name=String(fd.get("name")||"").trim();if(!name)return;
+    const no=String(fd.get("no")||"").trim();
+    if(noTaken(no,m.id)){const el=f.querySelector('[name="no"]');el.setCustomValidity("Member no. "+no+" is already on the roll.");el.reportValidity();el.addEventListener("input",()=>el.setCustomValidity(""),{once:true});return}
     for(const [k] of MFIELDS)m[k]=String(fd.get(k)||"").trim();
     m.name=name;editing=null;refreshPeople();queueSave();
   });
@@ -223,10 +225,15 @@
     refreshPeople();
   });
   $("#seat-defaults").addEventListener("change",e=>{const k=e.target.dataset.sdef;if(k){officers[k]=e.target.value;refreshPeople()}});
+  /* the lodge's own member number for each brother (from its Grand Lodge roll), entered as he's added; Treasury lists dues by it */
+  const noTaken=(no,id)=>no&&members.some(x=>x.active&&x.id!==id&&String(x.no||"").toLowerCase()===no.toLowerCase());
   $("#mem-form").addEventListener("submit",e=>{
     e.preventDefault();const n=$("#m-name").value.trim();if(!n)return;
-    const nm=M(n,$("#m-deg").value,$("#m-title").value!==TITLES[0][0],"Paid 2026");nm.title=$("#m-title").value;members.push(nm);
-    $("#m-name").value="";$("#m-title").value=TITLES[0][0];refreshPeople();
+    const noEl=$("#m-no"),no=noEl?noEl.value.trim():"";
+    if(noTaken(no)){noEl.setCustomValidity("Member no. "+no+" is already on the roll.");noEl.reportValidity();return}
+    if(noEl)noEl.setCustomValidity("");
+    const nm=M(n,$("#m-deg").value,$("#m-title").value!==TITLES[0][0],"Paid 2026");nm.title=$("#m-title").value;if(no)nm.no=no;members.push(nm);
+    $("#m-name").value="";if(noEl)noEl.value="";$("#m-title").value=TITLES[0][0];refreshPeople();(noEl||$("#m-name")).focus();
   });
   function refreshPeople(){renderMembers();renderSite();if(typeof renderMinutes==="function")renderMinutes()}
 
@@ -1184,7 +1191,7 @@
     addMember(name,deg){const m=M(name,deg,false,"Not recorded");members.push(m);refreshPeople();return m},
     select(e){selected=e;view=new Date(parse(e.d).getFullYear(),parse(e.d).getMonth(),1);renderCal()},
     addEvent(e){events.push(e);renderCal();return e},
-    refresh(){renderCal();refreshPeople()},
+    refresh(){renderCal();refreshPeople()},noTaken,
     get orders(){return orders},set orders(v){orders=v},renderProducts,
     drawProducts,payLink,payButtons,save:queueSave,
     ORG:ORGX,async setOrg(k){if(!(window.LodgeOrg&&window.LodgeOrg.TYPES[k]))return false;
