@@ -120,6 +120,17 @@
   }
 
   /* ---------- Treasury ---------- */
+  /* every brother on the roll by member number, with his dues for the year; a missing number can be typed straight in */
+  const byNo=(a,b)=>{const x=String(a.no||""),y=String(b.no||"");if(!x!==!y)return x?-1:1;return x.localeCompare(y,undefined,{numeric:true})||a.name.localeCompare(b.name)};
+  function duesTable(act){
+    if(!act.length)return '<p class="hint">No brethren on the roll yet. Add them on <a href="#members">Members</a>, with their member numbers.</p>';
+    return `<div class="table-scroll"><table class="dtable dues-t"><thead><tr><th>No.</th><th>Member</th><th>Dues</th><th><span class="sr">Actions</span></th></tr></thead><tbody>
+      ${act.slice().sort(byNo).map(m=>{const st=/^paid/i.test(m.dues)?"ok":/^owes/i.test(m.dues)?"warn":"";
+        return `<tr><td class="num">${m.no?esc(m.no):`<input class="no-in" data-no="${m.id}" placeholder="Add" maxlength="20" aria-label="Member number for ${esc(m.name)}">`}</td>
+        <td>${esc(m.name)}</td><td><span class="pill ${st==="ok"?"ok":st==="warn"?"warn":""}">${esc(m.dues||"Not recorded")}</span></td>
+        <td class="r">${st==="ok"?"":`<button class="btn line sm" type="button" data-pay="${m.id}">Mark paid</button>`}</td></tr>`}).join("")}
+      </tbody></table></div>`;
+  }
   function renderTreasury(){
     const L=D.treasury.ledger.slice().sort((a,b)=>a.d<b.d?1:-1),act=active();
     const owe=act.filter(m=>/^owes/i.test(m.dues)),unk=act.filter(m=>!/^(owes|paid)/i.test(m.dues));
@@ -146,9 +157,10 @@
         <div class="card">
           <h4>Dues for ${YEAR}</h4>
           <div class="field" style="margin:0"><label for="t-dues">Yearly dues per brother ($)</label><input id="t-dues" type="number" min="0" step="1" value="${+D.treasury.dues||""}" placeholder="e.g. 120" style="max-width:9em"></div>
-          ${owe.length?`<div class="mini-list">${owe.map(m=>`<div class="row-sp"><span>${esc(m.name)}</span><button class="btn line sm" type="button" data-pay="${m.id}">Mark paid</button></div>`).join("")}</div>`
-            :'<p class="hint">Nobody is marked as owing dues.</p>'}
+          ${duesTable(act)}
+          ${owe.length?"":'<p class="hint">Nobody is marked as owing dues.</p>'}
           ${unk.length?`<p class="hint">${unk.length} brother${unk.length>1?"s have":" has"} no dues status yet. Set it on <a href="#members">Members</a>.</p>`:""}
+          ${act.some(m=>!m.no)?`<p class="hint">${many(act.filter(m=>!m.no).length,"brother")} without a member number. Type it in the No. box above, or under Edit on <a href="#members">Members</a>.</p>`:""}
         </div>
         <div class="card">
           <h4>Fund balances</h4>
@@ -158,11 +170,18 @@
     $("#led-form").addEventListener("submit",e=>{e.preventDefault();const amt=+$("#l-amt").value;if(!amt||!$("#l-desc").value.trim())return;
       D.treasury.ledger.push({id:uid(),d:$("#l-d").value||TODAY,desc:$("#l-desc").value.trim(),fund:$("#l-fund").value,kind:$("#l-kind").value,amt});renderTreasury();changed()});
     $("#t-dues").addEventListener("change",e=>{D.treasury.dues=Math.max(0,+e.target.value||0);changed()});
+    $("#p-treas").querySelectorAll("[data-no]").forEach(el=>{
+      const set=()=>{const v=el.value.trim();if(!v)return;
+        if(A.noTaken&&A.noTaken(v,+el.dataset.no)){el.setCustomValidity("Member no. "+v+" is already on the roll.");el.reportValidity();return}
+        const m=A.member(el.dataset.no);if(!m)return;m.no=v;A.refresh();renderTreasury();changed()};
+      el.addEventListener("change",set);el.addEventListener("input",()=>el.setCustomValidity(""));
+      el.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();set()}});
+    });
     $("#p-treas").querySelectorAll("[data-del]").forEach(b=>b.addEventListener("click",()=>{
       D.treasury.ledger=D.treasury.ledger.filter(x=>x.id!==b.dataset.del);renderTreasury();changed()}));
     $("#p-treas").querySelectorAll("[data-pay]").forEach(b=>b.addEventListener("click",()=>{
       const m=A.member(b.dataset.pay);if(!m)return;m.dues="Paid "+YEAR;
-      if(D.treasury.dues>0)D.treasury.ledger.push({id:uid(),d:TODAY,desc:`${YEAR} dues · ${m.name}`,fund:"General Fund",kind:"in",amt:+D.treasury.dues});
+      if(D.treasury.dues>0)D.treasury.ledger.push({id:uid(),d:TODAY,desc:`${YEAR} dues · ${m.no?"No. "+m.no+" · ":""}${m.name}`,fund:"General Fund",kind:"in",amt:+D.treasury.dues});
       A.refresh();renderTreasury();changed()}));
   }
 
