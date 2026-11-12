@@ -28,7 +28,8 @@
   window.LodgeNetDash={snapshot:()=>({treasury:D.treasury,sponsors:D.sponsors,pipeline:D.pipeline,bsearch:D.bsearch,plists:D.plists,ptasks:D.ptasks,announcements:D.announcements,charities:D.charities,
     /* the lodge's own tabs (assets/custom-tabs.js) */
     ...(window.LodgeNetTabs?{customTabs:window.LodgeNetTabs.data()}:{}),
-    ...(window.LodgeNetZeffy?{zeffy:window.LodgeNetZeffy.data()}:{})})};
+    ...(window.LodgeNetZeffy?{zeffy:window.LodgeNetZeffy.data()}:{}),
+...(window.LodgeNetDistrict?{districtOfficers:window.LodgeNetDistrict.data()}:{})})};
   const changed=()=>{A.save();kpis(cur)};
   const funds=()=>["General Fund",...D.charities.map(c=>c.name)];
   const fundraisers=()=>A.events.filter(e=>e.k==="fund").sort((a,b)=>a.d<b.d?1:-1);
