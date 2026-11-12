@@ -173,10 +173,24 @@
   /* the Members page lays the chairs out in rows: the three principal officers, then the line officers, then the stewards and Tiler */
   const SEAT_ROWS=ORG?ORG.seatRows:[["WM","SW","JW"],["SEC","TREAS","SD","JD"],["STW1","STW2","TILER","CHAP"]];
   const SEAT_LABEL=ORG&&ORGX.key!=="blue"&&ORGX.key!=="pha"?ORG.seatLabel:{WM:"Worshipful Master",SW:"Sr. Warden",JW:"Jr. Warden",SEC:"Secretary",TREAS:"Treasurer",SD:"Sr. Deacon",JD:"Jr. Deacon",STW1:"Steward 1",STW2:"Steward 2",TILER:"Tiler",CHAP:"Chaplain"};
+  /* chairs whose kind the body names (a club's Directors and Editor): "Membership" becomes "Membership Director", and a full
+     title such as "Director of Ritual" is kept as typed. The title follows the chair onto meeting notes and the website. */
+  const seatNames=Object.assign({},CFG.seatNames||{});
+  const customTitle=x=>{const n=String(seatNames[x.k]||"").trim();if(!n)return x.base;return new RegExp("\\b"+x.base+"\\b","i").test(n)?n:n+" "+x.base};
+  function applySeatNames(){SEATS.forEach(x=>{if(!x.custom)return;x.t=customTitle(x);x.ab=x.t;SEAT_LABEL[x.k]=x.t})}
+  applySeatNames();
   function renderSeatDefaults(){
-    $("#seat-defaults").innerHTML=SEAT_ROWS.map(r=>`<div class="seat-line">${r.map(k=>{const x=SEATS.find(s=>s.k===k);
-      return `<div class="seat-row"><label for="sd-${k}">${SEAT_LABEL[k]}</label>${seatSelect("data-sdef",x,officers[k]).replace("<select ",`<select id="sd-${k}" `)}</div>`}).join("")}</div>`).join("");
+    $("#seat-defaults").innerHTML=SEAT_ROWS.map(r=>`<div class="seat-line">${r.map(k=>{const x=SEATS.find(s=>s.k===k);if(!x)return "";
+      return `<div class="seat-row"><label for="sd-${k}" data-slabel="${k}">${esc(SEAT_LABEL[k]||x.t)}</label>${x.custom?`<input class="seat-kind" data-skind="${k}" value="${esc(seatNames[k]||"")}" placeholder="${esc(x.ph||"Type of "+x.base.toLowerCase())}" aria-label="What kind of ${esc(x.base.toLowerCase())}" maxlength="60">`:""}${seatSelect("data-sdef",x,officers[k]).replace("<select ",`<select id="sd-${k}" `)}</div>`}).join("")}</div>`).join("");
   }
+  $("#seat-defaults").addEventListener("input",e=>{const k=e.target.dataset.skind;if(!k)return;
+    seatNames[k]=e.target.value;applySeatNames();
+    const l=document.querySelector(`[data-slabel="${k}"]`);if(l)l.textContent=SEAT_LABEL[k];
+    const sel=document.getElementById("sd-"+k);if(sel)sel.setAttribute("aria-label",SEAT_LABEL[k]);
+    renderSite();renderMinutes();refreshSeatsElsewhere()});
+  /* the roster's "Officer seat" pill and the minutes form read the titles, so redraw them (keeping the box being typed in) */
+  function refreshSeatsElsewhere(){const a=document.activeElement,k=a&&a.dataset&&a.dataset.skind,pos=a&&a.selectionStart;
+    renderMembers();if(k){const b=document.querySelector(`[data-skind="${k}"]`);if(b){b.focus();try{b.setSelectionRange(pos,pos)}catch(e){}}}}
   function seatSelect(attr,seat,cur,cls){
     const opts=eligible();
     if(cur&&!opts.some(m=>m.id===+cur)&&member(cur))opts.unshift(member(cur));
@@ -1117,6 +1131,7 @@
     const form={};document.querySelectorAll("#site-form input[id]:not([type=checkbox]),#site-form select[id],#site-form textarea[id],#pay-form input[id]").forEach(el=>{if(!el.closest("[data-nosnap]"))form[el.id]=el.value});
     return {app:"LodgeNet",version:1,page:STORE_KEY,savedAt:new Date().toISOString(),form,color:siteColor,
       org:ORGX.key,
+      seatNames,
       membersFull:members,officers,events,minutes,minuteSections,gmail,nextStated,products,orders,published,siteImages:pics,siteStore:siteStoreOn,...(plan?{plan}:{}),
       /* site-builder.js and site-qr.js own these; without them (the public demo) they pass through untouched */
       ...(window.LodgeNetSite?window.LodgeNetSite.snapshot():{siteLayout:CFG.siteLayout,siteQrs:CFG.siteQrs}),

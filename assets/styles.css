@@ -1136,3 +1136,7 @@ body.bx-dragging #bld-canvas .bx-txt,body.bx-dragging #bld-canvas iframe{pointer
 .org-t b{font-size:15px}
 .org-t small{font-size:12px;color:var(--muted);line-height:1.4}
 .org-t .org-eg{color:var(--fg);opacity:.75}
+
+/* a chair's fill-in kind (a club's Directors and Editor) on Members */
+.seat-row .seat-kind{width:100%;box-sizing:border-box;margin:2px 0 6px;padding:7px 9px;font-size:13px;border:1px dashed var(--line);background:var(--surface);color:var(--fg)}
+.seat-row .seat-kind:focus{border-style:solid;border-color:var(--blue);outline:none}

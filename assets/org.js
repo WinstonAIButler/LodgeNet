@@ -3,6 +3,7 @@
    demo.js calls LodgeOrg.use(CFG.org) as it starts, and every other script reads LodgeOrg.current.
    The type is saved with the lodge's data as `org` and chosen in Settings → Organization type.
 
+   Chairs made with C() (a club's Directors and Editor) carry a fill-in title: demo.js keeps the typed kind in seatNames.
    Each type: degLabel (the name of the roll's column for the body's own degree), past (what the roll calls those who have presided), name, group (for the Settings picker), notes (the minutes tab's name, when it isn't the meetings' name), unit (Lodge, Valley, Chapter…), numbered (has a number like No. 368),
    meeting / meetings (the regular meeting's name), governing (the governing body's label) and gov(state) (its usual name and
    abbreviation, filled in from the state), member / members (Brother / Brethren, Companion / Companions…), titles (honorifics
@@ -19,6 +20,8 @@
   const NMJ=["ME","NH","VT","MA","RI","CT","NY","NJ","PA","DE","OH","IN","IL","MI","WI"];
   const of=st=>STATES[st]||"your state";
   const S=(k,t,ab)=>({k,t,ab:ab||t});
+  /* a chair whose kind the body names itself (Director of what, Editor of what), typed in beside it on Members */
+  const C=(k,t,ph)=>({k,t,ab:t,base:t,custom:true,ph});
   const BLUE_SEATS=[S("WM","Worshipful Master","WM"),S("SW","Senior Warden","SW"),S("JW","Junior Warden","JW"),S("TREAS","Treasurer","Treas."),S("SEC","Secretary","Sec."),
     S("SD","Senior Deacon","SD"),S("JD","Junior Deacon","JD"),S("STW1","Senior Steward","Stwd"),S("STW2","Junior Steward","Stwd"),S("TILER","Tiler"),S("CHAP","Chaplain","Chap.")];
   const BLUE_PIPE={stages:["Inquiry","Petition received","Investigation","Ballot","Entered Apprentice","Fellowcraft","Raised","Not proceeding"],
@@ -92,8 +95,8 @@
       gov:st=>({gl:"",jur:""}),
       member:"Member",members:"Members",titles:[["B.","Brother"],["Ill.","Illustrious Brother"],["Mr.","Mr."],["Mrs.","Mrs."],["Ms.","Ms."]],
       degrees:["Member","Associate member","Prospective member"],
-      seats:[S("PRES","President","Pres."),S("VP","Vice President","VP"),S("SEC","Secretary","Sec."),S("TREAS","Treasurer","Treas."),S("DIR1","Director"),S("DIR2","Director"),S("DIR3","Director"),S("CHAP","Chaplain","Chap.")],
-      seatRows:[["PRES","VP"],["SEC","TREAS"],["DIR1","DIR2","DIR3","CHAP"]],
+      seats:[S("PRES","President","Pres."),S("VP","Vice President","VP"),S("SEC","Secretary","Sec."),S("TREAS","Treasurer","Treas."),C("DIR1","Director","e.g. Membership"),C("DIR2","Director","e.g. Programs"),C("DIR3","Director","e.g. Ritual"),C("EDIT","Editor","e.g. Newsletter"),S("CHAP","Chaplain","Chap.")],
+      seatRows:[["PRES","VP"],["SEC","TREAS"],["DIR1","DIR2","DIR3"],["EDIT","CHAP"]],
       pipeline:{stages:["Inquiry","Application received","Approved","Member","Not proceeding"],deg:{3:"Member"},join:3,done:3},
       join:{title:"Join the club",sub:"Fellowship, service and the Scottish Rite.",who:"Our club welcomes Scottish Rite Masons and friends who want to support the Valley, its charities and our community. Come to a meeting and get to know us."}}
   };
