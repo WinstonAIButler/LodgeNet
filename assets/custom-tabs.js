@@ -4,7 +4,7 @@
    Loaded before dash.js, which asks window.LodgeNetTabs for titles, rendering and the Settings card. */
 (function(){
   const A=window.LodgeNetApp;if(!A)return;
-  const esc=A.esc,CFG=A.CFG,CLOUD=A.CLOUD;
+  const esc=v=>A.esc(v==null?"":v),CFG=A.CFG,CLOUD=A.CLOUD;
   const canEdit=!CLOUD||!!CLOUD.canEdit;
   const officer=!CLOUD||CLOUD.role==="owner"||CLOUD.role==="officer";
   const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
@@ -116,17 +116,17 @@
 
   /* ---------- a tab, as brethren see it ---------- */
   function viewBody(t){
-    const it=t.items||[];
+    const it=(C(t).items||[]).filter(x=>x&&Object.keys(x).some(k=>k!=="done"&&String(x[k]||"").trim()));
     const none='<p class="hint">Nothing here yet.'+(canEdit?" Choose Edit this tab to add some.":"")+"</p>";
     switch(t.layout){
-      case "notes":return `<div class="ct-prose">${prose(t.text)||none}</div>`;
-      case "columns":return `<div class="ct-cols"><div class="ct-prose">${prose(t.text)}</div><div class="ct-prose">${prose(t.text2)}</div></div>`;
+      case "notes":return `<div class="ct-prose">${prose(C(t).text)||none}</div>`;
+      case "columns":return `<div class="ct-cols"><div class="ct-prose">${prose(C(t).text)}</div><div class="ct-prose">${prose(C(t).text2)}</div></div>`;
       case "cards":return it.length?`<div class="ct-cards">${it.map(c=>`<div class="card"><h4>${esc(c.a)}</h4>${c.b?`<div class="ct-prose">${prose(c.b)}</div>`:""}${safeUrl(c.c)?`<a class="btn line sm" href="${esc(safeUrl(c.c))}" target="_blank" rel="noopener">Open</a>`:""}</div>`).join("")}</div>`:none;
       case "checklist":{
         const done=it.filter(x=>x.done).length;
         return it.length?`<p class="hint">${done} of ${it.length} done</p><ul class="ct-check">${it.map((x,i)=>`<li${x.done?' class="done"':""}><label><input type="checkbox" data-tick="${i}"${x.done?" checked":""}${canEdit?"":" disabled"}> <span>${esc(x.a)}</span></label>${x.b?`<small>${esc(x.b)}</small>`:""}</li>`).join("")}</ul>`:none;}
       case "table":{
-        const cols=t.cols||[],rows=(t.rows||[]).filter(r=>r.some(c=>String(c||"").trim()));
+        const cols=C(t).cols||[],rows=(C(t).rows||[]).filter(r=>r.some(c=>String(c||"").trim()));
         return `<div class="table-scroll"><table class="dtable"><thead><tr>${cols.map(c=>`<th>${esc(c)}</th>`).join("")}</tr></thead><tbody>${rows.length?rows.map(r=>`<tr>${cols.map((c,j)=>`<td>${inline(r[j]||"")}</td>`).join("")}</tr>`).join(""):`<tr><td colspan="${cols.length||1}" class="hint">No rows yet.</td></tr>`}</tbody></table></div>`;}
       case "links":return it.length?`<ul class="ct-links">${it.map(x=>{const u=safeUrl(x.b);return `<li>${u?`<a href="${esc(u)}" target="_blank" rel="noopener"><b>${esc(x.a||u)}</b></a>`:`<b>${esc(x.a)}</b>`}${x.c?`<span class="hint">${esc(x.c)}</span>`:""}</li>`}).join("")}</ul>`:none;
       case "directory":return it.length?`<div class="ct-dir">${it.map(x=>`<div class="card"><b>${esc(x.a)}</b>${x.b?`<span class="hint">${esc(x.b)}</span>`:""}${x.c?`<a href="tel:${esc(x.c.replace(/[^\d+]/g,""))}">${esc(x.c)}</a>`:""}${x.d?`<a href="mailto:${esc(x.d)}">${esc(x.d)}</a>`:""}</div>`).join("")}</div>`:none;
@@ -135,8 +135,8 @@
         return s.length?`<ol class="ct-sched">${s.map(x=>`<li${x.a&&x.a<today?' class="past"':""}><span class="ct-date">${x.a?dayFmt(x.a):"Date to come"}</span><b>${esc(x.b)}</b>${x.c?`<span class="hint">${esc(x.c)}</span>`:""}</li>`).join("")}</ol>`:none;}
       case "faq":return it.length?`<div class="ct-faq">${it.map(x=>`<details><summary>${esc(x.a)}</summary><div class="ct-prose">${prose(x.b)}</div></details>`).join("")}</div>`:none;
       case "embed":{
-        const u=embedUrl(t.url);
-        return u?`<iframe class="ct-embed" src="${esc(u)}" style="height:${+t.height||640}px" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen></iframe><p class="hint"><a href="${esc(safeUrl(t.url))}" target="_blank" rel="noopener">Open it in a new window</a></p>`
+        const u=embedUrl(C(t).url);
+        return u?`<iframe class="ct-embed" src="${esc(u)}" style="height:${+C(t).height||640}px" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen></iframe><p class="hint"><a href="${esc(safeUrl(C(t).url))}" target="_blank" rel="noopener">Open it in a new window</a></p>`
           :'<p class="hint">No address yet.'+(canEdit?" Choose Edit this tab and paste a Google Doc, Sheet, Form, Calendar or YouTube link.":"")+"</p>";}
     }
     return none;
@@ -149,18 +149,18 @@
   const rowBtns=(i,n)=>`<span class="ct-rowbtns"><button type="button" class="btn line sm" data-up="${i}"${i?"":" disabled"} aria-label="Move up">↑</button><button type="button" class="btn line sm" data-down="${i}"${i<n-1?"":" disabled"} aria-label="Move down">↓</button><button type="button" class="btn line sm" data-del="${i}" aria-label="Remove">✕</button></span>`;
   function editBody(t){
     const L=t.layout;
-    if(L==="notes")return `<div class="field"><label>Page text</label><textarea data-k="text" rows="14">${esc(t.text||"")}</textarea></div>${FMT}`;
-    if(L==="columns")return `<div class="ct-cols"><div class="field"><label>Left column</label><textarea data-k="text" rows="12">${esc(t.text||"")}</textarea></div><div class="field"><label>Right column</label><textarea data-k="text2" rows="12">${esc(t.text2||"")}</textarea></div></div>${FMT}`;
-    if(L==="embed")return `<div class="field"><label>Address to show</label><input data-k="url" inputmode="url" autocapitalize="off" spellcheck="false" value="${esc(t.url||"")}" placeholder="https://docs.google.com/… or https://youtu.be/…"></div>
+    if(L==="notes")return `<div class="field"><label>Page text</label><textarea data-k="text" rows="14">${esc(C(t).text||"")}</textarea></div>${FMT}`;
+    if(L==="columns")return `<div class="ct-cols"><div class="field"><label>Left column</label><textarea data-k="text" rows="12">${esc(C(t).text||"")}</textarea></div><div class="field"><label>Right column</label><textarea data-k="text2" rows="12">${esc(C(t).text2||"")}</textarea></div></div>${FMT}`;
+    if(L==="embed")return `<div class="field"><label>Address to show</label><input data-k="url" inputmode="url" autocapitalize="off" spellcheck="false" value="${esc(C(t).url||"")}" placeholder="https://docs.google.com/… or https://youtu.be/…"></div>
       <p class="hint">In Google Docs, Sheets or Slides, use Share → anyone with the link can view, then paste the link. In Google Calendar, use Settings → Integrate calendar → Public URL.</p>
-      <div class="field"><label>Height</label><select data-k="height">${[["420","Short"],["640","Medium"],["900","Tall"],["1200","Very tall"]].map(([v,n])=>`<option value="${v}"${String(t.height||"640")===v?" selected":""}>${n}</option>`).join("")}</select></div>`;
+      <div class="field"><label>Height</label><select data-k="height">${[["420","Short"],["640","Medium"],["900","Tall"],["1200","Very tall"]].map(([v,n])=>`<option value="${v}"${String(C(t).height||"640")===v?" selected":""}>${n}</option>`).join("")}</select></div>`;
     if(L==="table"){
-      const cols=t.cols||[],rows=t.rows||[];
+      const cols=C(t).cols||[],rows=C(t).rows||[];
       return `<div class="table-scroll"><table class="dtable ct-tedit"><thead><tr>${cols.map((c,j)=>`<th><input data-col="${j}" value="${esc(c)}" aria-label="Column ${j+1} name"><button type="button" class="link-btn" data-delcol="${j}"${cols.length>1?"":" hidden"}>Remove column</button></th>`).join("")}<th></th></tr></thead>
         <tbody>${rows.map((r,i)=>`<tr>${cols.map((c,j)=>`<td><input data-cell="${i}:${j}" value="${esc(r[j]||"")}" aria-label="${esc(c)}, row ${i+1}"></td>`).join("")}<td>${rowBtns(i,rows.length)}</td></tr>`).join("")}</tbody></table></div>
         <span class="ct-adds"><button type="button" class="btn line sm" data-addrow>Add a row</button><button type="button" class="btn line sm" data-addcol>Add a column</button></span>`;
     }
-    const F=FIELDS[L]||[],it=t.items||[];
+    const F=FIELDS[L]||[],it=C(t).items||[];
     return `<div class="ct-items">${it.map((x,i)=>`<div class="ct-item" data-i="${i}">${F.map(([f,n,type])=>`<div class="field"><label>${n}</label>${inp(f,x[f],type)}</div>`).join("")}
       ${L==="checklist"?`<label class="check"><input type="checkbox" data-done${x.done?" checked":""}> Done</label>`:""}${rowBtns(i,it.length)}</div>`).join("")||'<p class="hint">Nothing yet.</p>'}</div>
       <button type="button" class="btn line sm" data-additem>Add ${{cards:"a card",checklist:"a task",links:"a link",directory:"a person",schedule:"a date",faq:"a question"}[L]||"one"}</button>`;
@@ -173,7 +173,7 @@
     box.style.setProperty("--ct",t.color||COLORS[0]);
     box.className="panel ct"+(t.width==="wide"?" wide":"");
     const head=`<div class="ct-head"><div><h2>${esc(t.name||"New tab")}</h2>${!ed&&t.intro?`<p class="ct-intro">${inline(t.intro)}</p>`:""}</div>
-      ${canEdit?`<button type="button" class="btn ${ed?"":"line "}sm" data-edit>${ed?"Done editing":"Edit this tab"}</button>`:""}</div>`;
+      ${canEdit?`<button type="button" class="btn sm" data-edit>${ed?"Done editing":"Edit this tab"}</button>`:""}</div>`;
     if(!ed){box.innerHTML=head+viewBody(t);wireView(box,t);return}
     box.innerHTML=head+`<div class="ct-editor">
       <div class="ct-opts">
@@ -197,14 +197,15 @@
 
   function wireView(box,t){
     const e=box.querySelector("[data-edit]");if(e)e.addEventListener("click",()=>{editing.add(t.id);render(t.id)});
-    box.querySelectorAll("[data-tick]").forEach(c=>c.addEventListener("change",()=>{t.items[+c.dataset.tick].done=c.checked;save();render(t.id)}));
+    const shown=(C(t).items||[]).filter(x=>x&&Object.keys(x).some(k=>k!=="done"&&String(x[k]||"").trim()));
+    box.querySelectorAll("[data-tick]").forEach(c=>c.addEventListener("change",()=>{shown[+c.dataset.tick].done=c.checked;save();render(t.id)}));
   }
   function wireEdit(box,t){
     const re=()=>render(t.id),changed=()=>{save()};
     box.querySelectorAll("[data-edit]").forEach(b=>b.addEventListener("click",()=>{editing.delete(t.id);A.save();re()}));
     box.querySelector("[data-remove]").addEventListener("click",()=>remove(t.id));
     box.querySelectorAll("[data-k]").forEach(el=>el.addEventListener("input",()=>{
-      const k=el.dataset.k;t[k]=el.value;
+      const k=el.dataset.k;(["text","text2","url","height"].includes(k)?C(t):t)[k]=el.value;
       if(k==="name"){const n=document.querySelector(`.nav-i[data-sec="${t.id}"] span`);if(n)n.textContent=t.name||"New tab";box.querySelector(".ct-head h2").textContent=t.name||"New tab";const st=document.getElementById("sec-title");if(st)st.textContent=t.name||"New tab"}
       if(k==="color"){box.style.setProperty("--ct",t.color);box.querySelectorAll("[data-color]").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.color===t.color)))}
       if(k==="who"){drawNav();settingsCard()}
@@ -216,13 +217,13 @@
     box.querySelectorAll("[data-color]").forEach(b=>b.addEventListener("click",()=>{t.color=b.dataset.color;changed();re()}));
     box.querySelectorAll("[data-layout]").forEach(b=>b.addEventListener("click",()=>{setLayout(t,b.dataset.layout);changed();re()}));
     /* list layouts */
-    const it=t.items||(t.items=[]);
+    const it=C(t).items||(C(t).items=[]);
     box.querySelectorAll(".ct-item").forEach(row=>{
       const x=it[+row.dataset.i];
       row.querySelectorAll("[data-f]").forEach(el=>el.addEventListener("input",()=>{x[el.dataset.f]=el.value;changed()}));
       const d=row.querySelector("[data-done]");if(d)d.addEventListener("change",()=>{x.done=d.checked;changed()});
     });
-    const list=t.layout==="table"?(t.rows||(t.rows=[])):it;
+    const list=t.layout==="table"?(C(t).rows||(C(t).rows=[])):it;
     const move=(i,j)=>{if(j<0||j>=list.length)return;[list[i],list[j]]=[list[j],list[i]];changed();re()};
     box.querySelectorAll("[data-up]").forEach(b=>b.addEventListener("click",()=>move(+b.dataset.up,+b.dataset.up-1)));
     box.querySelectorAll("[data-down]").forEach(b=>b.addEventListener("click",()=>move(+b.dataset.down,+b.dataset.down+1)));
@@ -230,34 +231,59 @@
     const add=box.querySelector("[data-additem]");if(add)add.addEventListener("click",()=>{it.push(t.layout==="schedule"?{a:iso(7)}:{});changed();re();
       const last=box.querySelector(".ct-item:last-child input,.ct-item:last-child textarea");if(last)last.focus()});
     /* table */
-    box.querySelectorAll("[data-col]").forEach(el=>el.addEventListener("input",()=>{t.cols[+el.dataset.col]=el.value;changed()}));
-    box.querySelectorAll("[data-cell]").forEach(el=>el.addEventListener("input",()=>{const [i,j]=el.dataset.cell.split(":").map(Number);(t.rows[i]||(t.rows[i]=[]))[j]=el.value;changed()}));
-    const ar=box.querySelector("[data-addrow]");if(ar)ar.addEventListener("click",()=>{t.rows.push(t.cols.map(()=>""));changed();re()});
-    const ac=box.querySelector("[data-addcol]");if(ac)ac.addEventListener("click",()=>{if(t.cols.length>=8)return;t.cols.push("New column");t.rows.forEach(r=>r.push(""));changed();re()});
-    box.querySelectorAll("[data-delcol]").forEach(b=>b.addEventListener("click",()=>{const j=+b.dataset.delcol;if(!confirm(`Remove the column "${t.cols[j]}" and what's in it?`))return;t.cols.splice(j,1);t.rows.forEach(r=>r.splice(j,1));changed();re()}));
+    box.querySelectorAll("[data-col]").forEach(el=>el.addEventListener("input",()=>{C(t).cols[+el.dataset.col]=el.value;changed()}));
+    box.querySelectorAll("[data-cell]").forEach(el=>el.addEventListener("input",()=>{const [i,j]=el.dataset.cell.split(":").map(Number);(C(t).rows[i]||(C(t).rows[i]=[]))[j]=el.value;changed()}));
+    const ar=box.querySelector("[data-addrow]");if(ar)ar.addEventListener("click",()=>{C(t).rows.push(C(t).cols.map(()=>""));changed();re()});
+    const ac=box.querySelector("[data-addcol]");if(ac)ac.addEventListener("click",()=>{if(C(t).cols.length>=8)return;C(t).cols.push("New column");C(t).rows.forEach(r=>r.push(""));changed();re()});
+    box.querySelectorAll("[data-delcol]").forEach(b=>b.addEventListener("click",()=>{const j=+b.dataset.delcol;if(!confirm(`Remove the column "${C(t).cols[j]}" and what's in it?`))return;C(t).cols.splice(j,1);C(t).rows.forEach(r=>r.splice(j,1));changed();re()}));
   }
 
-  /* switching layout: keep what fits, fill the rest with a starting point */
+  /* each layout keeps its own content (t.c[layout]), so switching back finds it as it was. The first visit to a layout
+     brings the main words across from the one just left: titles stay titles, dates stay with dates */
+  const MAIN={cards:"a",checklist:"a",links:"a",directory:"a",schedule:"b",faq:"a"};
+  const NEXT={cards:"b",checklist:"b",links:"c",directory:"b",schedule:"c",faq:"b"};
+  function C(t){
+    t.c=t.c||{};
+    if(!t.c[t.layout]){
+      /* tabs saved before layouts kept their own content */
+      if(t.items||t.text||t.cols||t.url){t.c[t.layout]={items:t.items,text:t.text,text2:t.text2,cols:t.cols,rows:t.rows,url:t.url,height:t.height};["items","text","text2","cols","rows","url","height"].forEach(k=>delete t[k])}
+      else t.c[t.layout]=convert(t.c[t.prev],t.prev,t.layout)||STARTER[t.layout]();
+    }
+    return t.c[t.layout];
+  }
+  function convert(src,from,to){
+    if(!src)return null;
+    const list=FIELDS[from]&&(src.items||[]).filter(x=>x&&(x[MAIN[from]]||x[NEXT[from]]));
+    const rows=from==="table"&&(src.rows||[]).filter(r=>r.some(c=>String(c||"").trim()));
+    const text=from==="notes"?src.text:from==="columns"?[src.text,src.text2].filter(Boolean).join("\n\n"):"";
+    if(FIELDS[to]){
+      const items=list&&list.length?list.map(x=>({[MAIN[to]]:x[MAIN[from]]||"",[NEXT[to]]:x[NEXT[from]]||"",...(to==="schedule"&&from==="schedule"?{a:x.a}:{})}))
+        :rows&&rows.length?rows.map(r=>({[MAIN[to]]:r[0]||"",[NEXT[to]]:r[1]||""}))
+        :text?text.split(/\n+/).map(l=>l.replace(/^\s*[-•]\s+/,"").replace(/\*\*/g,"").trim()).filter(Boolean).slice(0,30).map(l=>({[MAIN[to]]:l})):null;
+      if(!items)return null;
+      if(to==="schedule")items.forEach((x,i)=>{if(!x.a)x.a=""});
+      return {items};
+    }
+    if(to==="table"){
+      if(list&&list.length){const F=FIELDS[from];return {cols:F.map(f=>f[1]),rows:list.map(x=>F.map(f=>x[f[0]]||""))}}
+      return null;
+    }
+    if(to==="notes"||to==="columns"){
+      const t2=text||(list&&list.length?list.map(x=>"- "+[x[MAIN[from]],x[NEXT[from]]].filter(Boolean).join(": ")).join("\n"):"");
+      if(!t2)return null;
+      return to==="columns"&&from==="columns"?{text:src.text,text2:src.text2}:to==="columns"?{text:t2,text2:""}:{text:t2};
+    }
+    return null;
+  }
   function setLayout(t,k){
     if(t.layout===k)return;
-    const from=t.layout;t.layout=k;const s=STARTER[k]();
-    if(k==="table"&&!t.cols){
-      if(FIELDS[from]&&(t.items||[]).length){t.cols=FIELDS[from].map(f=>f[1]);t.rows=t.items.map(x=>FIELDS[from].map(f=>x[f[0]]||""))}
-      else Object.assign(t,s);
-    }
-    if(FIELDS[k]&&!(t.items||[]).length){
-      if(from==="table"&&(t.rows||[]).length)t.items=t.rows.map(r=>Object.fromEntries(FIELDS[k].map((f,j)=>[f[0],r[j]||""])));
-      else t.items=s.items;
-    }
-    if((k==="notes"||k==="columns")&&!t.text)Object.assign(t,{text:s.text,...(k==="columns"&&!t.text2?{text2:s.text2}:{})});
-    if(k==="columns"&&!t.text2)t.text2=s.text2;
-    if(k==="embed"&&!t.height)t.height="640";
+    C(t);t.prev=t.layout;t.layout=k;C(t);
   }
 
   /* ---------- adding, ordering and removing ---------- */
   function add(name,layout){
     const t={id:"tab-"+uid(),name:name||LAY[layout].n,icon:{notes:"doc",columns:"book",cards:"star",checklist:"check",table:"doc",links:"link",directory:"people",schedule:"calendar",faq:"bell",embed:"image"}[layout]||"star",
-      layout,color:COLORS[tabs.length%COLORS.length],who:"all",width:"normal",intro:"",...STARTER[layout]()};
+      layout,color:COLORS[tabs.length%COLORS.length],who:"all",width:"normal",intro:"",c:{[layout]:STARTER[layout]()}};
     tabs.push(t);A.save();drawNav();editing.add(t.id);settingsCard();
     location.hash=t.id;
   }
