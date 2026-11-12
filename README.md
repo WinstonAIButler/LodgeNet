@@ -39,7 +39,16 @@ The middle of the editor is the real site, drawn by `assets/site-render.js` with
 - **On the page**: click any text to type over it, click a section to edit it in the left panel, use the toolbar on a section to move, duplicate or delete it (or drag it by its handle), and use the + between sections to add one there. Undo/Redo (also Ctrl/Cmd+Z), Desktop/Phone views, and Preview without the editing outlines.
 - **Add**: a library of sections, each added by clicking or by dragging onto the page. Banner (words centered or left over a picture, or beside it), Text, Picture and text, Three columns, Call to action, Photo gallery (up to 24 photos), Video (YouTube/Vimeo), and lodge sections that fill themselves in from the dashboard: Upcoming events, Fundraisers, Officers, Contact and meetings, Give, and Lodge store. Plus Custom HTML.
 - **Design**: the five site designs, lodge color (swatches or any color), fonts (Modern, Classic, Heritage), rounded or square buttons, centered or logo-left header, and the logo.
-- **Pages**: add pages from templates (Blank, About, Become a Mason, Events, Contact, Fundraiser), rename them, change their address, show or hide them in the menu, reorder them and delete them. Home is always first.
+- **Page templates** (`LodgeSite.TEMPLATES`, shown in the Pages panel as live thumbnails in four groups):
+  - **Basics:** Blank, About, Our history (with a Past Masters list), Contact.
+  - **Lodge life:** Events, Become a Mason, Visiting brethren, Officers, Newsletter (Trestleboard), Photo gallery.
+  - **Giving:** Donations, Fundraiser, Pay dues, Scholarships, Lodge store, Hall rental.
+  - **Members:** Members only.
+
+  Buttons can open "Email the lodge" (`email`, resolved to the lodge's email address).
+- **Pay dues** section: this year's dues from Treasury → Dues, with PayPal, Venmo and Cash App buttons that pre-fill the amount, plus Zelle and check instructions. The amount is published only when a dues section is on a public page.
+- **Members-only pages** (the Members template, or "Members only" in a page's settings): the public copy carries only the page's title and address, and the menu shows a lock. Publish keeps the page's sections, with brethren's news and the dues amount, in `published.members`, beside `published.site`. `published_site()` never returns it. On the public site, `assets/lodge-site.js` signs the visitor in through the lodge portal's session and calls `members_page()` (`supabase/members-pages.sql`), which answers only an account on that lodge's roll while the plan is paid. Everyone else gets a sign-in screen, or a "not on this lodge's roll" message. Run `supabase/members-pages.sql` once to switch this on; until then, members pages say they aren't switched on yet, and their content stays private either way.
+- **Pages**: add pages from the templates above, rename them, change their address, show or hide them in the menu, reorder them and delete them. Home is always first.
 - **Lodge info**: the lodge details form (name, number, Grand Lodge, meetings, email, social, and build from a current website).
 - Buttons store links as `home`, `page:<id>`, `fund:<id>` or a web address, and they're resolved when the page is drawn, so renaming a page never breaks one.
 - Custom HTML runs in a sandboxed iframe without `allow-same-origin`, so it can't read LodgeNet sign-ins, cookies or records on `www.lodgenet.app`. Up to 200 KB per section.
