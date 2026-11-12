@@ -1,5 +1,5 @@
 /* The lodge's own dashboard tabs (lodge.html). Officers add them in Settings → Your own tabs; each one gets a place in the sidebar,
-   one of ten layouts, its own name, icon, color, width and audience, and content edited right on the tab.
+   one of eleven layouts, its own name, icon, color, width and audience, and content edited right on the tab.
    Saved with the rest of the lodge's data as customTabs (dash.js puts it in the snapshot), so every officer sees the same tabs.
    Loaded before dash.js, which asks window.LodgeNetTabs for titles, rendering and the Settings card. */
 (function(){
@@ -13,7 +13,7 @@
   const editing=new Set();
   let saveT=0;const save=()=>{clearTimeout(saveT);saveT=setTimeout(()=>A.save(),400)};
 
-  /* ---------- the ten layouts ---------- */
+  /* ---------- the eleven layouts ---------- */
   const R=(x,y,w,h,f)=>`<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="1.5"${f?' class="f"':""}/>`;
   const L=(x,y,w)=>`<rect x="${x}" y="${y}" width="${w}" height="3" rx="1.5" class="l"/>`;
   const LAYOUTS=[
@@ -26,7 +26,8 @@
     {k:"directory",n:"Directory",d:"People with their role, phone and email.",pic:'<circle cx="13" cy="13" r="5" class="f"/>'+L(21,10,18)+L(21,16,12)+'<circle cx="13" cy="32" r="5" class="f"/>'+L(21,29,20)+L(21,35,14)+'<circle cx="43" cy="13" r="5" class="f"/>'+'<circle cx="43" cy="32" r="5" class="f"/>'},
     {k:"schedule",n:"Schedule",d:"Dates in order: degrees, visits, deadlines.",pic:'<path d="M12 6v36" class="s"/>'+'<circle cx="12" cy="10" r="3" class="f"/>'+L(19,9,30)+'<circle cx="12" cy="22" r="3" class="f"/>'+L(19,21,36)+'<circle cx="12" cy="34" r="3" class="f"/>'+L(19,33,24)},
     {k:"faq",n:"Questions & answers",d:"Questions that open to show the answer.",pic:R(6,7,52,8,1)+L(10,20,40)+L(10,26,34)+R(6,32,52,8,1)},
-    {k:"embed",n:"Embed",d:"A Google Doc, Sheet, Form or Calendar, or a YouTube video.",pic:R(6,7,52,32)+'<path d="M28 17l9 6-9 6z" class="f"/>'}
+    {k:"embed",n:"Embed",d:"A Google Doc, Sheet, Form or Calendar, or a YouTube video.",pic:R(6,7,52,32)+'<path d="M28 17l9 6-9 6z" class="f"/>'},
+    {k:"booklet",n:"A5 booklet",d:"Entries with pictures and PDF clippings, laid out as A5 pages.",pic:R(8,5,21,36)+L(11,10,15)+R(11,16,15,10,1)+L(11,30,13)+R(35,5,21,36)+L(38,10,15)+L(38,16,13)+L(38,22,15)+L(38,28,11)}
   ];
   const LAY=Object.fromEntries(LAYOUTS.map(l=>[l.k,l]));
   const thumb=k=>`<svg class="ct-pic" viewBox="0 0 64 46" aria-hidden="true">${LAY[k].pic}</svg>`;
@@ -50,7 +51,8 @@
     directory:()=>({items:[{a:"Name",b:"Role",c:"",d:""}]}),
     schedule:()=>({items:[{a:iso(14),b:"Something coming up",c:""},{a:iso(45),b:"And after that",c:""}]}),
     faq:()=>({items:[{a:"A question brethren ask?",b:"The answer."}]}),
-    embed:()=>({url:"",height:"640"})};
+    embed:()=>({url:"",height:"640"}),
+    booklet:()=>({entries:[]})};
 
   /* ---------- icons and colors ---------- */
   const ICONS={
@@ -134,6 +136,7 @@
         const s=it.slice().sort((a,b)=>String(a.a).localeCompare(String(b.a))),today=iso();
         return s.length?`<ol class="ct-sched">${s.map(x=>`<li${x.a&&x.a<today?' class="past"':""}><span class="ct-date">${x.a?dayFmt(x.a):"Date to come"}</span><b>${esc(x.b)}</b>${x.c?`<span class="hint">${esc(x.c)}</span>`:""}</li>`).join("")}</ol>`:none;}
       case "faq":return it.length?`<div class="ct-faq">${it.map(x=>`<details><summary>${esc(x.a)}</summary><div class="ct-prose">${prose(x.b)}</div></details>`).join("")}</div>`:none;
+      case "booklet":return '<div data-bk></div>';
       case "embed":{
         const u=embedUrl(C(t).url);
         return u?`<iframe class="ct-embed" src="${esc(u)}" style="height:${+C(t).height||640}px" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen></iframe><p class="hint"><a href="${esc(safeUrl(C(t).url))}" target="_blank" rel="noopener">Open it in a new window</a></p>`
@@ -151,6 +154,7 @@
     const L=t.layout;
     if(L==="notes")return `<div class="field"><label>Page text</label><textarea data-k="text" rows="14">${esc(C(t).text||"")}</textarea></div>${FMT}`;
     if(L==="columns")return `<div class="ct-cols"><div class="field"><label>Left column</label><textarea data-k="text" rows="12">${esc(C(t).text||"")}</textarea></div><div class="field"><label>Right column</label><textarea data-k="text2" rows="12">${esc(C(t).text2||"")}</textarea></div></div>${FMT}`;
+    if(L==="booklet")return '<p class="hint">Add, change and reorder entries right here, or after you choose Done editing.</p><div data-bk></div>';
     if(L==="embed")return `<div class="field"><label>Address to show</label><input data-k="url" inputmode="url" autocapitalize="off" spellcheck="false" value="${esc(C(t).url||"")}" placeholder="https://docs.google.com/… or https://youtu.be/…"></div>
       <p class="hint">In Google Docs, Sheets or Slides, use Share → anyone with the link can view, then paste the link. In Google Calendar, use Settings → Integrate calendar → Public URL.</p>
       <div class="field"><label>Height</label><select data-k="height">${[["420","Short"],["640","Medium"],["900","Tall"],["1200","Very tall"]].map(([v,n])=>`<option value="${v}"${String(C(t).height||"640")===v?" selected":""}>${n}</option>`).join("")}</select></div>`;
@@ -195,8 +199,12 @@
     return `<div class="ct-layouts">${LAYOUTS.map(l=>`<button type="button" class="ct-lay" ${attr}="${l.k}" aria-pressed="${cur===l.k}">${thumb(l.k)}<b>${l.n}</b><small>${l.d}</small></button>`).join("")}</div>`;
   }
 
+  const mountBooklet=(box,t)=>{const el=box.querySelector("[data-bk]");
+    if(el&&window.LodgeNetBooklet)window.LodgeNetBooklet.mount(el,t,C(t),{canEdit,save});
+    else if(el)el.innerHTML='<p class="hint">The booklet didn\'t load. Refresh the page to try again.</p>'};
   function wireView(box,t){
     const e=box.querySelector("[data-edit]");if(e)e.addEventListener("click",()=>{editing.add(t.id);render(t.id)});
+    mountBooklet(box,t);
     const shown=(C(t).items||[]).filter(x=>x&&Object.keys(x).some(k=>k!=="done"&&String(x[k]||"").trim()));
     box.querySelectorAll("[data-tick]").forEach(c=>c.addEventListener("change",()=>{shown[+c.dataset.tick].done=c.checked;save();render(t.id)}));
   }
@@ -216,6 +224,7 @@
     box.querySelectorAll("[data-icon]").forEach(b=>b.addEventListener("click",()=>{t.icon=b.dataset.icon;changed();drawNav();markCurrent();re()}));
     box.querySelectorAll("[data-color]").forEach(b=>b.addEventListener("click",()=>{t.color=b.dataset.color;changed();re()}));
     box.querySelectorAll("[data-layout]").forEach(b=>b.addEventListener("click",()=>{setLayout(t,b.dataset.layout);changed();re()}));
+    if(t.layout==="booklet"){mountBooklet(box,t);return}
     /* list layouts */
     const it=C(t).items||(C(t).items=[]);
     box.querySelectorAll(".ct-item").forEach(row=>{
@@ -253,6 +262,8 @@
   }
   function convert(src,from,to){
     if(!src)return null;
+    if(to==="booklet"){const body=from==="notes"?src.text:from==="columns"?[src.text,src.text2].filter(Boolean).join("\n\n"):"";
+      return body&&body.trim()?{entries:[{id:"e-"+uid(),title:"",body:body.replace(/\*\*/g,""),images:[],sources:[]}]}:null}
     const list=FIELDS[from]&&(src.items||[]).filter(x=>x&&(x[MAIN[from]]||x[NEXT[from]]));
     const rows=from==="table"&&(src.rows||[]).filter(r=>r.some(c=>String(c||"").trim()));
     const text=from==="notes"?src.text:from==="columns"?[src.text,src.text2].filter(Boolean).join("\n\n"):"";
@@ -282,7 +293,7 @@
 
   /* ---------- adding, ordering and removing ---------- */
   function add(name,layout){
-    const t={id:"tab-"+uid(),name:name||LAY[layout].n,icon:{notes:"doc",columns:"book",cards:"star",checklist:"check",table:"doc",links:"link",directory:"people",schedule:"calendar",faq:"bell",embed:"image"}[layout]||"star",
+    const t={id:"tab-"+uid(),name:name||LAY[layout].n,icon:{notes:"doc",columns:"book",cards:"star",checklist:"check",table:"doc",links:"link",directory:"people",schedule:"calendar",faq:"bell",embed:"image",booklet:"book"}[layout]||"star",
       layout,color:COLORS[tabs.length%COLORS.length],who:"all",width:"normal",intro:"",c:{[layout]:STARTER[layout]()}};
     tabs.push(t);A.save();drawNav();editing.add(t.id);settingsCard();
     location.hash=t.id;
@@ -308,7 +319,7 @@
         <span class="ct-set-n"><b>${esc(t.name)}</b><small>${esc(LAY[t.layout]?LAY[t.layout].n:"")} · ${t.who==="officers"?"Officers only":"Everyone on the roll"}</small></span>
         <span class="ct-rowbtns"><a class="btn line sm" href="#${esc(t.id)}">Open</a>${canEdit?`<button type="button" class="btn line sm" data-ct-edit="${esc(t.id)}">Edit</button><button type="button" class="btn line sm" data-ct-up="${esc(t.id)}"${i?"":" disabled"} aria-label="Move up">↑</button><button type="button" class="btn line sm" data-ct-down="${esc(t.id)}"${i<tabs.length-1?"":" disabled"} aria-label="Move down">↓</button><button type="button" class="btn line sm" data-ct-del="${esc(t.id)}" aria-label="Delete">✕</button>`:""}</span></li>`).join("");
     card.innerHTML=`<h4>Your own tabs</h4>
-      <p class="hint">Add tabs of your own to the sidebar: a degree schedule, an officers' checklist, a building fund page, the Grand Lodge forms, anything. Pick one of ten layouts and change it whenever you like.</p>
+      <p class="hint">Add tabs of your own to the sidebar: a degree schedule, an officers' checklist, a building fund page, the Grand Lodge forms, anything. Pick one of eleven layouts and change it whenever you like.</p>
       ${tabs.length?`<ul class="ct-set-list">${list}</ul>`:'<p class="hint"><b>No tabs of your own yet.</b></p>'}
       ${canEdit?`<details class="ct-new"${tabs.length?"":" open"}><summary class="btn sm">Add a tab</summary>
         <div class="field"><label for="ct-new-name">Tab name</label><input id="ct-new-name" maxlength="40" placeholder="e.g. Degree Schedule"></div>
