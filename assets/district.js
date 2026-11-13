@@ -200,7 +200,12 @@
       return {id:`dist-${k}-${bid(b)}-${year}`,title:`${b.name}`,body:lines.join("\n")+`\n\n${year} OFFICERS\n`+offs,images:[],sources:[`${d.name} officers, ${year}`],at:new Date().toISOString().slice(0,10),kind:b.k};
     }).filter(Boolean);
   }
-  window.LodgeNetDistrict={render,entries,years:()=>YEARS,data:()=>OFF,kinds:()=>KINDS.map(([k,l])=>[k,l]),
+  /* every lodge and body with officers entered for a year, for the Blue Book's "Fill in from the District tab" */
+  function rosters(year){
+    const D=window.LodgeNetDistricts,k=districtKey(),d=k&&D[k];if(!d)return [];
+    return d.bodies.map(b=>({name:b.name,meets:b.meets,officers:filled(roster(k,b,year))})).filter(r=>r.officers.length);
+  }
+  window.LodgeNetDistrict={render,entries,rosters,years:()=>YEARS,data:()=>OFF,kinds:()=>KINDS.map(([k,l])=>[k,l]),
     has:()=>!!districtKey(),name:()=>{const k=districtKey();return k?window.LodgeNetDistricts[k].name:""},
     figures(){const D=window.LodgeNetDistricts,k=districtKey(),d=k&&D[k];if(!d)return null;
       const n=x=>d.bodies.filter(b=>b.k===x).length;
