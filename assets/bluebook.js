@@ -156,12 +156,14 @@
       const notes=pdfText(yr(B,p.notes||"")),noteH=notes?Math.min(80,doc.splitTextToSize(notes,PW-2*M).length*11+6):0;
       const room=PH-30-noteH-y,step=offs.length?Math.max(10,Math.min(26,room/offs.length)):0,sz=Math.min(10.5,Math.max(6.5,step*.62));
       doc.setFont("times","normal");doc.setFontSize(sz);
+      const RW=Math.min(88,Math.max(56,...offs.map(o=>doc.getTextWidth(pdfText(o.t))))),NX=M+4+RW+6;
       offs.forEach(o=>{
-        const ty=y+sz;
-        doc.text(doc.splitTextToSize(pdfText(o.t),70)[0]||"",M+4,ty);
-        const ph=pdfText(o.p),nm=pdfText(o.n),room=PW-M-2-(ph?doc.getTextWidth(ph)+6:0)-(M+78);
+        const ty=y+sz,rt=pdfText(o.t);
+        if(doc.getTextWidth(rt)>RW)doc.setFontSize(Math.max(5.5,sz*RW/doc.getTextWidth(rt)));
+        doc.text(rt,M+4,ty);doc.setFontSize(sz);
+        const ph=pdfText(o.p),nm=pdfText(o.n),room=PW-M-2-(ph?doc.getTextWidth(ph)+6:0)-NX;
         if(doc.getTextWidth(nm)>room)doc.setFontSize(Math.max(6,sz*room/doc.getTextWidth(nm)));
-        doc.text(nm,M+78,ty);doc.setFontSize(sz);
+        doc.text(nm,NX,ty);doc.setFontSize(sz);
         if(ph)doc.text(ph,PW-M-2,ty,{align:"right"});
         y+=step});
       if(notes){doc.setFontSize(8.5);doc.splitTextToSize(notes,PW-2*M).slice(0,7).forEach(l=>{doc.text(l,M,y+9);y+=11})}
@@ -233,7 +235,7 @@
     const out=[];let sup="";
     for(const l of lines.filter(l=>l.text)){
       if(/^(st|nd|rd|th)$/i.test(l.text)){sup=l.text;continue}
-      if(sup&&/\d$/.test(l.text)){l.text+=sup;l.cells[l.cells.length-1].t+=sup;sup=""}
+      if(sup&&/(^|[^\d-])\d{1,2}$/.test(l.text)){l.text+=sup;l.cells[l.cells.length-1].t+=sup;sup=""}
       else if(sup&&/\b\d{1,2}(?=\s)/.test(l.text)){const f=x=>x.replace(/\b(\d{1,2})(?=\s)/,"$1"+sup);l.text=f(l.text);const c=l.cells.find(c=>/\b\d{1,2}(?=\s)/.test(c.t));if(c)c.t=f(c.t);sup=""}
       out.push(l)}
     return {lines:out,raw,w:vp.width,h:vp.height};
@@ -305,6 +307,61 @@
     return "text";
   }
   const lastNumber=P=>{for(let i=P.lines.length-1;i>=0;i--){const t=P.lines[i].text.trim();if(/^\d{1,3}$/.test(t))return +t}return null};
+  /* ---------- officers' seats: the book's shorthand ("W. Master", "EHP", "3V") as each order names its offices ---------- */
+  const orderOf=t=>{t=String(t).replace(/\n/g," ");return /royal arch|\bchapter no\.?\s*\d+\s*$/i.test(t)&&!/eastern star|oes/i.test(t)?"chapter":/council|royal\s*&\s*select/i.test(t)?"council":/commandery|knights templar/i.test(t)?"commandery":/eastern star|\boes\b/i.test(t)?"oes":/\blodge\b/i.test(t)?"blue":"club"};
+  const SEATS={
+    all:{treasurer:"Treasurer",treas:"Treasurer",tr:"Treasurer",secretary:"Secretary",sec:"Secretary",secy:"Secretary",recorder:"Recorder",rec:"Recorder",chaplain:"Chaplain",chap:"Chaplain",
+      sentinel:"Sentinel",sent:"Sentinel",tiler:"Tiler",tyler:"Tiler",marshal:"Marshal",organist:"Organist",musician:"Musician",president:"President",pres:"President",
+      vicepresident:"Vice President",vpres:"Vice President",vp:"Vice President",vicepres:"Vice President",vpresident:"Vice President",
+      "1vp":"1st Vice President","1vpres":"1st Vice President","1vpresident":"1st Vice President","2vp":"2nd Vice President","2vpres":"2nd Vice President","2vpresident":"2nd Vice President",
+      "3vp":"3rd Vice President","3vpres":"3rd Vice President","3vpresident":"3rd Vice President","1stvp":"1st Vice President","1stvpres":"1st Vice President","2ndvp":"2nd Vice President","2ndvpres":"2nd Vice President","3rdvp":"3rd Vice President","3rdvpres":"3rd Vice President",
+      asstdir:"Assistant Director",assistantdirector:"Assistant Director",chaplin:"Chaplain",director:"Director",chairman:"Chairman",historian:"Historian"},
+    blue:{wmaster:"Worshipful Master",wm:"Worshipful Master",worshipfulmaster:"Worshipful Master",master:"Worshipful Master",srwarden:"Senior Warden",sw:"Senior Warden",seniorwarden:"Senior Warden",
+      jrwarden:"Junior Warden",jw:"Junior Warden",juniorwarden:"Junior Warden",srdeacon:"Senior Deacon",sd:"Senior Deacon",seniordeacon:"Senior Deacon",jrdeacon:"Junior Deacon",jd:"Junior Deacon",juniordeacon:"Junior Deacon",
+      srsteward:"Senior Steward",ss:"Senior Steward",seniorsteward:"Senior Steward",jrsteward:"Junior Steward",js:"Junior Steward",juniorsteward:"Junior Steward",lecturer:"Lecturer"},
+    chapter:{ehp:"Excellent High Priest",highpriest:"Excellent High Priest",k:"King",king:"King",s:"Scribe",scribe:"Scribe",ch:"Captain of the Host",cofh:"Captain of the Host",coh:"Captain of the Host",
+      ps:"Principal Sojourner",rac:"Royal Arch Captain",ra:"Royal Arch Captain","3v":"Master of the 3rd Veil","2v":"Master of the 2nd Veil","1v":"Master of the 1st Veil",mov3:"Master of the 3rd Veil",mov2:"Master of the 2nd Veil",mov1:"Master of the 1st Veil"},
+    council:{im:"Illustrious Master",tim:"Illustrious Master",dm:"Deputy Master",rdm:"Deputy Master",pcw:"Principal Conductor of the Work",cg:"Captain of the Guard",cofg:"Captain of the Guard",cc:"Conductor of the Council",cofc:"Conductor of the Council",steward:"Steward"},
+    commandery:{ec:"Eminent Commander",g:"Generalissimo",gen:"Generalissimo",cg:"Captain General",pr:"Prelate",prelate:"Prelate",sw:"Senior Warden",jw:"Junior Warden",stb:"Standard Bearer",sb:"Standard Bearer",
+      swb:"Sword Bearer",w:"Warder",warder:"Warder"},
+    oes:{wm:"Worthy Matron",worthymatron:"Worthy Matron",wp:"Worthy Patron",worthypatron:"Worthy Patron",am:"Associate Matron",assocmatron:"Associate Matron",amatron:"Associate Matron",ap:"Associate Patron",assocpatron:"Associate Patron",apatron:"Associate Patron",
+      cond:"Conductress",conductress:"Conductress",ac:"Associate Conductress",aconductress:"Associate Conductress",assocconductress:"Associate Conductress",warder:"Warder",adah:"Adah",ruth:"Ruth",esther:"Esther",martha:"Martha",electa:"Electa"}};
+  const MONTH_ROW=/^(jan(uary)?|feb(ruary)?|mar(ch)?|apr(il)?|may|june?|july?|aug(ust)?|sept?(ember)?|oct(ober)?|nov(ember)?|dec(ember)?)\.?$/i;
+  function properSeats(list,title){
+    const k=orderOf(title),T=Object.assign({},SEATS.all,SEATS[k]||{}),key=t=>String(t||"").toLowerCase().replace(/[^a-z0-9]/g,"");
+    const rows=(list||[]).map(o=>({t:String(o.t||"").trim(),n:String(o.n||"").trim(),p:String(o.p||"").trim()}));
+    /* a seat printed over two lines ("R" … "AC") comes in as pieces around the name: put it back together */
+    const out=[];
+    for(let i=0;i<rows.length;i++){const o=rows[i];
+      /* "Assistant" over "Director" is one seat */
+      if(o.t&&!o.n&&!o.p&&/^(assistant|asst\.?|associate|assoc\.?|vice|deputy|past)$/i.test(o.t)&&rows[i+1]&&rows[i+1].t){rows[i+1].t=o.t+" "+rows[i+1].t;continue}
+      if(o.t&&!o.n&&!o.p){const nx=rows[i+1];
+        if(nx&&!nx.t&&(nx.n||nx.p)){nx.t=o.t;continue}
+        const pv=out[out.length-1];if(pv&&pv._joined){pv.t+=" "+o.t;continue}
+        if(nx&&nx.t&&(nx.n||nx.p)&&pv&&o.t.length<=3){pv.t+=" "+o.t;continue}
+        out.push(o);continue}
+      if(!o.t&&(o.n||o.p)&&out.length){const pv=out[out.length-1];if(pv.t&&!pv.n&&!pv.p){pv.n=o.n;pv.p=o.p;pv._joined=true;continue}}
+      if(o.t&&rows[i-1]&&rows[i-1].t&&!rows[i-1].n&&!rows[i-1].p)o._joined=true;
+      out.push(o)}
+    /* "Steward", "Steward" in a lodge are its Senior and Junior Stewards */
+    let stew=0;const many=out.filter(o=>key(o.t)==="steward").length;
+    const notes=[];
+    const known=new Set(Object.values(T).map(key));
+    /* the seat run into the name ("V.President John Ingram"), and a phone on a line of its own */
+    for(const o of out){if(!o.t&&o.n){const w=o.n.split(/\s+/);for(let j=Math.min(3,w.length-1);j>=1;j--){const pre=w.slice(0,j).join(" ");if(T[key(pre)]){o.t=pre;o.n=w.slice(j).join(" ");break}}}}
+    for(let i=out.length-1;i>0;i--){const o=out[i];if(!o.t&&!o.n&&o.p&&!out[i-1].p){out[i-1].p=o.p;out.splice(i,1)}}
+    const seats=out.filter(o=>{if(MONTH_ROW.test(o.t)){notes.push(o.t+" "+o.n);return false}
+      /* a line with no name or phone that isn't a seat (an address, a heading) is a note, not an officer */
+      if(o.t&&!o.n&&!o.p&&!T[key(o.t)]&&!known.has(key(o.t))&&!/steward|master|warden|deacon|officer|director|captain|conductor|bearer/i.test(o.t)){notes.push(o.t);return false}
+      return o.t||o.n||o.p}).map(o=>{
+      let t=o.t,kk=key(t);
+      if(k==="blue"&&kk==="steward"&&many>=2)t=stew++?"Junior Steward":"Senior Steward";
+      else if(k==="chapter"&&/^r\s*a?\s*c$/i.test(t.replace(/\./g,"")))t="Royal Arch Captain";
+      else if(T[kk])t=T[kk];
+      const n=k==="club"&&/scottish/i.test(title)?o.n.replace(/\b(3[23])(?!°)(\s|,|$)/,"$1°$2"):o.n;
+      return {t,n,p:o.p}});
+    return {seats,notes};
+  }
   function parseBody(P){
     const L=P.lines.filter(l=>!/^\d{1,3}$/.test(l.text.trim()));
     const oi=L.findIndex(l=>/officers\s+for\s+20\d\d/i.test(l.text));
@@ -333,13 +390,19 @@
       if(rsec==="meets")rsec="meetsNote";
       p[rsec]+=(p[rsec]?"\n":"")+t}
     /* officers: office · name · phone */
+    /* tiny type (the ° of 33°) is dropped; a heading in larger type ends the officers, and what follows is a note */
+    const rs=rest.map(l=>l.s).sort((a,b)=>a-b),rmed=rs[Math.floor(rs.length/2)]||10;let ended=false;
     for(const l of rest){
+      if(l.s<rmed*.72&&l.text.length<=8)continue;
+      if(ended||(l.s>rmed*1.2&&!PHONE.test(l.text)&&p.officers.length)){ended=true;p.notes+=(p.notes?"\n":"")+l.text;continue}
       const c=l.cells.map(x=>x.t),ph=(l.text.match(PHONE)||[""])[0];
       if(/e-?mail|@/i.test(l.text)&&!ph){p.notes+=(p.notes?"\n":"")+l.text;continue}
       const cs=c.map(x=>x.replace(PHONE,"").trim()).filter(Boolean);
       if(!cs.length&&!ph)continue;
       if(cs.length===1&&!ph&&l.cells[0].x>P.w*.25){p.notes+=(p.notes?"\n":"")+cs[0];continue}
       p.officers.push(cs.length>1?{t:cs[0],n:cs.slice(1).join(" "),p:ph}:ph?{t:"",n:cs[0]||"",p:ph}:{t:cs[0],n:"",p:""})}
+    const fx=properSeats(p.officers,p.title);p.officers=fx.seats;p.seated=1;
+    if(fx.notes.length)p.notes=(p.notes?p.notes+"\n":"")+fx.notes.join("\n");
     const num=(p.title.match(/\b(?:no\.?\s*)?(\d{1,3})\b/i)||[])[1];
     const T=p.title.replace(/\n/g," ");
     p.label=!num?T.replace(/^omar\s+/i,"").slice(0,22):/lodge/i.test(T)?num:/eastern star/i.test(T)?"OES "+num:/royal arch|chapter/i.test(T)?"RAM "+num:/commandery/i.test(T)?"KT "+num:/council/i.test(T)?"Council "+num:/rainbow/i.test(T)?"Rainbow "+num:/amaranth/i.test(T)?"AMD "+num:T.replace(/\s*no\.?\s*\d+.*$/i,"").slice(0,16)+" "+num;
@@ -441,11 +504,14 @@
   function syncDistrict(B){
     const X=DX(),out={linked:0,officers:0,info:0};if(!X||!X.link)return out;
     for(const p of B.pages){if(p.k!=="body")continue;
+      if(!p.seated){const fx=properSeats(p.officers,p.title);p.officers=fx.seats;if(fx.notes.length)p.notes=(p.notes?p.notes+"\n":"")+fx.notes.join("\n");p.seated=1}
       if(!p.dist)p.dist=X.link(p.title)||undefined;
       if(!p.dist&&X.addBody){p.dist=X.addBody({name:p.title.replace(/\n/g," ").replace(/\s+A\.?F\.?M\.?$/i,""),meets:p.meets,meal:p.dinner,mail:p.mail,email:p.email})||undefined;if(p.dist)out.added=(out.added||0)+1}
       if(!p.dist)continue;out.linked++;
       const offs=(p.officers||[]).filter(o=>o.n||o.p);
-      if(offs.length&&!X.getRoster(p.dist,B.year).length){X.putRoster(p.dist,B.year,offs);out.officers++}
+      /* the District tab's list is filled from the book when it's empty, or when all it has are some of the book's names */
+      const nm=v=>String(v||"").toLowerCase().replace(/^(wb|rw|mw|b|bro)\s+/,"").replace(/[^a-z]/g,""),had=X.getRoster(p.dist,B.year);
+      if(offs.length&&(!had.length||had.length<offs.length&&had.every(o=>offs.some(q=>nm(q.n).includes(nm(o.n)))))){X.putRoster(p.dist,B.year,offs);out.officers++}
       const sec=(p.officers||[]).find(o=>/secretary|recorder/i.test(o.t||"")&&o.n);
       out.info+=X.fillInfo(p.dist,{meets:p.meets,meal:p.dinner,mail:p.mail,email:p.email,contact:sec?(/recorder/i.test(sec.t)?"Recorder ":"Secretary ")+sec.n:"",phone:sec&&sec.p})}
     return out;
@@ -454,13 +520,18 @@
   function addSponsors(B){
     const S=window.LodgeNetDash&&window.LodgeNetDash.addSponsors;if(!S)return {added:0};
     const ads=B.pages.filter(p=>p.k==="picture"&&p.sponsor&&!p.spon);
-    const r=S(ads.map(p=>({name:p.sponsor,ad:p.src,book:true})));
+    /* the Sponsors tab announces the change at once; the book's own ad pages are linked just below, so don't add more */
+    importing=true;let r;try{r=S(ads.map(p=>({name:p.sponsor,ad:p.src,book:true})))}finally{importing=false}
     ads.forEach(p=>{const id=r.ids[p.sponsor];if(id){p.spon=id;delete p.src}});
     return r;
   }
   /* the Sponsors tab decides who runs in the book: new ones get an ad page after the last ad, dropped ones come out */
+  let importing=false;
   function syncSponsors(B){
-    const L=SPN();if(!L)return 0;let n=0;
+    const L=SPN();if(!L||importing)return 0;let n=0;
+    /* one page per sponsor: a second copy comes out */
+    const seen=new Set();
+    for(let i=0;i<B.pages.length;i++){const p=B.pages[i];if(!p.spon)continue;if(seen.has(p.spon)){B.pages.splice(i--,1);n++}else seen.add(p.spon)}
     for(let i=B.pages.length-1;i>=0;i--){const p=B.pages[i];if(p.spon){const x=L.find(y=>y.id===p.spon);if(!x||!x.book){B.pages.splice(i,1);n++}}}
     for(const x of L.filter(y=>y.book&&!B.pages.some(p=>p.spon===y.id))){
       let at=-1;B.pages.forEach((p,j)=>{if(p.k==="picture"&&(p.spon||p.sponsor))at=j});
@@ -727,5 +798,5 @@
 .bb-prev canvas{width:300px;max-width:100%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.2),0 6px 18px rgba(0,0,0,.08)}`;
   document.head.appendChild(css);
 
-  window.LodgeNetBlueBook={mount,_test:{parseRule,ruleDays,bumpYear,nextYear,monthItems,draw,syncDistrict,officersOf,syncSponsors}};
+  window.LodgeNetBlueBook={mount,_test:{parseRule,ruleDays,bumpYear,nextYear,monthItems,draw,syncDistrict,officersOf,syncSponsors,properSeats}};
 })();
