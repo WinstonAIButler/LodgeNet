@@ -509,7 +509,9 @@
       if(!p.dist&&X.addBody){p.dist=X.addBody({name:p.title.replace(/\n/g," ").replace(/\s+A\.?F\.?M\.?$/i,""),meets:p.meets,meal:p.dinner,mail:p.mail,email:p.email})||undefined;if(p.dist)out.added=(out.added||0)+1}
       if(!p.dist)continue;out.linked++;
       const offs=(p.officers||[]).filter(o=>o.n||o.p);
-      if(offs.length&&!X.getRoster(p.dist,B.year).length){X.putRoster(p.dist,B.year,offs);out.officers++}
+      /* the District tab's list is filled from the book when it's empty, or when all it has are some of the book's names */
+      const nm=v=>String(v||"").toLowerCase().replace(/^(wb|rw|mw|b|bro)\s+/,"").replace(/[^a-z]/g,""),had=X.getRoster(p.dist,B.year);
+      if(offs.length&&(!had.length||had.length<offs.length&&had.every(o=>offs.some(q=>nm(q.n).includes(nm(o.n)))))){X.putRoster(p.dist,B.year,offs);out.officers++}
       const sec=(p.officers||[]).find(o=>/secretary|recorder/i.test(o.t||"")&&o.n);
       out.info+=X.fillInfo(p.dist,{meets:p.meets,meal:p.dinner,mail:p.mail,email:p.email,contact:sec?(/recorder/i.test(sec.t)?"Recorder ":"Secretary ")+sec.n:"",phone:sec&&sec.p})}
     return out;
@@ -518,13 +520,18 @@
   function addSponsors(B){
     const S=window.LodgeNetDash&&window.LodgeNetDash.addSponsors;if(!S)return {added:0};
     const ads=B.pages.filter(p=>p.k==="picture"&&p.sponsor&&!p.spon);
-    const r=S(ads.map(p=>({name:p.sponsor,ad:p.src,book:true})));
+    /* the Sponsors tab announces the change at once; the book's own ad pages are linked just below, so don't add more */
+    importing=true;let r;try{r=S(ads.map(p=>({name:p.sponsor,ad:p.src,book:true})))}finally{importing=false}
     ads.forEach(p=>{const id=r.ids[p.sponsor];if(id){p.spon=id;delete p.src}});
     return r;
   }
   /* the Sponsors tab decides who runs in the book: new ones get an ad page after the last ad, dropped ones come out */
+  let importing=false;
   function syncSponsors(B){
-    const L=SPN();if(!L)return 0;let n=0;
+    const L=SPN();if(!L||importing)return 0;let n=0;
+    /* one page per sponsor: a second copy comes out */
+    const seen=new Set();
+    for(let i=0;i<B.pages.length;i++){const p=B.pages[i];if(!p.spon)continue;if(seen.has(p.spon)){B.pages.splice(i--,1);n++}else seen.add(p.spon)}
     for(let i=B.pages.length-1;i>=0;i--){const p=B.pages[i];if(p.spon){const x=L.find(y=>y.id===p.spon);if(!x||!x.book){B.pages.splice(i,1);n++}}}
     for(const x of L.filter(y=>y.book&&!B.pages.some(p=>p.spon===y.id))){
       let at=-1;B.pages.forEach((p,j)=>{if(p.k==="picture"&&(p.spon||p.sponsor))at=j});
