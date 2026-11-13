@@ -7,7 +7,7 @@
   const KINDS=[
     ["blue","Blue lodges","#2f5d8a"],["york","York Rite","#a3302b"],["oes","Eastern Star","#2e7d4f"],
     ["rainbow","Rainbow Girls","#7b4fa0"],["demolay","DeMolay","#b5651d"],["amaranth","Amaranth","#8a6d1d"],
-    ["shrine","Shriners","#b0263f"],["scottish","Scottish Rite","#1f6f78"]];
+    ["shrine","Shriners","#b0263f"],["scottish","Scottish Rite","#1f6f78"],["other","Other orders","#5b6470"]];
   const KIND=Object.fromEntries(KINDS.map(([k,l,c])=>[k,{label:l,color:c}]));
   const LEAFLET="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/";
   let map=null,layer=null,pins={},filter="all",q="",key=null;
@@ -29,6 +29,15 @@
   const A=()=>window.LodgeNetApp||{};
   const canEdit=()=>{const c=A().CLOUD;return !c||!!c.canEdit};
   const OFF=C().districtOfficers&&typeof C().districtOfficers==="object"?JSON.parse(JSON.stringify(C().districtOfficers)):{};
+  /* details the directory is missing for a body (meeting day, meal, mail, email, contact), filled in by the lodge,
+     e.g. from its Blue Book. Saved as districtInfo[district][body] = {meets, meal, mail, email, contact, phone, web}. */
+  const INFO=C().districtInfo&&typeof C().districtInfo==="object"?JSON.parse(JSON.stringify(C().districtInfo)):{};
+  /* lodges and bodies the directory doesn't have, added by the lodge (by hand or from its Blue Book):
+     districtBodies[district] = [{id, k, name, meets, meal, mail, email, contact, phone, hall?, added:true}] */
+  const EXTRA=C().districtBodies&&typeof C().districtBodies==="object"?JSON.parse(JSON.stringify(C().districtBodies)):{};
+  const merged=k=>{const D=window.LodgeNetDistricts,d=k&&D&&D[k];return d?{...d,bodies:d.bodies.concat(EXTRA[k]||[])}:null};
+  const INFO_KEYS=["meets","meal","mail","email","contact","phone","web"];
+  const full=b=>{const x=(INFO[key||districtKey()]||{})[bid(b)]||{},o={...b};INFO_KEYS.forEach(k=>{if(!o[k]&&x[k])o[k]=x[k]});return o};
   const bid=b=>b.id||b.name.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
   const OFFICES={
     blue:["Worshipful Master","Senior Warden","Junior Warden","Treasurer","Secretary","Senior Deacon","Junior Deacon","Chaplain","Senior Steward","Junior Steward","Tiler"],
@@ -52,7 +61,9 @@
       const hit=m&&m[1]&&(t.toLowerCase()===m[1].toLowerCase()||t.toLowerCase().endsWith(m[1].toLowerCase()));
       return {t,n:hit?m[2]:"",p:hit&&b.phone?b.phone:""}});
   }
-  function setRoster(k,b,y,r){((OFF[k]=OFF[k]||{})[bid(b)]=OFF[k][bid(b)]||{})[y]=r;saveSoon()}
+  function setRoster(k,b,y,r){((OFF[k]=OFF[k]||{})[bid(b)]=OFF[k][bid(b)]||{})[y]=r;saveSoon();changedSoon()}
+  /* the Blue Book (assets/bluebook.js) listens so its pages follow what's typed here */
+  function changedSoon(){clearTimeout(changedSoon.t);changedSoon.t=setTimeout(()=>document.dispatchEvent(new CustomEvent("lodgenet:district")),250)}
   function saveSoon(){clearTimeout(saveSoon.t);saveSoon.t=setTimeout(()=>{const a=A();if(a.save)a.save()},500)}
   const offOpen={};let offYear=YEAR;
 
@@ -97,10 +108,10 @@
   const shown=d=>d.bodies.filter(b=>(filter==="all"||b.k===filter)&&
     (!q||(b.name+" "+(d.halls[b.hall]||{}).addr+" "+(b.contact||"")).toLowerCase().includes(q)));
 
-  function card(d,b,i){
-    const h=d.halls[b.hall]||{},k=KIND[b.k];
+  function card(d,b0,i){
+    const b=full(b0),h=d.halls[b.hall]||{},k=KIND[b.k];
     return `<article class="card dist-card" data-i="${i}" style="--kc:${k.color}">
-      <div class="row-sp"><span class="dist-kind">${esc(k.label)}</span>${b.since?`<span class="hint">Chartered ${b.since}</span>`:""}</div>
+      <div class="row-sp"><span class="dist-kind">${esc(k.label)}</span>${b.added?`<span class="hint">Added by your lodge${canEdit()?` · <button type="button" class="link-btn" data-xrm="${esc(bid(b))}">Remove</button>`:""}</span>`:b.since?`<span class="hint">Chartered ${b.since}</span>`:""}</div>
       <h4>${esc(b.name)}</h4>
       <dl class="dist-dl">
         <dt>Meets</dt><dd>${esc(b.meets)}${b.meal?` · meal ${esc(b.meal)}`:""}</dd>
@@ -110,7 +121,7 @@
         ${b.mail?`<dt>Mail</dt><dd>${esc(b.mail)}</dd>`:""}
       </dl>
       ${b.note?`<p class="hint" style="margin:0">${esc(b.note)}</p>`:""}
-      <div class="dist-offsum">${offSum(b)}</div>
+      <div class="dist-offsum">${offSum(b0)}</div>
       <div class="dist-off" data-off="${i}"${offOpen[bid(b)]?"":" hidden"}></div>
       <div class="row-acts">
         <button class="btn sm" type="button" data-offbtn="${i}" aria-expanded="${!!offOpen[bid(b)]}">Officers</button>
@@ -139,7 +150,7 @@
   function render(){
     const box=$("#p-dist");if(!box)return;
     const top=$(".side");if(top)document.documentElement.style.setProperty("--top-h",top.getBoundingClientRect().height+"px");
-    const D=window.LodgeNetDistricts;key=districtKey();const d=key&&D[key];
+    const D=window.LodgeNetDistricts;key=districtKey();const d=merged(key);
     if(!d){box.innerHTML=`<div class="empty">We don't have a directory for your district yet. Make sure your city and state are set under
       <a href="#website">Lodge info</a>, or email <a href="mailto:hello@lodgenet.app">hello@lodgenet.app</a> and we'll add your district's lodges and bodies.</div>`;return}
     const counts=Object.fromEntries(KINDS.map(([k])=>[k,d.bodies.filter(b=>b.k===k).length]));
@@ -160,10 +171,20 @@
         <div class="dist-map-box"><div id="dist-map" role="region" aria-label="Map of the district"></div></div>
         <div class="dist-list" id="dist-list"></div>
       </div>
+      ${canEdit()?`<details class="card dist-add" style="margin-top:14px"><summary><b>Add a lodge or body that's missing</b></summary>
+        <form class="inline-form" id="dist-addf" style="margin-top:10px">
+          <div class="field grow"><label for="dx-n">Name</label><input id="dx-n" required placeholder="e.g. Omar Pedalers"></div>
+          <div class="field"><label for="dx-k">Kind</label><select id="dx-k">${KINDS.map(([k,l])=>`<option value="${k}">${esc(l)}</option>`).join("")}</select></div>
+          <div class="field grow"><label for="dx-m">Meets</label><input id="dx-m" placeholder="e.g. 2nd Tuesday, 7:00 PM"></div>
+          <div class="field grow"><label for="dx-c">Contact</label><input id="dx-c" placeholder="e.g. Secretary John Smith"></div>
+          <div class="field"><label for="dx-p">Phone</label><input id="dx-p" inputmode="tel"></div>
+          <button class="btn" type="submit">Add</button></form></details>`:""}
       <p class="hint" style="margin:14px 0 0">From the district's own pages (afm29th.org), the SC Grand York Rite and the Grand Chapter OES, November 2026. Officers change each year, so call ahead before visiting.</p>`;
     box.querySelectorAll("[data-f]").forEach(b=>b.addEventListener("click",()=>{filter=b.dataset.f;
       box.querySelectorAll("[data-f]").forEach(x=>x.setAttribute("aria-pressed",x===b));list(d)}));
     $("#dist-q").addEventListener("input",e=>{q=e.target.value.trim().toLowerCase();list(d)});
+    const af=$("#dist-addf");if(af)af.addEventListener("submit",e=>{e.preventDefault();
+      addBody({name:$("#dx-n").value,k:$("#dx-k").value,meets:$("#dx-m").value,contact:$("#dx-c").value,phone:$("#dx-p").value});render()});
     if(map){map.remove();map=null}
     loadLeaflet().then(L=>{
       map=L.map("dist-map",{scrollWheelZoom:false}).setView(d.center,10);
@@ -178,6 +199,9 @@
     const all=d.bodies;
     el.innerHTML=L.length?L.map(b=>card(d,b,all.indexOf(b))).join(""):'<div class="empty">Nothing matches that search.</div>';
     el.querySelectorAll(".dist-off:not([hidden])").forEach(o=>{const b=all[+o.dataset.off];o.innerHTML=offPanel(d,b);wireOff(o,d,b)});
+    el.querySelectorAll("[data-xrm]").forEach(x=>x.addEventListener("click",()=>{const id=x.dataset.xrm,L=EXTRA[key]||[],b=L.find(y=>y.id===id);
+      if(!b||!confirm(`Remove ${b.name} from the district list? Its officers stay saved and come back if it's added again.`))return;
+      EXTRA[key]=L.filter(y=>y!==b);saveSoon();changedSoon();render()}));
     el.querySelectorAll("[data-offbtn]").forEach(btn=>btn.addEventListener("click",()=>{
       const b=all[+btn.dataset.offbtn],o=el.querySelector(`.dist-off[data-off="${btn.dataset.offbtn}"]`),open=o.hidden;
       offOpen[bid(b)]=open;o.hidden=!open;btn.setAttribute("aria-expanded",open);
@@ -191,23 +215,56 @@
 
   /* booklet entries for one year: each lodge and body, its meeting and its officers, in the district's order */
   function entries(year,kinds,skipEmpty){
-    const D=window.LodgeNetDistricts,k=districtKey(),d=k&&D[k];if(!d)return [];
+    const D=window.LodgeNetDistricts,k=districtKey(),d=merged(k);if(!d)return [];
     return d.bodies.filter(b=>!kinds||kinds.includes(b.k)).map(b=>{
       const h=d.halls[b.hall]||{},r=filled(roster(k,b,year));
       if(skipEmpty&&!r.length)return null;
       const lines=[`Meets: ${b.meets}${b.meal?` (meal ${b.meal})`:""}`,h.addr?`At: ${h.addr}`:"",b.mail?`Mail: ${b.mail}`:"",b.web?`Web: ${b.web}`:""].filter(Boolean);
       const offs=r.length?r.map(x=>`${x.t||"Officer"}: ${x.n}${x.p?`, ${x.p}`:""}`).join("\n"):"Officers not entered yet.";
+      b=full(b);
       return {id:`dist-${k}-${bid(b)}-${year}`,title:`${b.name}`,body:lines.join("\n")+`\n\n${year} OFFICERS\n`+offs,images:[],sources:[`${d.name} officers, ${year}`],at:new Date().toISOString().slice(0,10),kind:b.k};
     }).filter(Boolean);
   }
   /* every lodge and body with officers entered for a year, for the Blue Book's "Fill in from the District tab" */
   function rosters(year){
-    const D=window.LodgeNetDistricts,k=districtKey(),d=k&&D[k];if(!d)return [];
+    const D=window.LodgeNetDistricts,k=districtKey(),d=merged(k);if(!d)return [];
     return d.bodies.map(b=>({name:b.name,meets:b.meets,officers:filled(roster(k,b,year))})).filter(r=>r.officers.length);
   }
-  window.LodgeNetDistrict={render,entries,rosters,years:()=>YEARS,data:()=>OFF,kinds:()=>KINDS.map(([k,l])=>[k,l]),
+  /* ---------- shared with the Blue Book ---------- */
+  const words=t=>String(t).toLowerCase().replace(/&/g," and ").split(/[^a-z]+/).filter(w=>w.length>2&&!/^(the|and|club|lodge|chapter|council|order|masons|unit|omar|shriners|of|for|no)$/.test(w));
+  /* which body in the directory a title names: the same number (No. 40), then the most words in common */
+  function link(title){
+    const D=window.LodgeNetDistricts,k=districtKey(),d=merged(k);if(!d)return null;
+    const t=String(title).replace(/\n/g," "),n=(t.match(/\b(\d{1,3})\b/)||[])[1],tw=words(t);
+    let best=null;
+    for(const b of d.bodies){
+      const bn=(b.name.match(/\b(\d{1,3})\b/)||[])[1];if(n&&bn!==n||!n&&bn)continue;
+      const bw=words(b.name),sc=tw.filter(w=>bw.some(x=>x===w||w.length>=4&&w.length<x.length&&x.startsWith(w))).length+(n?2:0);
+      if(sc>=Math.min(2,(n?2:0)+tw.length)&&sc>0&&(!best||sc>best.sc))best={b,sc,tie:false};else if(best&&sc===best.sc)best.tie=true}
+    return best&&!best.tie?bid(best.b):null;
+  }
+  function addBody(x){
+    const k=districtKey();if(!k)return null;const name=String(x.name||"").trim();if(!name)return null;
+    const id=name.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
+    const L=EXTRA[k]=EXTRA[k]||[];const ex=L.find(b=>b.id===id);if(ex)return id;
+    const kind=x.k&&KIND[x.k]?x.k:/omar|shrine/i.test(name)?"shrine":/eastern star|\boes\b/i.test(name)?"oes":/rainbow/i.test(name)?"rainbow":/demolay/i.test(name)?"demolay":/amaranth/i.test(name)?"amaranth":/chapter|council|commandery|york/i.test(name)?"york":/scottish/i.test(name)?"scottish":/lodge/i.test(name)?"blue":"other";
+    const b={id,k:kind,name,added:true};["meets","meal","mail","email","contact","phone","web"].forEach(f=>{const v=String(x[f]||"").trim();if(v)b[f]=v});
+    if(!b.meets)b.meets="Meeting night not entered";
+    L.push(b);saveSoon();changedSoon();return id;
+  }
+  const byId=id=>{const D=window.LodgeNetDistricts,k=districtKey(),d=merged(k);return d&&d.bodies.find(b=>bid(b)===id)};
+  window.LodgeNetDistrict={render,entries,rosters,link,addBody,
+    infoData:()=>INFO,extraData:()=>EXTRA,
+    bodies(){const D=window.LodgeNetDistricts,k=districtKey(),d=merged(k);const seen=new Set();
+      return d?d.bodies.filter(b=>!seen.has(bid(b))&&seen.add(bid(b))).map(b=>({id:bid(b),name:b.name})):[]},
+    bodyName:id=>{const b=byId(id);return b?b.name:""},
+    getRoster:(id,y)=>{const b=byId(id);return b?filled(roster(districtKey(),b,y)):[]},
+    putRoster:(id,y,r)=>{const b=byId(id);if(b)setRoster(districtKey(),b,y,r.map(x=>({t:x.t||"",n:x.n||"",p:x.p||""})))},
+    /* only what the directory and the lodge haven't already got */
+    fillInfo(id,info){const b=byId(id),k=districtKey();if(!b||!k)return 0;const x=((INFO[k]=INFO[k]||{})[bid(b)]=INFO[k][bid(b)]||{});let n=0;
+      INFO_KEYS.forEach(f=>{const v=String(info[f]||"").trim();if(v&&!b[f]&&!x[f]){x[f]=v;n++}});if(n)saveSoon();return n},years:()=>YEARS,data:()=>OFF,kinds:()=>KINDS.map(([k,l])=>[k,l]),
     has:()=>!!districtKey(),name:()=>{const k=districtKey();return k?window.LodgeNetDistricts[k].name:""},
-    figures(){const D=window.LodgeNetDistricts,k=districtKey(),d=k&&D[k];if(!d)return null;
+    figures(){const D=window.LodgeNetDistricts,k=districtKey(),d=merged(k);if(!d)return null;
       const n=x=>d.bodies.filter(b=>b.k===x).length;
       return [["District",d.name.replace(/ Masonic District$/,""),d.area],["Blue lodges",n("blue"),"In the district"],
         ["York Rite",n("york"),"Chapters, councils, commanderies"],["Other bodies",d.bodies.length-n("blue")-n("york"),"OES, Rainbow, DeMolay, Shrine and more"]]}};

@@ -84,6 +84,14 @@
     return doc;
   }
   const yr=(B,s)=>String(s||"").replace(/\{year\}/g,B.year);
+  /* a page linked to the District tab shares its officers there, year by year: the year's list entered on either side is the one printed */
+  const DX=()=>window.LodgeNetDistrict&&window.LodgeNetDistrict.getRoster?window.LodgeNetDistrict:null;
+  /* an ad page linked to a sponsor prints that sponsor's ad from the Sponsors tab */
+  const SPN=()=>window.LodgeNetDash&&window.LodgeNetDash.sponsors?window.LodgeNetDash.sponsors():null;
+  const sponsorOf=p=>{const L=SPN();return p.spon&&L?L.find(x=>x.id===p.spon):null};
+  const adOf=p=>{const x=sponsorOf(p);return x&&x.ad||p.src};
+  const nameOf=p=>{const x=sponsorOf(p);return x?x.name:p.sponsor};
+  function officersOf(p,B){const X=DX();if(p.dist&&X){const r=X.getRoster(p.dist,B.year);if(r&&r.length)return r}return p.officers||[]}
   /* write lines that fit a width, shrinking the type until they fit the height */
   function fit(doc,text,w,h,size,min,lh){
     for(let s=size;s>=min;s-=.5){doc.setFontSize(s);const L=doc.splitTextToSize(text,w);if(L.length*s*lh<=h)return {L,s}}
@@ -109,7 +117,7 @@
       if(ed){doc.setFont("times","bold");doc.setFontSize(16);doc.text(ed,PW/2,y+24,{align:"center"})}
     },
     picture(doc,p){
-      if(p.src)image(doc,p.src,0,0,PW,PH);
+      const src=adOf(p);if(src)image(doc,src,0,0,PW,PH);
       else{doc.setFontSize(11);doc.setTextColor(120);doc.text(pdfText(p.title||"Picture page")+": no picture yet",PW/2,PH/2,{align:"center"})}
     },
     text(doc,p,B){
@@ -142,7 +150,7 @@
       const meets=[p.meets,p.dinner?"Dinner: "+p.dinner:"",p.meetsNote].filter(Boolean).join("\n");
       if(meets)yr2=col(X2,yr2,"Stated Communications:",meets)+4;
       y=Math.max(yl,yr2)+2;
-      const offs=(p.officers||[]).filter(o=>o&&(o.t||o.n||o.p));
+      const offs=officersOf(p,B).filter(o=>o&&(o.t||o.n||o.p));
       doc.setLineWidth(1.6);doc.line(M-6,y,PW-M+6,y);y+=4;
       doc.setFont("times","bold");doc.setFontSize(12.5);doc.text("Officers for "+B.year,PW/2,y+13,{align:"center"});y+=22;
       const notes=pdfText(yr(B,p.notes||"")),noteH=notes?Math.min(80,doc.splitTextToSize(notes,PW-2*M).length*11+6):0;
@@ -203,7 +211,7 @@
   };
   /* sponsor index rows, from the ad pages that name a business */
   function sponsorRows(B,nos){
-    const r=B.pages.filter(p=>p.k==="picture"&&p.sponsor&&p.sponsor.trim()).map(p=>({name:p.sponsor.trim(),no:nos[p.id]||""}));
+    const r=B.pages.filter(p=>p.k==="picture"&&nameOf(p)&&nameOf(p).trim()).map(p=>({name:nameOf(p).trim(),no:nos[p.id]||""}));
     return r.sort((a,b)=>a.name.localeCompare(b.name,"en",{sensitivity:"base"}));
   }
 
@@ -420,11 +428,44 @@
   function nextYear(B){
     const y=+B.year;
     B.archive=B.archive||{};
-    B.archive[y]={edition:B.edition,pages:B.pages.filter(p=>p.k==="body").map(p=>({id:p.id,title:p.title,meets:p.meets,officers:clone(p.officers||[])}))};
+    B.archive[y]={edition:B.edition,pages:B.pages.filter(p=>p.k==="body").map(p=>({id:p.id,title:p.title,meets:p.meets,officers:clone(officersOf(p,B))}))};
+    B.pages.forEach(p=>{if(p.k==="body")p.officers=clone(officersOf(p,B))});
     const ys=Object.keys(B.archive).sort();while(ys.length>5)delete B.archive[ys.shift()];
     B.pages.forEach(p=>{["title","body","lines","notes","meetsNote","loc","mail"].forEach(k=>{if(p[k])p[k]=bumpYear(p[k],y)});delete p.ok});
     B.dates=(B.dates||[]).filter(e=>+String(e.date).slice(0,4)>y);
     B.year=y+1;if(+B.edition)B.edition=+B.edition+1;
+  }
+
+  /* link each lodge and body page to the District tab, and give the District tab what it's missing:
+     the book year's officers where none are entered, and meeting day, meal, mail and email where the directory has none */
+  function syncDistrict(B){
+    const X=DX(),out={linked:0,officers:0,info:0};if(!X||!X.link)return out;
+    for(const p of B.pages){if(p.k!=="body")continue;
+      if(!p.dist)p.dist=X.link(p.title)||undefined;
+      if(!p.dist&&X.addBody){p.dist=X.addBody({name:p.title.replace(/\n/g," ").replace(/\s+A\.?F\.?M\.?$/i,""),meets:p.meets,meal:p.dinner,mail:p.mail,email:p.email})||undefined;if(p.dist)out.added=(out.added||0)+1}
+      if(!p.dist)continue;out.linked++;
+      const offs=(p.officers||[]).filter(o=>o.n||o.p);
+      if(offs.length&&!X.getRoster(p.dist,B.year).length){X.putRoster(p.dist,B.year,offs);out.officers++}
+      const sec=(p.officers||[]).find(o=>/secretary|recorder/i.test(o.t||"")&&o.n);
+      out.info+=X.fillInfo(p.dist,{meets:p.meets,meal:p.dinner,mail:p.mail,email:p.email,contact:sec?(/recorder/i.test(sec.t)?"Recorder ":"Secretary ")+sec.n:"",phone:sec&&sec.p})}
+    return out;
+  }
+  /* the ads that name a sponsor go on the Sponsors tab */
+  function addSponsors(B){
+    const S=window.LodgeNetDash&&window.LodgeNetDash.addSponsors;if(!S)return {added:0};
+    const ads=B.pages.filter(p=>p.k==="picture"&&p.sponsor&&!p.spon);
+    const r=S(ads.map(p=>({name:p.sponsor,ad:p.src,book:true})));
+    ads.forEach(p=>{const id=r.ids[p.sponsor];if(id){p.spon=id;delete p.src}});
+    return r;
+  }
+  /* the Sponsors tab decides who runs in the book: new ones get an ad page after the last ad, dropped ones come out */
+  function syncSponsors(B){
+    const L=SPN();if(!L)return 0;let n=0;
+    for(let i=B.pages.length-1;i>=0;i--){const p=B.pages[i];if(p.spon){const x=L.find(y=>y.id===p.spon);if(!x||!x.book){B.pages.splice(i,1);n++}}}
+    for(const x of L.filter(y=>y.book&&!B.pages.some(p=>p.spon===y.id))){
+      let at=-1;B.pages.forEach((p,j)=>{if(p.k==="picture"&&(p.spon||p.sponsor))at=j});
+      B.pages.splice(at<0?B.pages.length:at+1,0,{id:"pg-"+uid(),k:"picture",spon:x.id,title:x.name});n++}
+    return n;
   }
 
   /* ================= the tab ================= */
@@ -433,27 +474,29 @@
     const s=st(t.id),B=data,canEdit=!!o.canEdit,save=o.save;
     B.pages=Array.isArray(B.pages)?B.pages:[];B.year=+B.year||new Date().getFullYear();
     B.repeat=Array.isArray(B.repeat)?B.repeat:[];B.dates=Array.isArray(B.dates)?B.dates:[];
+    if(canEdit&&B.pages.length&&syncSponsors(B))save();
     if(!B.pages.some(p=>p.id===s.sel))s.sel=B.pages[0]?B.pages[0].id:null;
     const $=q=>box.querySelector(q);
     box.innerHTML=`<div class="bb">
       <div class="bb-bar">
         <div class="bb-ed"><b class="bb-year"></b><span class="hint bb-prog"></span></div><span class="bb-sp"></span>
         ${canEdit?`<label class="btn line sm">Import from PDF<input type="file" accept="application/pdf,.pdf" hidden data-imp></label>
-        <button type="button" class="btn line sm" data-addp>Add a page</button>
         <button type="button" class="btn line sm" data-next>Start the next year's book</button>`:""}
         <button type="button" class="btn sm" data-out>Download the Blue Book (PDF)</button>
       </div>
       <p class="hint bb-msg" role="status"></p>
-      <div class="bb-slot"></div>
-      <div class="bb-main"><ol class="bb-list" aria-label="Pages"></ol><div class="bb-page"></div></div>
+      <div class="bb-main"><div class="bb-side"><ol class="bb-list" aria-label="Pages"></ol>
+        ${canEdit?'<div class="bb-adds"><button type="button" class="btn line sm" data-addp>+ Add a section</button><button type="button" class="btn line sm" data-adds>+ Add a sponsor</button></div><div class="bb-slot"></div>':""}</div>
+        <div class="bb-page"></div></div>
     </div>`;
     const msg=(m,err)=>{s.msg=m||"";s.err=!!err;const p=$(".bb-msg");if(p){p.textContent=s.msg;p.classList.toggle("bb-err",s.err)}};
     msg(s.msg,s.err);
     const changed=(redrawList)=>{save();if(redrawList)drawList();head();preview()};
     function head(){
       $(".bb-year").textContent=`${B.year} book`+(+B.edition?` · ${ordinal(+B.edition)} annual edition`:"");
-      const n=B.pages.length,ok=B.pages.filter(p=>p.ok===B.year).length;
-      $(".bb-prog").textContent=n?`${ok} of ${n} pages checked for ${B.year}`:"";
+      const n=B.pages.length,ok=B.pages.filter(p=>p.ok===B.year).length,X=DX();
+      const lk=B.pages.filter(p=>p.k==="body"&&p.dist),has=X?lk.filter(p=>X.getRoster(p.dist,B.year).length).length:0;
+      $(".bb-prog").textContent=n?`${ok} of ${n} pages checked for ${B.year}`+(lk.length?` · ${B.year} officers on the District tab for ${has} of ${lk.length} lodges and bodies`:""):"";
     }
     head();
 
@@ -462,18 +505,39 @@
         if(B.pages.length&&!confirm(`Replace the ${B.pages.length} pages in this book with the pages of ${f.name}? Anything typed here will be replaced.`))return;
         try{s.busy=true;const r=await importPdf(f,m=>msg(m));
           Object.assign(B,{year:r.year,edition:r.edition,pages:r.pages,firstNo:2,source:r.source,repeat:r.repeat,dates:r.dates});
+          const sync=syncDistrict(B),sp=addSponsors(B);
           s.sel=B.pages[0]&&B.pages[0].id;save();drawList();head();drawPage();
           const c=k=>B.pages.filter(p=>p.k===k).length,size=JSON.stringify(B).length;
-          msg(`Read ${B.pages.length} pages from ${f.name}: ${c("body")} lodges and bodies, ${c("calendar")} calendar months, ${c("picture")} pictures and ads, ${c("text")} text pages, plus ${B.repeat.length} other repeating meetings and ${B.dates.length} one-off dates from the calendars. Check each page against the PDF; anything the reader got wrong can be typed over.`+(r.fixed.length?` The calendar months now run in order: ${r.fixed.join("; ")}.`:"")+(size>WARN_BYTES?` The pictures add up to ${(size/1e6).toFixed(1)} MB, which slows down saving.`:""))}
+          msg(`Read ${B.pages.length} pages from ${f.name}: ${c("body")} lodges and bodies, ${c("calendar")} calendar months, ${c("picture")} pictures and ads, ${c("text")} text pages, plus ${B.repeat.length} other repeating meetings and ${B.dates.length} one-off dates from the calendars. Check each page against the PDF; anything the reader got wrong can be typed over.`+(r.fixed.length?` The calendar months now run in order: ${r.fixed.join("; ")}.`:"")+(sync.linked?` ${sync.linked} pages are linked to the District tab: ${sync.officers} officer lists and ${sync.info} missing details went to it, and officers entered there for any year now show in that year's book.`+(sync.added?` ${sync.added} of them weren't in the district list and were added to it.`:""):"")+(sp.added||sp.updated?` ${sp.added} sponsors were added to the Sponsors tab${sp.updated?` and ${sp.updated} already there got their ad`:""}, with their ads; edit them there.`:"")+(size>WARN_BYTES?` The pictures add up to ${(size/1e6).toFixed(1)} MB, which slows down saving.`:""))}
         catch(err){msg("Couldn't read that PDF: "+(err.message||err),true)}
         finally{s.busy=false}});
       $("[data-addp]").addEventListener("click",()=>{
         const slot=$(".bb-slot");if(slot.innerHTML){slot.innerHTML="";return}
-        slot.innerHTML=`<div class="bb-box"><b>Add a page</b><div class="bb-kinds">${KINDS.filter(k=>k[0]!=="cover").map(([k,n])=>`<button type="button" class="btn line sm" data-kind="${k}">${n}</button>`).join("")}</div>
+        slot.innerHTML=`<div class="bb-box"><b>Add a section</b><div class="bb-kinds">${KINDS.filter(k=>k[0]!=="cover").map(([k,n])=>`<button type="button" class="btn line sm" data-kind="${k}">${n}</button>`).join("")}</div>
           <p class="hint" style="margin:0">It goes after the page you have open. Move it with the arrows.</p></div>`;
         slot.querySelectorAll("[data-kind]").forEach(b=>b.addEventListener("click",()=>{
           const k=b.dataset.kind,p={id:"pg-"+uid(),k,title:k==="sponsors"?"Sponsor Index":"",officers:k==="body"?[{t:"",n:"",p:""}]:undefined,month:k==="calendar"?0:undefined,plus:0};
           const i=B.pages.findIndex(x=>x.id===s.sel);B.pages.splice(i<0?B.pages.length:i+1,0,p);s.sel=p.id;slot.innerHTML="";changed(true);drawPage()}));
+      });
+      /* a sponsor: an ad page among the others, in the sponsor index, and on the Sponsors tab */
+      $("[data-adds]").addEventListener("click",()=>{
+        const slot=$(".bb-slot");if(slot.innerHTML){slot.innerHTML="";return}
+        const known=(window.LodgeNetDash&&window.LodgeNetDash.sponsorNames?window.LodgeNetDash.sponsorNames():[]).filter(n=>!B.pages.some(p=>p.sponsor&&p.sponsor.toLowerCase()===n.toLowerCase()));
+        slot.innerHTML=`<div class="bb-box"><b>Add a sponsor</b>
+          <div class="field"><label>Business</label><input data-sn list="bb-spn-${esc(t.id)}" placeholder="Business name"><datalist id="bb-spn-${esc(t.id)}">${known.map(n=>`<option value="${esc(n)}">`).join("")}</datalist></div>
+          <div class="field"><label>Their ad (a picture; you can add it later)</label><input type="file" accept="image/*" data-sf></div>
+          <div class="bb-kinds"><button type="button" class="btn sm" data-sgo>Add to the book</button><button type="button" class="link-btn" data-sx>Cancel</button></div>
+          <p class="hint" style="margin:0">They go on the Sponsors tab too. The ad goes after the last sponsor's ad, and the sponsor index picks it up with its page number.</p></div>`;
+        slot.querySelector("[data-sx]").addEventListener("click",()=>slot.innerHTML="");
+        slot.querySelector("[data-sgo]").addEventListener("click",async()=>{
+          const name=slot.querySelector("[data-sn]").value.trim();if(!name)return slot.querySelector("[data-sn]").focus();
+          const f=slot.querySelector("[data-sf]").files[0];let ad;
+          if(f)try{ad=await shrink(f,1400)}catch(e){return msg("Couldn't add that picture: "+(e.message||e),true)}
+          const S=window.LodgeNetDash&&window.LodgeNetDash.addSponsors;
+          if(!S){const p={id:"pg-"+uid(),k:"picture",sponsor:name,title:name,src:ad};B.pages.push(p);s.sel=p.id}
+          else{const r=S([{name,ad,book:true}]),id=r.ids[name],L=SPN(),x=L&&L.find(y=>y.id===id);if(x)x.book=true;syncSponsors(B);const pg=B.pages.find(p=>p.spon===id);if(pg)s.sel=pg.id}
+          slot.innerHTML="";changed(true);drawPage();msg(`Added ${name} to the book and the Sponsors tab.`+(f?"":" Add their ad picture on the page when you have it."))});
+        slot.querySelector("[data-sn]").focus();
       });
       $("[data-next]").addEventListener("click",()=>{
         const y=B.year;
@@ -492,7 +556,7 @@
       L.querySelectorAll("[data-pg]").forEach(b=>b.addEventListener("click",()=>{s.sel=b.dataset.pg;drawList();drawPage();
         if(window.innerWidth<900)$(".bb-page").scrollIntoView({behavior:"smooth",block:"start"})}));
     }
-    const label=p=>p.k==="calendar"?`${MONTHS[+p.month||0]} ${B.year+(+p.plus||0)}`:p.k==="cover"?"Front cover":p.k==="picture"?(p.sponsor||p.title||"Picture"):String(p.title||p.body||KN[p.k]||"Page").split("\n")[0].slice(0,60)||"Untitled";
+    const label=p=>p.k==="calendar"?`${MONTHS[+p.month||0]} ${B.year+(+p.plus||0)}`:p.k==="cover"?"Front cover":p.k==="picture"?(nameOf(p)||p.title||"Picture"):String(p.title||p.body||KN[p.k]||"Page").split("\n")[0].slice(0,60)||"Untitled";
 
     /* ---------- one page: its fields and how it prints ---------- */
     function drawPage(){
@@ -504,12 +568,16 @@
       else if(p.k==="cover")form=`<div class="bb-row"><div class="field"><label>Year</label><input data-b="year" type="number" value="${B.year}"></div><div class="field"><label>Edition</label><input data-b="edition" type="number" value="${esc(B.edition||"")}"></div></div>
         ${F("lines","Lines under the year",6)}${pic(p,"Picture on the cover (optional)")}`;
       else if(p.k==="body"){
-        const rs=window.LodgeNetDistrict&&window.LodgeNetDistrict.rosters?matchRoster(p):null,old=lastYear(p);
+        const X=DX(),rs=!p.dist&&X&&X.rosters?matchRoster(p):null,old=lastYear(p);
+        if(p.dist&&X)p.officers=clone(officersOf(p,B));
         form=`${F("title","Name (one line per printed line)",2)}
         <div class="bb-row">${F("loc","Location",3)}${F("meets","Stated communications",2,"e.g. 1st Tuesday, 7:00 PM")}</div>
         <div class="bb-row">${F("mail","Correspondence to",3)}<div>${F("dinner","Dinner")}${F("meetsNote","More about meetings",2)}</div></div>
         <div class="bb-row">${F("email","Email")}${F("label","On the calendar as",0,"e.g. 40")}</div>
         <p class="hint bb-rule">${ruleHint(p)}</p>
+        ${p.dist&&X?(()=>{const n=X.getRoster(p.dist,B.year).length;return `<p class="bb-note${n?" ok":""}">${n?`✓ The District tab has ${n} officers for ${B.year} for ${esc(X.bodyName(p.dist))}.`:`The District tab has no ${B.year} officers for ${esc(X.bodyName(p.dist))} yet. Enter them there, or below.`}</p>`})():""}
+        ${X&&X.bodies().length?`<div class="field"><label>On the District tab</label><select data-dist><option value="">Not linked</option>${X.bodies().map(b=>`<option value="${esc(b.id)}"${p.dist===b.id?" selected":""}>${esc(b.name)}</option>`).join("")}</select>
+          <p class="hint" style="margin:4px 0 0">${p.dist?`Linked: the officers below are the same list as on the District tab for ${B.year}. Enter next year's officers there (or here, once the next year's book is started) and they print in that year's book.`:"Link this page to its lodge or body to share the officers with the District tab."}</p></div>`:""}
         <div class="field"><label>Officers for ${B.year}</label><div class="bb-offs">${(p.officers||[]).map((x,j)=>`<div class="bb-off" data-o="${j}">
           <input data-of="t" value="${esc(x.t)}" placeholder="Office" aria-label="Office"><input data-of="n" value="${esc(x.n)}" placeholder="Name" aria-label="Name"><input data-of="p" value="${esc(x.p)}" placeholder="Phone" aria-label="Phone" inputmode="tel">
           <span class="ct-rowbtns"><button type="button" class="btn line sm" data-ou="${j}"${j?"":" disabled"} aria-label="Move up">↑</button><button type="button" class="btn line sm" data-ox="${j}" aria-label="Remove officer">✕</button></span></div>`).join("")}</div>
@@ -526,7 +594,10 @@
         <div class="field"><label>Rows in the table (at least)</label><input data-f="rows" type="number" min="0" max="40" value="${esc(p.rows||0)}"></div>
         <p class="hint">The list fills itself from the picture pages that name a sponsor, with the page each ad is on.</p>
         <div class="field"><label>Page numbers start on</label><select data-b="firstNo">${B.pages.slice(0,8).map((x,j)=>`<option value="${j+1}"${(+B.firstNo||2)===j+1?" selected":""}>${j===0?"the cover":"book page "+(j+1)+" ("+esc(label(x))+")"}</option>`).join("")}</select></div>`;
-      else if(p.k==="picture")form=`${F("sponsor","Sponsor (for the sponsor index; leave empty for artwork)")}${pic(p,"The page as a picture")}<p class="hint">For a new ad, upload the artwork. A tall picture fills the 4 × 9 in page.</p>`;
+      else if(p.k==="picture"&&sponsorOf(p)){const x=sponsorOf(p);
+        form=`<p class="bb-note">This is <b>${esc(x.name)}</b>'s ad. It's kept on the <a href="#sponsors">Sponsors tab</a> with the rest of their details: a new ad picked here or there replaces it in both places. Untick "In the book" there to take it out.</p>
+        <div class="field"><label>Their ad</label>${x.ad?`<img class="bb-pic" src="${esc(x.ad)}" alt="">`:'<p class="hint" style="margin:0">No ad picture yet.</p>'}<span class="ct-adds"><label class="btn line sm">${x.ad?"Replace the ad":"Add the ad"}<input type="file" accept="image/*" hidden data-spic></label></span></div>`}
+      else if(p.k==="picture")form=`${F("sponsor","Sponsor (for the sponsor index; leave empty for artwork)")}${pic(p,"The page as a picture")}<p class="hint">For a new ad, use + Add a sponsor so it's kept on the Sponsors tab too. A tall picture fills the 4 × 9 in page.</p>`;
       else form=`${F("title","Heading")}${F("body","Text",14)}<label class="check"><input type="checkbox" data-c="center"${p.center?" checked":""}> Center the lines</label>`;
       el.innerHTML=`<div class="bb-pg">
         <div class="bb-pgh"><h3>${esc(label(p))}</h3><span class="hint">${esc(KN[p.k])}${p.from?` · page ${p.from} of ${esc(B.source||"the imported PDF")}`:""}</span></div>
@@ -568,13 +639,19 @@
       el.querySelector("[data-del]").addEventListener("click",()=>{if(!confirm(`Delete “${label(p)}” from the book? This can't be undone.`))return;B.pages.splice(i,1);s.sel=(B.pages[i]||B.pages[i-1]||{}).id;changed();re()});
       const pf=el.querySelector("[data-pic]");if(pf)pf.addEventListener("change",async e=>{const f=e.target.files[0];e.target.value="";if(!f)return;
         try{p.src=await shrink(f,p.k==="picture"?1400:700);changed();drawPage()}catch(err){msg("Couldn't add that picture: "+(err.message||err),true)}});
+      const sp=el.querySelector("[data-spic]");if(sp)sp.addEventListener("change",async e=>{const f=e.target.files[0];e.target.value="";const x=sponsorOf(p);if(!f||!x)return;
+        try{x.ad=await shrink(f,1400);save();drawPage()}catch(err){msg("Couldn't add that picture: "+(err.message||err),true)}});
       const up=el.querySelector("[data-unpic]");if(up)up.addEventListener("click",()=>{delete p.src;changed();drawPage()});
       /* officers */
+      const offChanged=()=>{const X=DX();if(p.dist&&X){quiet=true;X.putRoster(p.dist,B.year,p.officers)}changed()};
+      const dl=el.querySelector("[data-dist]");if(dl)dl.addEventListener("change",()=>{p.dist=dl.value||undefined;const X=DX();
+        if(p.dist&&X&&!X.getRoster(p.dist,B.year).length&&(p.officers||[]).some(o=>o.n))X.putRoster(p.dist,B.year,p.officers);
+        changed();drawPage()});
       el.querySelectorAll(".bb-off[data-o]").forEach(row=>{const x=p.officers[+row.dataset.o];
-        row.querySelectorAll("[data-of]").forEach(inp=>inp.addEventListener("input",()=>{x[inp.dataset.of]=inp.value;changed()}))});
-      el.querySelectorAll("[data-ou]").forEach(b=>b.addEventListener("click",()=>{const j=+b.dataset.ou;[p.officers[j-1],p.officers[j]]=[p.officers[j],p.officers[j-1]];changed();drawPage()}));
-      el.querySelectorAll("[data-ox]").forEach(b=>b.addEventListener("click",()=>{p.officers.splice(+b.dataset.ox,1);changed();drawPage()}));
-      const oa=el.querySelector("[data-oadd]");if(oa)oa.addEventListener("click",()=>{p.officers.push({t:"",n:"",p:""});changed();drawPage();const r=el.querySelectorAll(".bb-off[data-o] [data-of=t]");r[r.length-1].focus()});
+        row.querySelectorAll("[data-of]").forEach(inp=>inp.addEventListener("input",()=>{x[inp.dataset.of]=inp.value;offChanged()}))});
+      el.querySelectorAll("[data-ou]").forEach(b=>b.addEventListener("click",()=>{const j=+b.dataset.ou;[p.officers[j-1],p.officers[j]]=[p.officers[j],p.officers[j-1]];offChanged();drawPage()}));
+      el.querySelectorAll("[data-ox]").forEach(b=>b.addEventListener("click",()=>{p.officers.splice(+b.dataset.ox,1);offChanged();drawPage()}));
+      const oa=el.querySelector("[data-oadd]");if(oa)oa.addEventListener("click",()=>{p.officers.push({t:"",n:"",p:""});offChanged();drawPage();const r=el.querySelectorAll(".bb-off[data-o] [data-of=t]");r[r.length-1].focus()});
       const of=el.querySelector("[data-ofill]");if(of)of.addEventListener("click",()=>{const r=matchRoster(p);if(!r)return;
         if(p.officers.some(o=>o.n)&&!confirm(`Replace the officers on this page with the ${r.officers.length} entered for ${r.name} on the District tab?`))return;
         p.officers=r.officers.map(o=>({t:o.t||"",n:o.n||"",p:o.p||""}));changed();drawPage();msg(`Filled in ${r.officers.length} officers from the District tab.`)});
@@ -583,6 +660,16 @@
       el.querySelectorAll("[data-lx]").forEach(b=>b.addEventListener("click",()=>{B[b.closest(".field").querySelector("[data-l]").dataset.l].splice(+b.dataset.lx,1);changed();drawPage()}));
       el.querySelectorAll("[data-la]").forEach(b=>b.addEventListener("click",()=>{const k=b.dataset.la;B[k].push(k==="dates"?{date:`${B.year+(+p.plus||0)}-${String((+p.month||0)+1).padStart(2,"0")}-01`,label:""}:{label:"",rule:""});changed();drawPage()}));
     }
+    /* officers typed on the District tab show up here */
+    let quiet=false;
+    if(s.off)document.removeEventListener("lodgenet:district",s.off);
+    s.off=()=>{if(quiet){quiet=false;return}if(!box.isConnected)return;head();const p=B.pages.find(x=>x.id===s.sel);
+      const a=document.activeElement;if(p&&p.k==="body"&&!(a&&box.contains(a)&&a.matches("input,textarea,select")))drawPage();else preview()};
+    document.addEventListener("lodgenet:district",s.off);
+    if(s.offS)document.removeEventListener("lodgenet:sponsors",s.offS);
+    s.offS=()=>{if(!box.isConnected)return;if(canEdit&&syncSponsors(B))save();drawList();head();
+      const p=B.pages.find(x=>x.id===s.sel);if(!p){s.sel=B.pages[0]&&B.pages[0].id}drawPage()};
+    document.addEventListener("lodgenet:sponsors",s.offS);
     let run=0,pt=0;
     function preview(){clearTimeout(pt);pt=setTimeout(async()=>{
       const c=box.querySelector(".bb-prev canvas"),id=s.sel,me=++run;if(!c||!id)return;
@@ -611,6 +698,9 @@
 .bb-empty{display:grid;gap:4px;padding:28px 20px;border:1px dashed var(--line);text-align:center}
 .bb-main{display:grid;grid-template-columns:minmax(200px,260px) minmax(0,1fr);gap:16px;align-items:start}
 @media(max-width:900px){.bb-main{grid-template-columns:1fr}.bb-list{max-height:280px}}
+.bb-note{margin:0;padding:8px 10px;border-left:3px solid #b08d2e;background:var(--surface);font-size:13.5px}.bb-note.ok{border-left-color:#2f6b4f}
+.bb-side{display:grid;gap:8px;min-width:0}.bb-adds{display:flex;flex-wrap:wrap;gap:6px}.bb-adds .btn{flex:1;white-space:nowrap}
+.bb-side .bb-box .field input{width:100%;font:inherit;padding:7px 9px;border:1px solid var(--line);background:var(--bg);color:var(--fg)}
 .bb-list{list-style:none;margin:0;padding:0;border:1px solid var(--line);max-height:78vh;overflow:auto;background:var(--bg)}
 .bb-list button{display:grid;grid-template-columns:28px 1fr auto;grid-template-rows:auto auto;column-gap:8px;width:100%;text-align:left;border:0;border-bottom:1px solid var(--line);background:none;color:var(--fg);font:inherit;padding:7px 10px;cursor:pointer}
 .bb-list button[aria-current="true"]{background:var(--surface);box-shadow:inset 3px 0 0 var(--ct)}
@@ -637,5 +727,5 @@
 .bb-prev canvas{width:300px;max-width:100%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.2),0 6px 18px rgba(0,0,0,.08)}`;
   document.head.appendChild(css);
 
-  window.LodgeNetBlueBook={mount,_test:{parseRule,ruleDays,bumpYear,nextYear,monthItems,draw}};
+  window.LodgeNetBlueBook={mount,_test:{parseRule,ruleDays,bumpYear,nextYear,monthItems,draw,syncDistrict,officersOf,syncSponsors}};
 })();
