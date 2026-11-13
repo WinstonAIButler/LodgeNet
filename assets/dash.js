@@ -29,7 +29,7 @@
     /* the lodge's own tabs (assets/custom-tabs.js) */
     ...(window.LodgeNetTabs?{customTabs:window.LodgeNetTabs.data()}:{}),
     ...(window.LodgeNetZeffy?{zeffy:window.LodgeNetZeffy.data()}:{}),
-...(window.LodgeNetDistrict?{districtOfficers:window.LodgeNetDistrict.data()}:{})})};
+...(window.LodgeNetDistrict?{districtOfficers:window.LodgeNetDistrict.data(),districtInfo:window.LodgeNetDistrict.infoData(),districtBodies:window.LodgeNetDistrict.extraData()}:{})})};
   const changed=()=>{A.save();kpis(cur)};
   const funds=()=>["General Fund",...D.charities.map(c=>c.name)];
   const fundraisers=()=>A.events.filter(e=>e.k==="fund").sort((a,b)=>a.d<b.d?1:-1);
@@ -487,32 +487,55 @@
   }
 
   /* ---------- Sponsors ---------- */
-  const LEVELS=["Gold","Silver","Bronze","In-kind"],STATUS=["Active","Prospect","Lapsed"];
+  /* Each sponsor keeps its ad or logo (a picture) and whether it runs in the Blue Book; the Blue Book tab
+     (assets/bluebook.js) prints the ad from here, so a sponsor is kept up to date in one place. */
+  const LEVELS=["Gold","Silver","Bronze","In-kind","Blue Book ad"],STATUS=["Active","Prospect","Lapsed"];
+  let sponEdit=null;
+  const sponChanged=()=>{changed();document.dispatchEvent(new CustomEvent("lodgenet:sponsors"))};
+  function adPic(file){return new Promise((ok,no)=>{const img=new Image(),url=URL.createObjectURL(file);
+    img.onload=()=>{const k=Math.min(1,1400/Math.max(img.width,img.height)),c=document.createElement("canvas");c.width=Math.max(1,Math.round(img.width*k));c.height=Math.max(1,Math.round(img.height*k));
+      const x=c.getContext("2d");x.fillStyle="#fff";x.fillRect(0,0,c.width,c.height);x.drawImage(img,0,0,c.width,c.height);URL.revokeObjectURL(url);ok(c.toDataURL("image/jpeg",.82))};
+    img.onerror=()=>{URL.revokeObjectURL(url);no(new Error("that file isn't a picture this browser can read"))};img.src=url})}
   function renderSpon(){
-    const S=D.sponsors.slice().sort((a,b)=>STATUS.indexOf(a.status)-STATUS.indexOf(b.status)||(+b.amt||0)-(+a.amt||0));
+    const S=D.sponsors.slice().sort((a,b)=>STATUS.indexOf(a.status)-STATUS.indexOf(b.status)||(+b.amt||0)-(+a.amt||0)||a.name.localeCompare(b.name));
+    const ed=sponEdit&&D.sponsors.find(x=>x.id===sponEdit);
+    const inBook=D.sponsors.filter(x=>x.book).length;
     $("#p-spon").innerHTML=`<div class="card">
-      <div class="table-scroll"><table class="dtable"><thead><tr><th>Sponsor</th><th>Contact</th><th>Level</th><th class="r">Per year</th><th>Renews</th><th>Status</th><th><span class="sr">Actions</span></th></tr></thead><tbody>
-      ${S.length?S.map(s=>`<tr data-sp="${esc(s.id)}"><td><b>${esc(s.name)}</b></td><td>${esc(s.contact||"")}</td><td><span class="pill gold">${esc(s.level)}</span></td>
+      ${inBook?`<p class="hint" style="margin:0 0 10px">${inBook} sponsor${inBook>1?"s run":" runs"} an ad in the Blue Book. Change an ad here and the Blue Book prints the new one.</p>`:""}
+      <div class="table-scroll"><table class="dtable"><thead><tr><th>Ad / logo</th><th>Sponsor</th><th>Contact</th><th>Level</th><th class="r">Per year</th><th>Renews</th><th>Blue Book</th><th>Status</th><th><span class="sr">Actions</span></th></tr></thead><tbody>
+      ${S.length?S.map(s=>`<tr data-sp="${esc(s.id)}"><td>${s.ad?`<img src="${esc(s.ad)}" alt="${esc(s.name)} ad" style="width:44px;height:60px;object-fit:contain;background:#fff;border:1px solid var(--line)">`:'<span class="hint">None</span>'}</td>
+        <td><b>${esc(s.name)}</b></td><td>${esc(s.contact||"")}</td><td><span class="pill gold">${esc(s.level)}</span></td>
         <td class="r num">${money(s.amt)}</td><td class="num">${s.renew?day(s.renew):'<span class="hint">Not set</span>'}</td>
+        <td><label class="check"><input type="checkbox" data-bk${s.book?" checked":""} aria-label="${esc(s.name)} runs in the Blue Book"> In the book</label></td>
         <td><select data-st aria-label="Status for ${esc(s.name)}">${opts(STATUS,s.status)}</select></td>
-        <td class="r"><button class="btn line sm" type="button" data-del aria-label="Remove ${esc(s.name)}">×</button></td></tr>`).join("")
-        :'<tr><td colspan="7" class="hint">No sponsors yet. Add the local businesses that back your lodge\'s events below.</td></tr>'}
+        <td class="r" style="white-space:nowrap"><button class="btn line sm" type="button" data-ed>Edit</button> <button class="btn line sm" type="button" data-del aria-label="Remove ${esc(s.name)}">×</button></td></tr>`).join("")
+        :'<tr><td colspan="9" class="hint">No sponsors yet. Add the local businesses that back your lodge\'s events below.</td></tr>'}
       </tbody></table></div>
       <form class="inline-form" id="spon-form">
-        <div class="field grow"><label for="sp-n">Business</label><input id="sp-n" required placeholder="Inlet Hardware"></div>
-        <div class="field grow"><label for="sp-c">Contact</label><input id="sp-c" placeholder="Name, phone or email"></div>
-        <div class="field"><label for="sp-l">Level</label><select id="sp-l">${opts(LEVELS)}</select></div>
-        <div class="field"><label for="sp-a">Per year ($)</label><input id="sp-a" type="number" min="0" step="50" style="max-width:8em"></div>
-        <div class="field"><label for="sp-r">Renews</label><input id="sp-r" type="date"></div>
-        <div class="field"><label for="sp-s">Status</label><select id="sp-s">${opts(STATUS)}</select></div>
-        <button class="btn" type="submit">Add sponsor</button>
+        <h4 style="margin:0;width:100%">${ed?"Edit "+esc(ed.name):"Add a sponsor"}</h4>
+        <div class="field grow"><label for="sp-n">Business</label><input id="sp-n" required placeholder="Inlet Hardware" value="${esc(ed?ed.name:"")}"></div>
+        <div class="field grow"><label for="sp-c">Contact</label><input id="sp-c" placeholder="Name, phone or email" value="${esc(ed?ed.contact||"":"")}"></div>
+        <div class="field"><label for="sp-l">Level</label><select id="sp-l">${opts(LEVELS,ed?ed.level:undefined)}</select></div>
+        <div class="field"><label for="sp-a">Per year ($)</label><input id="sp-a" type="number" min="0" step="50" style="max-width:8em" value="${ed&&ed.amt?esc(ed.amt):""}"></div>
+        <div class="field"><label for="sp-r">Renews</label><input id="sp-r" type="date" value="${esc(ed?ed.renew||"":"")}"></div>
+        <div class="field"><label for="sp-s">Status</label><select id="sp-s">${opts(STATUS,ed?ed.status:undefined)}</select></div>
+        <div class="field"><label for="sp-f">Ad or logo (picture)</label><input id="sp-f" type="file" accept="image/*">${ed&&ed.ad?`<span class="hint">Leave empty to keep the current one.</span>`:""}</div>
+        <label class="check"><input type="checkbox" id="sp-b"${ed?(ed.book?" checked":""):" checked"}> Runs an ad in the Blue Book</label>
+        <button class="btn" type="submit">${ed?"Save sponsor":"Add sponsor"}</button>${ed?'<button class="link-btn" type="button" id="sp-x">Cancel</button>':""}
       </form></div>`;
-    $("#spon-form").addEventListener("submit",e=>{e.preventDefault();const n=$("#sp-n").value.trim();if(!n)return;
-      D.sponsors.push({id:uid(),name:n,contact:$("#sp-c").value.trim(),level:$("#sp-l").value,amt:+$("#sp-a").value||0,renew:$("#sp-r").value,status:$("#sp-s").value});renderSpon();changed()});
+    $("#spon-form").addEventListener("submit",async e=>{e.preventDefault();const n=$("#sp-n").value.trim();if(!n)return;
+      const f=$("#sp-f").files[0];let ad=null;if(f)try{ad=await adPic(f)}catch(err){return alert("Couldn't add that picture: "+(err.message||err))}
+      const v={name:n,contact:$("#sp-c").value.trim(),level:$("#sp-l").value,amt:+$("#sp-a").value||0,renew:$("#sp-r").value,status:$("#sp-s").value,book:$("#sp-b").checked};
+      if(ed){Object.assign(ed,v);if(ad)ed.ad=ad;sponEdit=null}else D.sponsors.push({id:uid(),...v,...(ad?{ad}:{})});
+      renderSpon();sponChanged()});
+    const cx=$("#sp-x");if(cx)cx.addEventListener("click",()=>{sponEdit=null;renderSpon()});
     $("#p-spon").querySelectorAll("[data-sp]").forEach(r=>{const s=D.sponsors.find(x=>x.id===r.dataset.sp);
-      r.querySelector("[data-st]").addEventListener("change",e=>{s.status=e.target.value;renderSpon();changed()});
-      r.querySelector("[data-del]").addEventListener("click",()=>{D.sponsors=D.sponsors.filter(x=>x!==s);renderSpon();changed()})});
+      r.querySelector("[data-st]").addEventListener("change",e=>{s.status=e.target.value;renderSpon();sponChanged()});
+      r.querySelector("[data-bk]").addEventListener("change",e=>{s.book=e.target.checked;renderSpon();sponChanged()});
+      r.querySelector("[data-ed]").addEventListener("click",()=>{sponEdit=s.id;renderSpon();$("#sp-n").focus()});
+      r.querySelector("[data-del]").addEventListener("click",()=>{if(!confirm(`Remove ${s.name} from the sponsors?${s.book?" Their ad comes out of the Blue Book too.":""}`))return;D.sponsors=D.sponsors.filter(x=>x!==s);renderSpon();sponChanged()})});
   }
+
 
   /* ---------- Charities: the funds and causes the lodge gives to ---------- */
   const raisedFor=n=>D.treasury.ledger.filter(x=>x.fund===n&&x.kind!=="out").reduce((t,x)=>t+(+x.amt||0),0);
@@ -670,6 +693,17 @@
         renderProd();storeChanged()}));
     });
   }
+  /* sponsors named in the Blue Book (assets/bluebook.js) join the Sponsors tab; returns how many were new */
+  window.LodgeNetDash.sponsorNames=()=>D.sponsors.map(s=>s.name);
+  window.LodgeNetDash.sponsors=()=>D.sponsors;
+  /* add or update by name: {name, ad, book}; returns {added, updated, ids:{name:id}} */
+  window.LodgeNetDash.addSponsors=list=>{let added=0,updated=0;const ids={};
+    for(const x of list){const name=String(x.name||"").trim();if(!name)continue;
+      let s=D.sponsors.find(s=>s.name.toLowerCase()===name.toLowerCase());
+      if(!s){s={id:uid(),name,contact:x.contact||"",level:x.level||"Blue Book ad",amt:+x.amt||0,renew:x.renew||"",status:"Active"};D.sponsors.push(s);added++}
+      else if((x.ad&&!s.ad)||(x.book&&!s.book))updated++;
+      if(x.ad&&!s.ad)s.ad=x.ad;if(x.book)s.book=true;ids[name]=s.id}
+    if(added||updated){sponChanged();if($("#p-spon")&&!$("#p-spon").hidden)renderSpon()}return {added,updated,ids}};
   window.LodgeNetDash.orderPlaced=()=>{if(!$("#p-ord").hidden)renderOrders();changed()};
   document.querySelectorAll("#t-ord,#t-prod").forEach(t=>t.addEventListener("click",()=>t.id==="t-ord"?renderOrders():renderProd()));
   if(A.plan==="starter")document.querySelector('[data-sec="merchandise"] .sub-tabs').hidden=true;
