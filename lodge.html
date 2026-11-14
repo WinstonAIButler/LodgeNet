@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Lodge Dashboard</title>
-<meta name="description" content="Your lodge's LodgeNet dashboard: website, members, communications, treasury, fundraisers, pipelines, sponsors, merchandise, charities, district and settings.">
+<meta name="description" content="Your lodge's LodgeNet dashboard: website, members, communications, treasury, fundraisers, monthly donations, pipelines, sponsors, merchandise, charities, district and settings.">
 <meta name="robots" content="noindex">
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="icon" type="image/png" href="/assets/brand/icon-192.png" sizes="192x192">
@@ -13,7 +13,7 @@
 <meta property="og:site_name" content="LodgeNet">
 <meta property="og:type" content="website">
 <meta property="og:title" content="Lodge Dashboard · LodgeNet">
-<meta property="og:description" content="Your lodge's LodgeNet dashboard: website, members, communications, treasury, fundraisers, pipelines, sponsors, merchandise, charities, district and settings.">
+<meta property="og:description" content="Your lodge's LodgeNet dashboard: website, members, communications, treasury, fundraisers, monthly donations, pipelines, sponsors, merchandise, charities, district and settings.">
 <meta property="og:image" content="/og-image.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
@@ -42,6 +42,7 @@
           <a class="nav-i" href="#communications" data-sec="communications"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 4.5h14v9H8l-4 3v-3H3z"/><path d="M6.5 8h7M6.5 10.5h4.5"/></svg><span>Communications</span></a>
           <a class="nav-i" href="#treasury" data-sec="treasury"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="2.5" y="5" width="15" height="11" rx="1.5"/><path d="M2.5 8.5h15M13 12.5h2"/><path d="M5 5V3.5h10V5"/></svg><span>Treasury</span></a>
           <a class="nav-i" href="#fundraiser" data-sec="fundraiser"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 16.5s-6.5-3.8-6.5-8.3A3.4 3.4 0 0 1 10 6.3a3.4 3.4 0 0 1 6.5 1.9c0 4.5-6.5 8.3-6.5 8.3z"/></svg><span>Fundraiser</span></a>
+          <a class="nav-i" href="#donations" data-sec="donations"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="7.5"/><path d="M12.4 7.4c-.4-.8-1.3-1.2-2.4-1.2-1.4 0-2.4.7-2.4 1.8 0 2.5 5 1.3 5 3.9 0 1.1-1 1.9-2.6 1.9-1.2 0-2.1-.5-2.5-1.3M10 4.8v1.4M10 13.8v1.4"/></svg><span>Donations</span></a>
           <a class="nav-i" href="#qrcodes" data-sec="qrcodes"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="3" width="5" height="5"/><rect x="12" y="3" width="5" height="5"/><rect x="3" y="12" width="5" height="5"/><path d="M12 12h2v2h-2zM15 15h2v2h-2zM12 16v1M16 12h1"/></svg><span>QR codes</span></a>
           <a class="nav-i" href="#pipelines" data-sec="pipelines"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="2.5" y="3.5" width="4" height="13" rx="1"/><rect x="8" y="3.5" width="4" height="9" rx="1"/><rect x="13.5" y="3.5" width="4" height="5.5" rx="1"/></svg><span>Pipelines</span></a>
           <a class="nav-i" href="#sponsors" data-sec="sponsors"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2.8l2.2 4.5 4.9.7-3.6 3.5.9 4.9-4.4-2.3-4.4 2.3.9-4.9L2.9 8l4.9-.7z"/></svg><span>Sponsors</span></a>
@@ -268,6 +269,7 @@
 
     <section class="sec" data-sec="treasury" hidden><div class="panel" id="p-treas"></div></section>
     <section class="sec" data-sec="fundraiser" hidden><div class="panel" id="p-fund"></div></section>
+    <section class="sec" data-sec="donations" hidden><div class="panel" id="p-don" style="display:grid;gap:16px"></div></section>
     <section class="sec" data-sec="qrcodes" hidden>
       <div class="panel" id="qr-box">
         <p class="hint" style="margin:0 0 16px;max-width:62ch">For flyers, posters, tickets and table tents. Point a code at a fundraiser or anywhere on the lodge website, and change where it goes later without reprinting.</p>

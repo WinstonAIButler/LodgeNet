@@ -1,6 +1,6 @@
 /* The signed-in lodge dashboard (lodge.html): a sidebar of sections with key figures on top of each.
    Website, Members, Merchandise and the Calendar and Minutes under Communications are the tools in assets/demo.js; this file adds
-   Announcements, Treasury, Fundraiser, Pipelines, Sponsors, Charities and Settings. Their records save with the rest of the lodge's
+   Announcements, Treasury, Fundraiser, Donations, Pipelines, Sponsors, Charities and Settings. Their records save with the rest of the lodge's
    data (demo.js snapshot() asks LodgeNetDash for them), so every officer sees the same figures. */
 (function(){
   const A=window.LodgeNetApp;if(!A)return;
@@ -10,6 +10,7 @@
   const many=(n,one,more)=>n+" "+(n===1?one:more||one+"s");
   const iso=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
   const NOW=new Date(),TODAY=iso(NOW),YEAR=NOW.getFullYear();
+  const MKEY=TODAY.slice(0,7),MONTH=A.fmt(NOW,{month:"long",year:"numeric"});
   const day=s=>s?A.fmt(A.parse(s),{month:"short",day:"numeric",year:"numeric"}):"";
   const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
   const opts=(list,cur)=>list.map(v=>`<option${v===cur?" selected":""}>${esc(v)}</option>`).join("");
@@ -25,7 +26,11 @@
       {id:"c2",name:"Widows & Orphans Fund",kind:"Lodge fund",note:"Help for the families of departed brethren."},
       {id:"c3",name:"Lodge Building Fund",kind:"Lodge fund",note:"Upkeep of the lodge hall."}]
   };
-  window.LodgeNetDash={snapshot:()=>({treasury:D.treasury,sponsors:D.sponsors,pipeline:D.pipeline,bsearch:D.bsearch,plists:D.plists,ptasks:D.ptasks,announcements:D.announcements,charities:D.charities,
+  /* monthly giving (Donations tab); a new lodge starts with four suggested levels and no links */
+  D.donations=Object.assign({levels:[
+    {id:"l1",name:"Friend",amt:10,fund:"General Fund",url:""},{id:"l2",name:"Supporter",amt:25,fund:"Lodge Charity Fund",url:""},
+    {id:"l3",name:"Patron",amt:50,fund:"Lodge Charity Fund",url:""},{id:"l4",name:"Benefactor",amt:100,fund:"Lodge Charity Fund",url:""}],donors:[]},CFG.donations||{});
+  window.LodgeNetDash={snapshot:()=>({treasury:D.treasury,sponsors:D.sponsors,pipeline:D.pipeline,bsearch:D.bsearch,plists:D.plists,ptasks:D.ptasks,announcements:D.announcements,charities:D.charities,donations:D.donations,
     /* the lodge's own tabs (assets/custom-tabs.js) */
     ...(window.LodgeNetTabs?{customTabs:window.LodgeNetTabs.data()}:{}),
     ...(window.LodgeNetZeffy?{zeffy:window.LodgeNetZeffy.data()}:{}),
@@ -37,7 +42,7 @@
   const ledgerSum=f=>D.treasury.ledger.filter(f||(()=>true)).reduce((t,x)=>t+(x.kind==="out"?-1:1)*(+x.amt||0),0);
 
   /* ---------- sections ---------- */
-  const TITLES={website:"Website",members:"Members",communications:"Communications",treasury:"Treasury",fundraiser:"Fundraiser",qrcodes:"QR codes",
+  const TITLES={website:"Website",members:"Members",communications:"Communications",treasury:"Treasury",fundraiser:"Fundraiser",donations:"Donations",qrcodes:"QR codes",
     pipelines:"Pipelines",sponsors:"Sponsors",merchandise:"Merchandise",charities:"Charities",district:"District",settings:"Settings"};
   const OLD={site:"website",store:"merchandise",calendar:"communications",minutes:"communications"};
   let cur="website";
@@ -76,6 +81,9 @@
       fundraiser:[["Active",fr.filter(e=>e.d>=TODAY).length,"Upcoming fundraisers"],["Raised",money(raised),"All fundraisers"],
         ["Goal",money(fr.reduce((t,e)=>t+(+e.goal||0),0)),fr.length?Math.round(raised/Math.max(1,fr.reduce((t,e)=>t+(+e.goal||0),0))*100)+"% of goal":""],
         ["RSVPs",fr.reduce((t,e)=>t+(+e.rsvp||0),0),""]],
+      donations:(()=>{const N=D.donations.donors,on=N.filter(d=>d.status==="Active"),mo=on.reduce((t,d)=>t+(+d.amt||0),0),got=on.filter(d=>d.last===MKEY);
+        return [["Monthly donors",on.length,many(N.filter(d=>d.status==="Paused").length,"paused","paused")],["Monthly giving",money(mo),"A month, from active donors"],
+          ["Yearly pace",money(mo*12),"If every gift continues"],[MONTH,`${got.length} of ${on.length}`,money(got.reduce((t,d)=>t+(+d.amt||0),0))+" recorded"]]})(),
       qrcodes:(()=>{const Q=window.LodgeNetSite?window.LodgeNetSite.snapshot().siteQrs:[],nf=Q.filter(q=>(q.to||"").startsWith("fund:")).length;
         return [["QR codes",Q.length,"Made for this lodge"],["Fundraiser codes",nf,"Point at a fundraiser"],["General codes",Q.length-nf,"Home, a page or a link"],
           ["Website",A.published?"Published":"Not published",A.published?"Codes work once published":"Publish so codes open the site"]]})(),
@@ -537,6 +545,115 @@
   }
 
 
+  /* ---------- Donations: monthly giving. The lodge sets giving levels (e.g. $25 a month to the Charity Fund), each with the
+     recurring-payment link it made in Stripe, PayPal or Zeffy, and keeps a roll of monthly donors. "Record" puts this month's
+     gift in the Treasury ledger under the donor's fund, so balances and the Charities figures pick it up.
+     Saved with the lodge's data as donations:{levels:[{id,name,amt,fund,url}], donors:[{id,name,contact,level,amt,fund,how,start,status,last,total}]}. ---------- */
+  const DSTATUS=["Active","Paused","Cancelled"],HOW=["Card (online link)","PayPal","Zeffy","Venmo","Cash App","Bank draft","Check","Cash"];
+  const safeLink=u=>/^https:\/\/[^\s"<>]+$/i.test(String(u||"").trim())?String(u).trim():"";
+  const donCanEdit=()=>!CLOUD||!!CLOUD.canEdit;
+  const dueNow=d=>d.status==="Active"&&d.last!==MKEY&&(!d.start||d.start.slice(0,7)<=MKEY);
+  let donEdit=null,lvlEdit=null;
+  function recordGift(d){
+    const amt=+d.amt||0;if(!amt||d.last===MKEY)return false;
+    D.treasury.ledger.push({id:uid(),d:TODAY,desc:`Monthly donation · ${MONTH} · ${d.name}`,fund:funds().includes(d.fund)?d.fund:"General Fund",kind:"in",amt});
+    d.last=MKEY;d.total=(+d.total||0)+amt;return true;
+  }
+  function renderDon(){
+    const box=$("#p-don");if(!box)return;
+    const N=D.donations,ed=donEdit&&N.donors.find(x=>x.id===donEdit),le=lvlEdit&&N.levels.find(x=>x.id===lvlEdit),can=donCanEdit();
+    const rows=N.donors.slice().sort((a,b)=>DSTATUS.indexOf(a.status)-DSTATUS.indexOf(b.status)||(+b.amt||0)-(+a.amt||0)||a.name.localeCompare(b.name));
+    const due=N.donors.filter(dueNow);
+    box.innerHTML=`<div class="card">
+      <div class="row-sp"><h4 style="margin:0">Giving levels</h4><span class="hint">What donors can sign up for each month</span></div>
+      <p class="hint" style="max-width:70ch">Give each level a monthly payment link so donors are charged automatically: in Stripe make a Payment Link with a <b>recurring monthly</b> price, in PayPal a Subscribe button, or in <a href="#charities">Zeffy</a> a donation form with monthly giving turned on (free for nonprofits). Then share the link on your website, in an email or on a <a href="#qrcodes">QR code</a>.</p>
+      <div class="table-scroll"><table class="dtable"><thead><tr><th>Level</th><th class="r">Per month</th><th>Goes to</th><th>Monthly link</th><th class="r">Donors</th><th><span class="sr">Actions</span></th></tr></thead><tbody>
+      ${N.levels.length?N.levels.map(l=>`<tr data-lv="${esc(l.id)}"><td><b>${esc(l.name)}</b></td><td class="r num">${money(l.amt)}</td><td>${esc(l.fund||"General Fund")}</td>
+        <td>${safeLink(l.url)?`<a href="${esc(l.url)}" target="_blank" rel="noopener">Open</a> · <button class="link-btn" type="button" data-lcopy>Copy link</button>`:'<span class="pill warn">No link yet</span>'}</td>
+        <td class="r num">${N.donors.filter(d=>d.status==="Active"&&d.level===l.id).length}</td>
+        <td class="r" style="white-space:nowrap">${can?`<button class="btn line sm" type="button" data-led>Edit</button> <button class="btn line sm" type="button" data-ldel aria-label="Remove ${esc(l.name)}">×</button>`:""}</td></tr>`).join("")
+        :'<tr><td colspan="6" class="hint">No giving levels yet. Add one below.</td></tr>'}
+      </tbody></table></div>
+      ${can?`<form class="inline-form" id="lvl-form">
+        <h4 style="margin:0;width:100%">${le?"Edit "+esc(le.name):"Add a giving level"}</h4>
+        <div class="field grow"><label for="lv-n">Name</label><input id="lv-n" required maxlength="60" placeholder="Supporter" value="${esc(le?le.name:"")}"></div>
+        <div class="field"><label for="lv-a">Per month ($)</label><input id="lv-a" type="number" min="1" step="1" required style="max-width:8em" value="${le?esc(le.amt):""}"></div>
+        <div class="field"><label for="lv-f">Goes to</label><select id="lv-f">${opts(funds(),le?le.fund:undefined)}</select></div>
+        <div class="field grow"><label for="lv-u">Monthly payment link</label><input id="lv-u" autocapitalize="off" spellcheck="false" placeholder="https://buy.stripe.com/…" value="${esc(le?le.url||"":"")}"></div>
+        <button class="btn" type="submit">${le?"Save level":"Add level"}</button>${le?'<button class="link-btn" type="button" id="lv-x">Cancel</button>':""}
+      </form>`:""}
+      ${N.levels.some(l=>safeLink(l.url))?'<div class="row-acts" style="margin-top:10px"><button class="btn line sm" type="button" id="don-msg">Copy a sign-up message</button><span class="hint" id="don-msg-ok" role="status" aria-live="polite"></span></div>':""}
+    </div>
+    <div class="card">
+      <div class="row-sp"><h4 style="margin:0">Monthly donors</h4>
+        <span class="row-acts">${can&&due.length?`<button class="btn sm" type="button" id="don-all">Record all ${due.length} for ${esc(MONTH)}</button>`:""}${N.donors.length?'<button class="btn line sm" type="button" id="don-csv">Download list</button>':""}</span></div>
+      <p class="hint">"Record" adds this month's gift to the Treasury ledger under the donor's fund. Do it once the payment comes in.</p>
+      <div class="table-scroll"><table class="dtable"><thead><tr><th>Donor</th><th>Contact</th><th class="r">Per month</th><th>Goes to</th><th>Pays by</th><th>Since</th><th>${esc(MONTH)}</th><th class="r">Given</th><th>Status</th><th><span class="sr">Actions</span></th></tr></thead><tbody>
+      ${rows.length?rows.map(d=>{const lv=N.levels.find(l=>l.id===d.level);return `<tr data-dn="${esc(d.id)}"><td><b>${esc(d.name)}</b>${lv?`<br><span class="pill gold">${esc(lv.name)}</span>`:""}</td>
+        <td>${esc(d.contact||"")}</td><td class="r num">${money(d.amt)}</td><td>${esc(d.fund||"General Fund")}</td><td>${esc(d.how||"")}</td>
+        <td class="num">${d.start?day(d.start):'<span class="hint">Not set</span>'}</td>
+        <td>${d.last===MKEY?'<span class="pill ok">Recorded</span>':d.status!=="Active"?'<span class="hint">—</span>':dueNow(d)?(can?'<button class="btn sm" type="button" data-rec>Record</button>':'<span class="hint">Not yet</span>'):'<span class="hint">Starts later</span>'}</td>
+        <td class="r num">${money(d.total)}</td>
+        <td>${can?`<select data-st aria-label="Status ${esc(d.name)}">${opts(DSTATUS,d.status)}</select>`:esc(d.status)}</td>
+        <td class="r" style="white-space:nowrap">${can?`<button class="btn line sm" type="button" data-ed>Edit</button> <button class="btn line sm" type="button" data-del aria-label="Remove ${esc(d.name)}">×</button>`:""}</td></tr>`}).join("")
+        :'<tr><td colspan="10" class="hint">No monthly donors yet. Add each one as they sign up.</td></tr>'}
+      </tbody></table></div>
+      ${can?`<form class="inline-form" id="don-form">
+        <h4 style="margin:0;width:100%">${ed?"Edit "+esc(ed.name):"Add a monthly donor"}</h4>
+        <div class="field grow"><label for="dn-n">Name</label><input id="dn-n" required maxlength="80" placeholder="Jane Smith" value="${esc(ed?ed.name:"")}"></div>
+        <div class="field grow"><label for="dn-c">Contact</label><input id="dn-c" placeholder="Email or phone" value="${esc(ed?ed.contact||"":"")}"></div>
+        <div class="field"><label for="dn-l">Level</label><select id="dn-l"><option value="">Custom amount</option>${N.levels.map(l=>`<option value="${esc(l.id)}"${ed&&ed.level===l.id?" selected":""}>${esc(l.name)} · ${money(l.amt)}</option>`).join("")}</select></div>
+        <div class="field"><label for="dn-a">Per month ($)</label><input id="dn-a" type="number" min="1" step="1" required style="max-width:8em" value="${ed?esc(ed.amt):""}"></div>
+        <div class="field"><label for="dn-f">Goes to</label><select id="dn-f">${opts(funds(),ed?ed.fund:undefined)}</select></div>
+        <div class="field"><label for="dn-h">Pays by</label><select id="dn-h">${opts(HOW,ed?ed.how:undefined)}</select></div>
+        <div class="field"><label for="dn-s">Since</label><input id="dn-s" type="date" value="${esc(ed?ed.start||"":TODAY)}"></div>
+        <div class="field"><label for="dn-st">Status</label><select id="dn-st">${opts(DSTATUS,ed?ed.status:undefined)}</select></div>
+        <button class="btn" type="submit">${ed?"Save donor":"Add donor"}</button>${ed?'<button class="link-btn" type="button" id="dn-x">Cancel</button>':""}
+      </form>`:""}
+    </div>`;
+    const redraw=()=>{renderDon();changed()};
+    const copy=async(t,ok)=>{try{await navigator.clipboard.writeText(t);ok&&ok()}catch(e){prompt("Copy this:",t)}};
+    /* levels */
+    const lf=$("#lvl-form");
+    if(lf){lf.addEventListener("submit",e=>{e.preventDefault();const name=$("#lv-n").value.trim(),amt=+$("#lv-a").value||0,raw=$("#lv-u").value.trim(),url=safeLink(raw);
+        if(!name||amt<=0)return;if(raw&&!url)return alert("The monthly link has to start with https://");
+        const v={name,amt,fund:$("#lv-f").value,url};
+        if(le)Object.assign(le,v);else N.levels.push({id:uid(),...v});lvlEdit=null;redraw()});
+      const x=$("#lv-x");if(x)x.addEventListener("click",()=>{lvlEdit=null;renderDon()})}
+    box.querySelectorAll("[data-lv]").forEach(r=>{const l=N.levels.find(x=>x.id===r.dataset.lv);
+      const c=r.querySelector("[data-lcopy]");if(c)c.addEventListener("click",()=>copy(l.url,()=>{c.textContent="Copied"}));
+      const e=r.querySelector("[data-led]");if(e)e.addEventListener("click",()=>{lvlEdit=l.id;renderDon();$("#lv-n").focus()});
+      const d=r.querySelector("[data-ldel]");if(d)d.addEventListener("click",()=>{if(!confirm(`Remove the ${l.name} level? Donors on it keep their amount.`))return;
+        N.levels=N.levels.filter(x=>x!==l);N.donors.forEach(x=>{if(x.level===l.id)delete x.level});redraw()})});
+    const mb=$("#don-msg");if(mb)mb.addEventListener("click",()=>{
+      const name=(CFG.name||"our lodge")+(CFG.number?" No. "+CFG.number:"");
+      const lines=N.levels.filter(l=>safeLink(l.url)).map(l=>`• ${l.name}: ${money(l.amt)} a month for the ${l.fund||"General Fund"}: ${l.url}`);
+      copy(`Support ${name} every month.\n\nA small monthly gift keeps our charity work going all year. Pick a level and sign up in a minute; you can stop any time.\n\n${lines.join("\n")}\n\nThank you!`,()=>{$("#don-msg-ok").textContent="Copied. Paste it into an email, newsletter or post."})});
+    /* donors */
+    const df=$("#don-form");
+    if(df){const lvSel=$("#dn-l");
+      lvSel.addEventListener("change",()=>{const l=N.levels.find(x=>x.id===lvSel.value);if(l){$("#dn-a").value=l.amt;if(funds().includes(l.fund))$("#dn-f").value=l.fund}});
+      df.addEventListener("submit",e=>{e.preventDefault();const name=$("#dn-n").value.trim(),amt=+$("#dn-a").value||0;if(!name||amt<=0)return;
+        const v={name,contact:$("#dn-c").value.trim(),amt,fund:$("#dn-f").value,how:$("#dn-h").value,start:$("#dn-s").value,status:$("#dn-st").value};
+        const level=lvSel.value;if(level)v.level=level;
+        if(ed){Object.assign(ed,v);if(!level)delete ed.level}else N.donors.push({id:uid(),...v,total:0});donEdit=null;redraw()});
+      const x=$("#dn-x");if(x)x.addEventListener("click",()=>{donEdit=null;renderDon()})}
+    box.querySelectorAll("[data-dn]").forEach(r=>{const d=N.donors.find(x=>x.id===r.dataset.dn);
+      const rec=r.querySelector("[data-rec]");if(rec)rec.addEventListener("click",()=>{if(recordGift(d))redraw()});
+      const st=r.querySelector("[data-st]");if(st)st.addEventListener("change",e=>{d.status=e.target.value;redraw()});
+      const e=r.querySelector("[data-ed]");if(e)e.addEventListener("click",()=>{donEdit=d.id;renderDon();$("#dn-n").focus()});
+      const del=r.querySelector("[data-del]");if(del)del.addEventListener("click",()=>{if(!confirm(`Remove ${d.name} from monthly donors? Gifts already recorded stay in the Treasury ledger.`))return;
+        N.donors=N.donors.filter(x=>x!==d);redraw()})});
+    const all=$("#don-all");if(all)all.addEventListener("click",()=>{const list=N.donors.filter(dueNow),sum=list.reduce((t,d)=>t+(+d.amt||0),0);
+      if(!confirm(`Record ${MONTH} gifts from ${many(list.length,"donor")} (${money(sum)}) in the Treasury ledger?`))return;
+      list.forEach(recordGift);redraw()});
+    const csv=$("#don-csv");if(csv)csv.addEventListener("click",()=>{
+      const q=v=>{v=String(v==null?"":v);return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v};
+      const out=[["Name","Contact","Level","Per month","Goes to","Pays by","Since","Status","Last recorded","Total given"]].concat(N.donors.map(d=>{const lv=N.levels.find(l=>l.id===d.level);
+        return [d.name,d.contact,lv?lv.name:"",d.amt,d.fund,d.how,d.start,d.status,d.last||"",d.total||0]})).map(r=>r.map(q).join(",")).join("\n");
+      const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([out],{type:"text/csv"}));a.download="monthly-donors.csv";a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)});
+  }
+
   /* ---------- Charities: the funds and causes the lodge gives to ---------- */
   const raisedFor=n=>D.treasury.ledger.filter(x=>x.fund===n&&x.kind!=="out").reduce((t,x)=>t+(+x.amt||0),0);
   const givenFor=n=>D.treasury.ledger.filter(x=>x.fund===n&&x.kind==="out").reduce((t,x)=>t+(+x.amt||0),0);
@@ -643,13 +760,13 @@
       own?sb.from("lodge_invites").select("email,role").eq("lodge_id",lid).order("created_at"):Promise.resolve({data:[]})]);
     if(m.error||i.error){box.innerHTML=`<p class="hint">Couldn't load the people on this dashboard (${esc((m.error||i.error).message)}).</p>`;return}
     const owners=m.data.filter(x=>x.role==="owner").map(x=>x.email).filter(Boolean);
-    const join=location.origin+"/login";
-    const mail=(email,role)=>`mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent("Join "+(CFG.name||"our lodge")+" on LodgeNet")}&body=${encodeURIComponent(`You've been added to ${CFG.name||"our lodge"}'s LodgeNet dashboard as ${role==="officer"?"an officer":"a member"}.\n\nTo join, go to ${join}, choose Create account, and use this email address (${email}). Once you confirm your email, the dashboard opens for you.`)}`;
+    const join=location.origin+"/login?mode=up&next="+encodeURIComponent(location.pathname);
+    const mail=(email,role)=>`mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent("Join "+(CFG.name||"our lodge")+" on LodgeNet")}&body=${encodeURIComponent(`You've been added to ${CFG.name||"our lodge"}'s LodgeNet dashboard as ${role==="officer"?"an officer":"a member"}.\n\nTo join, open ${join} , choose Create account, and use this email address (${email}) with a password of your choice. Once you confirm your email, the dashboard opens for you.`)}`;
     const sel=(uid,cur)=>`<select data-uid="${esc(uid)}" aria-label="Role">${["owner","officer","member"].filter(r=>r!=="owner"||cur==="owner").map(r=>`<option value="${r}"${r===cur?" selected":""}>${RL[r]}</option>`).join("")}</select>`;
     const rows=m.data.map(x=>`<tr><td class="who">${esc(x.email||"Brother")}${x.user_id===me?' <span class="hint">(you)</span>':""}</td>
         <td>${own&&x.user_id!==me&&x.role!=="owner"?`${sel(x.user_id,x.role)} <button class="btn line sm" type="button" data-remove="${esc(x.user_id)}">Remove</button>`:`<span class="pill${x.role==="owner"?" ok":""}">${RL[x.role]||x.role}</span>`}</td></tr>`)
       .concat(i.data.map(x=>`<tr><td class="who">${esc(x.email)} <span class="pill">Invited · ${RL[x.role]||x.role}</span></td>
-        <td><a class="btn line sm" href="${mail(x.email,x.role)}">Email them the link</a> <button class="btn line sm" type="button" data-cancel="${esc(x.email)}">Cancel invite</button></td></tr>`));
+        <td><button class="btn line sm" type="button" data-resend="${esc(x.email)}" data-role="${esc(x.role)}">Send the invite again</button> <button class="btn line sm" type="button" data-cancel="${esc(x.email)}">Cancel invite</button></td></tr>`));
     box.innerHTML=`<p class="hint" style="margin:0 0 6px">Officers can change the dashboard; members can read it.${own?"":` Only the account owner${owners.length?` (${esc(owners.join(", "))})`:""} can add or remove people.`}</p>
       <table class="roll"><tbody>${rows.join("")}</tbody></table>
       ${own?`<form class="invite pp-add" novalidate>
@@ -657,9 +774,10 @@
         <div class="field"><label for="pp-role">Role</label><select id="pp-role" name="role"><option value="officer">Officer: can change things</option><option value="member" selected>Member: can read</option></select></div>
         <button class="btn sm" type="submit">Add user</button>
       </form>
-      <p class="hint" style="margin:6px 0 0">They join by creating an account at <b>${esc(location.host)}/login</b> with that email. Use "Email them the link" to send them the steps from your own email.</p>
+      <p class="hint" style="margin:6px 0 0">They get an email invitation from LodgeNet. The link in it opens the site, where they create their password, and then this dashboard opens for them. If they already have a LodgeNet account, the email has a sign-in link instead.</p>
       <p class="hint">To make someone else the account owner, use <a href="/login?account">Hand over this lodge</a>.</p>`:""}
-      <p class="pp-msg${PP.err?" pp-err":""}" role="status" aria-live="polite">${esc(PP.msg)}</p>`;
+      <p class="pp-msg${PP.err?" pp-err":""}" role="status" aria-live="polite">${esc(PP.msg)}${PP.mail?` <a href="${PP.mail}">Open a ready-written email</a>`:""}</p>`;
+    PP.mail=null;
     const say=(t,err)=>{PP.msg=t;PP.err=!!err;const p=box.querySelector(".pp-msg");if(p){p.textContent=t;p.classList.toggle("pp-err",!!err)}};
     const done=(r,ok)=>{if(r.error)return say(r.error.message,true);PP.msg=ok;PP.err=false;renderPeople()};
     if(!own)return;
@@ -669,11 +787,26 @@
       if(!confirm(`Take ${who} off this dashboard? They won't be able to sign in to it any more.`))return;
       done(await sb.from("lodge_members").delete().eq("lodge_id",lid).eq("user_id",b.dataset.remove),`Removed ${who}.`)}));
     box.querySelectorAll("[data-cancel]").forEach(b=>b.addEventListener("click",async()=>done(await sb.from("lodge_invites").delete().eq("lodge_id",lid).eq("email",b.dataset.cancel),"Invite cancelled.")));
+    /* api/invite.js saves the invite and emails it; without it (a local copy, or no service key) the invite is saved here
+       and the owner gets a ready-written email to send themselves */
+    const invite=async(email,role,again)=>{
+      const btns=box.querySelectorAll("button");btns.forEach(b=>b.disabled=true);say(again?`Sending ${email} the invite again…`:`Adding ${email} and emailing the invite…`);
+      try{
+        const r=await fetch("/api/invite",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+s.access_token},body:JSON.stringify({lodge_id:lid,email,role})});
+        const d=await r.json().catch(()=>({}));
+        if(r.ok){PP.msg=d.sent==="signin"?`${email} already has a LodgeNet account, so we emailed them a sign-in link. Signing in adds them to this dashboard as ${role==="officer"?"an officer":"a member"}.`
+          :`Emailed ${email} an invitation as ${role==="officer"?"an officer":"a member"}. The link lets them create their password and opens this dashboard.`;PP.err=false;return renderPeople()}
+        if(r.status!==404&&r.status!==503&&r.status!==405){btns.forEach(b=>b.disabled=false);if(r.status===429){PP.msg=d.error;PP.err=true;return renderPeople()}return say(d.error||"Couldn't send the invite.",true)}
+      }catch(err){}
+      const w=await sb.from("lodge_invites").upsert({lodge_id:lid,email,role});
+      if(w.error){btns.forEach(b=>b.disabled=false);return say(w.error.message,true)}
+      PP.msg=`Added ${email}, but this site can't send email yet. Send them the steps yourself:`;PP.err=false;PP.mail=mail(email,role);renderPeople()};
+    box.querySelectorAll("[data-resend]").forEach(b=>b.addEventListener("click",()=>invite(b.dataset.resend,b.dataset.role,true)));
     box.querySelector(".pp-add").addEventListener("submit",async e=>{e.preventDefault();
       const f=e.target,email=f.email.value.trim().toLowerCase();
       if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){say("Enter their email address.",true);return f.email.focus()}
       if(m.data.some(x=>(x.email||"").toLowerCase()===email))return say(email+" is already on this dashboard.",true);
-      done(await sb.from("lodge_invites").upsert({lodge_id:lid,email,role:f.role.value}),`Added ${email} as ${f.role.value==="officer"?"an officer":"a member"}. They can join now: send them the link with "Email them the link".`)});
+      invite(email,f.role.value)});
   }
 
   /* ---------- Merchandise: the order form is demo.js's store; Orders and Products are here ---------- */
@@ -757,7 +890,7 @@
   document.querySelectorAll("#t-ord,#t-prod").forEach(t=>t.addEventListener("click",()=>t.id==="t-ord"?renderOrders():renderProd()));
   if(A.plan==="starter")document.querySelector('[data-sec="merchandise"] .sub-tabs').hidden=true;
 
-  const RENDER={communications:()=>{if(!$("#p-ann").innerHTML)renderAnn()},treasury:renderTreasury,fundraiser:renderFund,
+  const RENDER={communications:()=>{if(!$("#p-ann").innerHTML)renderAnn()},treasury:renderTreasury,fundraiser:renderFund,donations:renderDon,
     qrcodes:()=>{if(window.LodgeNetSite)window.LodgeNetSite.renderQr()},pipelines:renderPipe,
     sponsors:renderSpon,charities:renderChar,district:()=>{if(window.LodgeNetDistrict)window.LodgeNetDistrict.render()},settings:renderSet,merchandise:()=>{renderOrders();renderProd()}};
 
