@@ -612,7 +612,7 @@
     box.innerHTML=`<div class="row-sp"><div><h4>Organization type</h4><p class="hint" style="margin:2px 0 0">The whole dashboard follows this: officer chairs, the name of your meetings and their write-ups, degrees and titles on the roll, the membership pipeline, and the website's wording.</p></div>
         <span class="pill ok">${esc(ORG.name||"Blue Lodge")}</span></div>
       ${OR.GROUPS.map(g=>`<h5 class="org-g">${esc(g)}</h5><div class="org-grid">${Object.entries(OR.TYPES).filter(([,t])=>t.group===g).map(([k,t])=>`<button type="button" class="org-opt" data-org="${k}" aria-pressed="${String(k===cur)}"${canEdit?"":" disabled"}>
-          ${EMB[k]?`<span class="org-ic org-emb" aria-hidden="true"><img src="/assets/brand/orgs/${EMB[k]}" alt="" width="44" height="44" loading="lazy"></span>`:`<span class="org-ic" aria-hidden="true"><svg viewBox="0 0 20 20">${ICON[k]||ICON.blue}</svg></span>`}<span class="org-t"><b>${esc(t.name)}</b><small>${esc(t.desc)}</small>
+          ${EMB[k]?`<span class="org-ic org-emb" aria-hidden="true"><img src="/assets/brand/orgs/${EMB[k]}" alt="" width="52" height="52" style="width:52px;height:52px;object-fit:contain" loading="lazy"></span>`:`<span class="org-ic" aria-hidden="true"><svg viewBox="0 0 20 20">${ICON[k]||ICON.blue}</svg></span>`}<span class="org-t"><b>${esc(t.name)}</b><small>${esc(t.desc)}</small>
           <small class="org-eg">${esc(t.seats.slice(0,3).map(x=>x.t.replace(/,.*$/,"")).join(" · "))} · ${esc(t.meetings)}</small></span></button>`).join("")}</div>`).join("")}
       ${canEdit?"":'<p class="hint">Officers can change the organization type.</p>'}`;
     box.onclick=async e=>{const b=e.target.closest("[data-org]");if(!b||b.dataset.org===cur||!canEdit)return;
