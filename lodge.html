@@ -336,10 +336,13 @@
             <a class="btn sm" href="/login?account" style="justify-self:start">Plan &amp; billing</a>
           </div>
           <div class="card">
-            <h4>Who can sign in</h4>
+            <h4>Your sign-in</h4>
             <p class="hint" id="set-role"></p>
-            <a class="btn line sm" href="/login?account" style="justify-self:start">Invite officers and brethren</a>
-            <button type="button" class="link-btn" id="set-out">Sign out</button>
+            <button type="button" class="link-btn" id="set-out" style="justify-self:start">Sign out</button>
+          </div>
+          <div class="card set-people" id="set-people" aria-labelledby="set-people-h">
+            <h4 id="set-people-h">People on this dashboard</h4>
+            <div id="set-people-body"><p class="hint">Loading…</p></div>
           </div>
           <div class="card pay-card">
             <h4>Payment options</h4>

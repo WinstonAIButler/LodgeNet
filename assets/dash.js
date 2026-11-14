@@ -627,6 +627,53 @@
     $("#set-plan").textContent=CLOUD?`${plan}. ${CLOUD.paid?"Paid up, so the website can be published.":"The website can be published once a paid level is active."}`:`${plan}.`;
     renderOrg();
     $("#set-role").textContent=CLOUD?`You're signed in as ${CLOUD.email}, ${ROLE[CLOUD.role]||CLOUD.role} of this lodge. Officers can change the dashboard; members can read it.`:"Sign in to manage who can open this dashboard.";
+    renderPeople();
+  }
+  /* People on this dashboard: who can sign in, invites waiting, and (for the account owner) adding people.
+     lodge_members and lodge_invites in supabase/schema.sql; the database only lets the account owner change them. */
+  const RL={owner:"Account owner",officer:"Officer",member:"Member"};
+  const PP={msg:"",err:false};
+  async function renderPeople(){
+    const box=$("#set-people-body");if(!box)return;
+    const Au=window.LodgeNetAuth;
+    if(!CLOUD||!Au){box.innerHTML='<p class="hint">Sign in to see and add the people who can open this dashboard.</p>';return}
+    const sb=await Au.client(),s=await Au.session();if(!sb||!s){box.innerHTML='<p class="hint">Sign in again to manage people.</p>';return}
+    const own=CLOUD.role==="owner",lid=CLOUD.lodgeId,me=s.user.id;
+    const [m,i]=await Promise.all([sb.from("lodge_members").select("user_id,email,role").eq("lodge_id",lid).order("created_at"),
+      own?sb.from("lodge_invites").select("email,role").eq("lodge_id",lid).order("created_at"):Promise.resolve({data:[]})]);
+    if(m.error||i.error){box.innerHTML=`<p class="hint">Couldn't load the people on this dashboard (${esc((m.error||i.error).message)}).</p>`;return}
+    const owners=m.data.filter(x=>x.role==="owner").map(x=>x.email).filter(Boolean);
+    const join=location.origin+"/login";
+    const mail=(email,role)=>`mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent("Join "+(CFG.name||"our lodge")+" on LodgeNet")}&body=${encodeURIComponent(`You've been added to ${CFG.name||"our lodge"}'s LodgeNet dashboard as ${role==="officer"?"an officer":"a member"}.\n\nTo join, go to ${join}, choose Create account, and use this email address (${email}). Once you confirm your email, the dashboard opens for you.`)}`;
+    const sel=(uid,cur)=>`<select data-uid="${esc(uid)}" aria-label="Role">${["owner","officer","member"].filter(r=>r!=="owner"||cur==="owner").map(r=>`<option value="${r}"${r===cur?" selected":""}>${RL[r]}</option>`).join("")}</select>`;
+    const rows=m.data.map(x=>`<tr><td class="who">${esc(x.email||"Brother")}${x.user_id===me?' <span class="hint">(you)</span>':""}</td>
+        <td>${own&&x.user_id!==me&&x.role!=="owner"?`${sel(x.user_id,x.role)} <button class="btn line sm" type="button" data-remove="${esc(x.user_id)}">Remove</button>`:`<span class="pill${x.role==="owner"?" ok":""}">${RL[x.role]||x.role}</span>`}</td></tr>`)
+      .concat(i.data.map(x=>`<tr><td class="who">${esc(x.email)} <span class="pill">Invited · ${RL[x.role]||x.role}</span></td>
+        <td><a class="btn line sm" href="${mail(x.email,x.role)}">Email them the link</a> <button class="btn line sm" type="button" data-cancel="${esc(x.email)}">Cancel invite</button></td></tr>`));
+    box.innerHTML=`<p class="hint" style="margin:0 0 6px">Officers can change the dashboard; members can read it.${own?"":` Only the account owner${owners.length?` (${esc(owners.join(", "))})`:""} can add or remove people.`}</p>
+      <table class="roll"><tbody>${rows.join("")}</tbody></table>
+      ${own?`<form class="invite pp-add" novalidate>
+        <div class="field"><label for="pp-email">Add someone by email</label><input id="pp-email" type="email" name="email" required autocomplete="off" placeholder="brother@example.com"></div>
+        <div class="field"><label for="pp-role">Role</label><select id="pp-role" name="role"><option value="officer">Officer: can change things</option><option value="member" selected>Member: can read</option></select></div>
+        <button class="btn sm" type="submit">Add user</button>
+      </form>
+      <p class="hint" style="margin:6px 0 0">They join by creating an account at <b>${esc(location.host)}/login</b> with that email. Use "Email them the link" to send them the steps from your own email.</p>
+      <p class="hint">To make someone else the account owner, use <a href="/login?account">Hand over this lodge</a>.</p>`:""}
+      <p class="pp-msg${PP.err?" pp-err":""}" role="status" aria-live="polite">${esc(PP.msg)}</p>`;
+    const say=(t,err)=>{PP.msg=t;PP.err=!!err;const p=box.querySelector(".pp-msg");if(p){p.textContent=t;p.classList.toggle("pp-err",!!err)}};
+    const done=(r,ok)=>{if(r.error)return say(r.error.message,true);PP.msg=ok;PP.err=false;renderPeople()};
+    if(!own)return;
+    box.querySelectorAll("select[data-uid]").forEach(x=>x.addEventListener("change",async()=>done(await sb.from("lodge_members").update({role:x.value}).eq("lodge_id",lid).eq("user_id",x.dataset.uid),"Role changed.")));
+    box.querySelectorAll("[data-remove]").forEach(b=>b.addEventListener("click",async()=>{
+      const who=b.closest("tr").querySelector(".who").textContent.trim();
+      if(!confirm(`Take ${who} off this dashboard? They won't be able to sign in to it any more.`))return;
+      done(await sb.from("lodge_members").delete().eq("lodge_id",lid).eq("user_id",b.dataset.remove),`Removed ${who}.`)}));
+    box.querySelectorAll("[data-cancel]").forEach(b=>b.addEventListener("click",async()=>done(await sb.from("lodge_invites").delete().eq("lodge_id",lid).eq("email",b.dataset.cancel),"Invite cancelled.")));
+    box.querySelector(".pp-add").addEventListener("submit",async e=>{e.preventDefault();
+      const f=e.target,email=f.email.value.trim().toLowerCase();
+      if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){say("Enter their email address.",true);return f.email.focus()}
+      if(m.data.some(x=>(x.email||"").toLowerCase()===email))return say(email+" is already on this dashboard.",true);
+      done(await sb.from("lodge_invites").upsert({lodge_id:lid,email,role:f.role.value}),`Added ${email} as ${f.role.value==="officer"?"an officer":"a member"}. They can join now: send them the link with "Email them the link".`)});
   }
 
   /* ---------- Merchandise: the order form is demo.js's store; Orders and Products are here ---------- */
