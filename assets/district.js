@@ -255,6 +255,9 @@
   const byId=id=>{const D=window.LodgeNetDistricts,k=districtKey(),d=merged(k);return d&&d.bodies.find(b=>bid(b)===id)};
   window.LodgeNetDistrict={render,entries,rosters,link,addBody,
     infoData:()=>INFO,extraData:()=>EXTRA,
+    /* every body in the lodge's district with where it meets, for the website's "Masonic bodies" menu (assets/site-builder.js) */
+    directory(){const D=window.LodgeNetDistricts,k=districtKey(),d=merged(k);if(!d)return [];
+      return d.bodies.map(b=>{const f=full(b),h=d.halls[b.hall]||{};return {k:b.k,kind:(KIND[b.k]||KIND.other).label,name:b.name,web:f.web||"",addr:h.addr||f.mail||"",town:(h.addr||"").split(",").slice(-2,-1)[0]||""}})},
     bodies(){const D=window.LodgeNetDistricts,k=districtKey(),d=merged(k);const seen=new Set();
       return d?d.bodies.filter(b=>!seen.has(bid(b))&&seen.add(bid(b))).map(b=>({id:bid(b),name:b.name})):[]},
     bodyName:id=>{const b=byId(id);return b?b.name:""},

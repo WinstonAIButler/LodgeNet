@@ -21,12 +21,26 @@
   const FONTS={
     modern:{name:"Modern",head:"Montserrat,system-ui,sans-serif",body:'"Public Sans",system-ui,sans-serif',q:"family=Montserrat:wght@600;700;800&family=Public+Sans:wght@400;500;600"},
     classic:{name:"Classic",head:'"Playfair Display",Georgia,serif',body:'"Source Sans 3",system-ui,sans-serif',q:"family=Playfair+Display:wght@600;700&family=Source+Sans+3:wght@400;600"},
-    heritage:{name:"Heritage",head:"Cinzel,Georgia,serif",body:'"EB Garamond",Georgia,serif',q:"family=Cinzel:wght@600;700&family=EB+Garamond:wght@400;500;600"}
+    heritage:{name:"Heritage",head:"Cinzel,Georgia,serif",body:'"EB Garamond",Georgia,serif',q:"family=Cinzel:wght@600;700&family=EB+Garamond:wght@400;500;600"},
+    elegant:{name:"Elegant",head:'"Cormorant Garamond",Georgia,serif',body:"Lato,system-ui,sans-serif",q:"family=Cormorant+Garamond:wght@600;700&family=Lato:wght@400;700"},
+    bold:{name:"Bold",head:"Oswald,Impact,sans-serif",body:'"Open Sans",system-ui,sans-serif',q:"family=Oswald:wght@500;600;700&family=Open+Sans:wght@400;600"},
+    friendly:{name:"Friendly",head:"Nunito,system-ui,sans-serif",body:"Nunito,system-ui,sans-serif",q:"family=Nunito:wght@400;600;700;800"},
+    newspaper:{name:"Newspaper",head:"Merriweather,Georgia,serif",body:'"Merriweather Sans",system-ui,sans-serif',q:"family=Merriweather:wght@700;900&family=Merriweather+Sans:wght@400;600"},
+    traditional:{name:"Traditional",head:'"Libre Baskerville",Georgia,serif',body:'"Libre Baskerville",Georgia,serif',q:"family=Libre+Baskerville:wght@400;700"},
+    clean:{name:"Clean",head:"Inter,system-ui,sans-serif",body:"Inter,system-ui,sans-serif",q:"family=Inter:wght@400;600;700;800"},
+    storybook:{name:"Storybook",head:"Lora,Georgia,serif",body:"Raleway,system-ui,sans-serif",q:"family=Lora:wght@600;700&family=Raleway:wght@400;600"},
+    western:{name:"Old West",head:'"Rye",Georgia,serif',body:'"Source Serif 4",Georgia,serif',q:"family=Rye&family=Source+Serif+4:wght@400;600"}
   };
+  /* colors picked in the builder: #rrggbb only */
+  const okColor=c=>/^#[0-9a-f]{6}$/i.test(c||"")?c:"";
+  /* every font a site uses (the site's own and any section's), so the public page loads only those */
+  const usedFonts=site=>{const th=Object.assign({},THEME,(site.layout&&site.layout.theme)||{}),set=new Set([th.font]);
+    pagesOf(site).forEach(p=>(p.sections||[]).forEach(x=>{if(FONTS[x.font])set.add(x.font)}));return [...set].filter(k=>FONTS[k])};
   const payUrl=(p,n,note)=>{const enc=encodeURIComponent,amt=v=>(+v||0).toFixed(2);
     return p.k==="cashapp"?`https://cash.app/$${enc(p.v)}/${amt(n)}`:p.k==="paypal"?`https://paypal.me/${enc(p.v)}/${amt(n)}USD`
       :p.k==="venmo"?`https://venmo.com/?txn=pay&recipients=${enc(p.v)}&amount=${amt(n)}&note=${enc(note)}`:p.k==="link"?safeHref(p.v):""};
   const LOCK='<svg class="ls-lock" viewBox="0 0 20 20" aria-hidden="true"><rect x="4.5" y="9" width="11" height="8" rx="1.5"/><path d="M7 9V6.5a3 3 0 0 1 6 0V9"/></svg>';
+  const CARET='<svg class="ls-caret" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 3.5 5 6.5 8 3.5" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>';
   const fontHref=k=>"https://fonts.googleapis.com/css2?"+(FONTS[k]||FONTS.modern).q+"&display=swap";
   const THEME={font:"modern",btn:"rounded",header:"center"};
 
@@ -37,6 +51,7 @@
     imageText:{name:"Picture and text",group:"Basics",make:()=>({heading:"Our history",body:"Tell visitors when the lodge was chartered, what it has done for the town, and what it stands for.",image:"",side:"left",button:{label:"",link:""}})},
     features:{name:"Three columns",group:"Basics",make:()=>({heading:"What we do",items:[{title:"Charity",body:"Scholarships, food drives and help for neighbors in need."},{title:"Fellowship",body:"Good men meeting on the level, building lasting friendships."},{title:"Community",body:"Pancake breakfasts, parades and service across town."}]})},
     cta:{name:"Call to action",group:"Basics",make:()=>({heading:"Interested in becoming a Mason?",body:"To be one, ask one. We'd be glad to meet you.",button:{label:"Get in touch",link:""},bg:"color"})},
+    picture:{name:"Picture",group:"Media",make:()=>({image:"",caption:"",size:"wide"})},
     gallery:{name:"Photo gallery",group:"Media",make:()=>({heading:"Photos",images:[]})},
     video:{name:"Video",group:"Media",make:()=>({heading:"",url:""})},
     events:{name:"Upcoming events",group:"Lodge",make:()=>({heading:"Upcoming",count:6})},
@@ -155,6 +170,15 @@
   }
   let wired=false;
   function wire(){if(wired||typeof addEventListener!=="function")return;wired=true;
+    /* dropdown menus open on hover and focus; a tap or click on the caret opens them on phones */
+    addEventListener("click",e=>{const b=e.target.closest&&e.target.closest(".lsite .ls-nav-btn,.lsite .ls-dd-tog");
+      document.querySelectorAll(".lsite .ls-dd.open").forEach(d=>{if(!b||!d.contains(b))d.classList.remove("open")});
+      if(b){const d=b.closest(".ls-dd");if(d){e.preventDefault();d.classList.toggle("open")}}});
+    addEventListener("keydown",e=>{if(e.key==="Escape")document.querySelectorAll(".lsite .ls-dd.open").forEach(d=>d.classList.remove("open"))});
+    /* a menu inside a menu opens to the right, or to the left when the right edge is too close */
+    const flip=e=>{const d=e.target.closest&&e.target.closest(".lsite .ls-dd-menu .ls-dd");if(!d)return;const site=d.closest(".lsite");if(!site)return;
+      d.classList.toggle("flip",d.getBoundingClientRect().right+260>site.getBoundingClientRect().right)};
+    addEventListener("mouseover",flip);addEventListener("focusin",flip);
     addEventListener("message",e=>{if(!e.data||e.data.lodgenetFrame!==1)return;
       document.querySelectorAll("iframe.ls-frame").forEach(f=>{if(f.contentWindow===e.source)f.style.height=Math.min(20000,Math.max(40,+e.data.h||0))+"px"})})}
   function videoSrc(u){u=String(u||"").trim();let m;
@@ -179,6 +203,9 @@
     const E=!!o.edit,th=Object.assign({},THEME,(site.layout&&site.layout.theme)||{}),F=FONTS[th.font]||FONTS.modern;
     const color=/^#[0-9a-f]{6}$/i.test(site.color||"")?site.color:"#1c3a75";
     const root=o.root||"",pages=pagesOf(site),funds=site.funds||[];
+    const inNav=pages.filter(p=>p.nav!==false),navKids=id=>inNav.filter(p=>p.parent===id);
+    const navTop=()=>inNav.filter(p=>!p.parent||!inNav.some(x=>x.id===p.parent));
+    const itemHref=p=>p.kind==="link"?safeHref(p.url):root+(p.slug?"/"+p.slug:"");
     const today=new Date();today.setHours(0,0,0,0);
     const place=[site.city,site.state].filter(Boolean).join(", ");
     const full=site.full||site.name||"Our Lodge";
@@ -216,6 +243,8 @@
       features:s=>`<div class="ls-wrap">${head(s)}<div class="ls-cols${s.style==="cards"?" ls-cols-cards":""}">${(s.items||[]).map((it,i)=>`<div class="ls-col">
           ${T("h3","ls-h3",`items.${i}.title`,it.title,"Title")}${E?`<div class="ls-body" data-f="items.${i}.body" data-ph="A sentence or two">${esc(it.body||"")}</div>`:it.body?`<div class="ls-body">${esc(it.body)}</div>`:""}</div>`).join("")}</div></div>`,
       cta:s=>`<div class="ls-wrap ls-narrow ls-al-center">${head(s)}${B(s.body)}${btn(s.button,"button","ls-btn-lg")}</div>`,
+      picture:s=>`<div class="ls-wrap ls-picsec ls-ps-${s.size==="full"||s.size==="narrow"?s.size:"wide"}"><figure>${img(s.image,"image","ls-picsec-img",s.caption)}
+        ${T("figcaption","ls-cap","caption",s.caption,"A caption (optional)")}</figure></div>`,
       gallery:s=>{const g=(s.images||[]).filter(okImg);
         return `<div class="ls-wrap">${head(s)}${g.length?`<div class="ls-gal">${g.map((u,i)=>`<button type="button" class="ls-gal-i" data-zoom="${i}" aria-label="Open photo ${i+1}"><img src="${esc(u)}" alt="" loading="lazy"></button>`).join("")}</div>`
           :E?`<button type="button" class="ls-noimg ls-gal-empty" data-img="images"><span>Add photos</span></button>`:""}</div>`},
@@ -275,7 +304,13 @@
       html:s=>String(s.html||"").trim()?`<iframe class="ls-frame" title="Lodge content" sandbox="allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation" referrerpolicy="no-referrer" srcdoc="${esc(frameDoc(s.html))}" style="height:140px"></iframe>`
         :E?'<div class="ls-wrap"><div class="ls-noimg ls-video-empty"><span>Paste your HTML in the panel on the left</span></div></div>':""
     };
-    const section=s=>R[s.type]?`<section class="ls-sec ls-t-${s.type} ls-bg-${s.type==="hero"?"none":s.bg==="tint"||s.bg==="color"?s.bg:"plain"}" data-sid="${esc(s.id)}">${R[s.type](s)}</section>`:"";
+    /* a section's own font and text colors; the site's heading and text colors apply on white and cream backgrounds */
+    const onLight=s=>s.type!=="hero"&&s.bg!=="color";
+    const secStyle=s=>{const f=FONTS[s.font],hc=okColor(s.hc)||(onLight(s)?okColor(th.hc):""),tc=okColor(s.tc)||(onLight(s)?okColor(th.tc):"");
+      const st=(f?`--hf:${f.head};--bf:${f.body};font-family:var(--bf);`:"")+(hc?`--hc:${hc};`:"")+(tc?`--tc:${tc};`:"");
+      return {cls:(hc?" ls-has-hc":"")+(tc?" ls-has-tc":""),st:st?` style="${esc(st)}"`:""}};
+    const section=s=>{if(!R[s.type])return "";const y=secStyle(s);
+      return `<section class="ls-sec ls-t-${s.type} ls-bg-${s.type==="hero"?"none":s.bg==="tint"||s.bg==="color"?s.bg:"plain"}${y.cls}" data-sid="${esc(s.id)}"${y.st}>${R[s.type](s)}</section>`};
 
     /* which page */
     let body="";
@@ -292,15 +327,28 @@
       body=`<section class="ls-sec ls-bg-plain"><div class="ls-wrap ls-narrow ls-al-center ls-gate"><span class="ls-gate-ic">${LOCK}</span><h1 class="ls-h1 ls-dark">${esc(g.title||"Members only")}</h1>
         <p class="ls-lead">${esc(g.text||"This page is for members of the lodge.")}</p>${g.button?`<p><a class="ls-btn" href="${esc(g.button[1])}">${esc(g.button[0])}</a></p>`:""}${g.small?`<p class="ls-note">${esc(g.small)}</p>`:""}</div></section>`;
     }else if(o.view==="404")body=`<section class="ls-sec ls-bg-plain"><div class="ls-wrap ls-narrow"><h1 class="ls-h1 ls-dark">That page isn't here</h1><p class="ls-lead">It may have moved or been taken down.</p><p><a class="ls-btn" href="${esc(root||"/")}">Go to the home page</a></p></div></section>`;
-    else{const p=o.page||pages[0];body=(p.sections||[]).map(section).join("")||(E?"":empty("This page is being written. Check back soon."))}
+    else{const p=o.page||pages[0];
+      /* a dropdown menu's own address lists what's in it */
+      if(p.kind==="menu"){const k=navKids(p.id);body=`<section class="ls-sec ls-bg-plain"><div class="ls-wrap ls-narrow"><h1 class="ls-h1 ls-dark">${esc(p.title)}</h1>
+        ${k.length?`<ul class="ls-menu-list">${k.map(c=>{const h=itemHref(c),kk=navKids(c.id);return `<li>${h?`<a href="${esc(h)}"${c.kind==="link"?' target="_blank" rel="noopener"':""}>${esc(c.title)}</a>`:`<b>${esc(c.title)}</b>`}
+          ${kk.length?`<ul>${kk.map(g=>{const gh=itemHref(g);return `<li>${gh?`<a href="${esc(gh)}"${g.kind==="link"?' target="_blank" rel="noopener"':""}>${esc(g.title)}</a>`:esc(g.title)}</li>`}).join("")}</ul>`:""}</li>`}).join("")}</ul>`
+          :empty(E?"Nothing in this menu yet. Put pages or links under it in Pages.":"Nothing here yet.")}</div></section>`}
+      else body=(p.sections||[]).map(section).join("")||(E?"":empty("This page is being written. Check back soon."))}
 
     const cur=o.page&&o.page.id;
-    const nav=pages.filter(p=>p.nav!==false).map(p=>`<a href="${esc(root+(p.slug?"/"+p.slug:""))}"${p.id===cur?' aria-current="page"':""}${E?` data-goto="${esc(p.id)}"`:""}${p.members?' title="Members only"':""}>${p.members?LOCK:""}${esc(p.title)}</a>`).join("");
+    /* the menu: pages, dropdown menus and outside links; anything can sit under a menu or page, three levels deep */
+    const navItem=(p,depth)=>{const k=depth<2?navKids(p.id):[],h=itemHref(p),ext=p.kind==="link";
+      const label=`${p.members?LOCK:""}${esc(p.title)}`;
+      const a=h?`<a href="${esc(h)}"${p.id===cur?' aria-current="page"':""}${E&&!ext?` data-goto="${esc(p.id)}"`:""}${ext?' target="_blank" rel="noopener"':""}${p.members?' title="Members only"':""}>${label}</a>`
+        :`<button type="button" class="ls-nav-btn" aria-haspopup="true">${label}${CARET}</button>`;
+      if(!k.length)return h?a:`<span class="ls-nav-btn ls-nav-empty">${label}</span>`;
+      return `<div class="ls-dd ls-dd-${depth}">${a}${h?`<button type="button" class="ls-dd-tog" aria-haspopup="true" aria-label="More under ${esc(p.title)}">${CARET}</button>`:""}<div class="ls-dd-menu">${k.map(c=>navItem(c,depth+1)).join("")}</div></div>`};
+    const nav=navTop().map(p=>navItem(p,0)).join("");
     const logo=okImg((site.images||{}).logo)?`<img class="ls-logo" src="${esc(site.images.logo)}" alt="">`:`<span class="ls-crest">${CREST}</span>`;
     const soc=(site.social||[]).filter(x=>safeHref(x.url));
     return `<div class="lsite" data-font="${esc(th.font)}" data-btn="${th.btn==="square"?"square":"rounded"}" data-head="${th.header==="left"?"left":"center"}" style="--c:${color};--hf:${esc(F.head)};--bf:${esc(F.body)}">
       <header class="ls-head"><div class="ls-wrap ls-head-in"><a class="ls-brand" href="${esc(root||"/")}"${E?' data-goto="home"':""}>${logo}<span><b>${esc(full)}</b>${site.jur||site.grandLodge?`<small>${esc([site.jur,site.grandLodge].filter(Boolean).join(" · "))}</small>`:""}</span></a>
-        ${nav&&pages.length>1?`<nav class="ls-nav" aria-label="Site">${nav}</nav>`:""}</div></header>
+        ${nav&&navTop().length>1?`<nav class="ls-nav" aria-label="Site">${nav}</nav>`:""}</div></header>
       <main>${body}</main>
       <footer class="ls-foot"><div class="ls-wrap"><div><b>${esc(full)}</b>${site.schedule?`<span>${esc(MEET)} ${esc(site.schedule)}</span>`:""}${place?`<span>${esc(place)}</span>`:""}</div>
         ${soc.length?`<div class="ls-foot-soc">${soc.map(x=>`<a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.name)}</a>`).join("")}</div>`:""}
@@ -308,5 +356,5 @@
     </div>`;
   }
 
-  window.LodgeSite={render,resolve,SITE_TEMPLATES,TEMPLATE_GROUPS,SECTIONS,TEMPLATES,FONTS,THEME,fontHref,newSection,defaultHome,pagesOf,esc,safeHref,okImg,videoSrc,HTML_MAX};
+  window.LodgeSite={usedFonts,okColor,render,resolve,SITE_TEMPLATES,TEMPLATE_GROUPS,SECTIONS,TEMPLATES,FONTS,THEME,fontHref,newSection,defaultHome,pagesOf,esc,safeHref,okImg,videoSrc,HTML_MAX};
 })();

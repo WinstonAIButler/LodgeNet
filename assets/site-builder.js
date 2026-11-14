@@ -22,7 +22,7 @@
   const SLUG=A.SLUG||"",ROOT="/site/"+encodeURIComponent(SLUG||"your-lodge");
   const rid=n=>Math.random().toString(36).slice(2,2+n);
   const planNow=()=>CLOUD?CFG.plan:A.plan;
-  const RESERVED=["qr","fundraiser","home","site"],MAX_PAGES=20,MAX_SECTIONS=40,GAL_MAX=24;
+  const RESERVED=["qr","fundraiser","home","site"],MAX_PAGES=20,MAX_MENU=80,MAX_SECTIONS=40,GAL_MAX=24,LIB_MAX=40;
 
   /* ---------- the layout ---------- */
   function startLayout(){
@@ -44,6 +44,18 @@
   const curPage=()=>pages.find(p=>p.id===curId)||pages[0];
   const secOf=id=>curPage().sections.find(s=>s.id===id);
   const pageById=id=>pages.find(p=>p.id===id);
+  /* the site menu: a page may sit under another page or a dropdown menu (p.parent), three levels deep.
+     Menus (kind "menu") and outside links (kind "link", p.url) live in the page list too, but hold no sections. */
+  const isMenuItem=p=>p.kind==="menu"||p.kind==="link";
+  const realPages=()=>pages.filter(p=>!isMenuItem(p));
+  const depthOf=p=>{let d=0,x=p;const seen=new Set();while(x&&x.parent&&!seen.has(x.id)){seen.add(x.id);x=pageById(x.parent);if(x)d++}return d};
+  const kidsOf=id=>pages.filter(p=>p.parent===id);
+  const subtreeHeight=p=>{const k=kidsOf(p.id);return k.length?1+Math.max(...k.map(subtreeHeight)):0};
+  const isUnder=(p,anc)=>{let x=p;const seen=new Set();while(x&&x.parent&&!seen.has(x.id)){seen.add(x.id);if(x.parent===anc.id)return true;x=pageById(x.parent)}return false};
+  /* the picture library: uploads kept for later plus every picture already on the site */
+  layout.pics=Array.isArray(layout.pics)?layout.pics.filter(L.okImg):[];
+  function sitePics(){const used=[];pages.forEach(p=>p.sections.forEach(x=>{if(L.okImg(x.image))used.push(x.image);(x.images||[]).forEach(u=>{if(L.okImg(u))used.push(u)})}));
+    return {lib:layout.pics.slice(),used:[...new Set(used)].filter(u=>!layout.pics.includes(u))}}
 
   /* ---------- undo / redo ---------- */
   const past=[],future=[];
@@ -64,7 +76,7 @@
   const dayFmt=d=>A.fmt(A.parse(d),{month:"short",day:"numeric",year:"numeric"});
   function targetOptions(cur,withUrl){
     ensureFids();const fr=fundraisers(),o=(v,t)=>`<option value="${esc(v)}"${v===cur?" selected":""}>${esc(t)}</option>`;
-    return `<optgroup label="Pages">${pages.map(p=>o(p.id==="home"?"home":"page:"+p.id,p.title)).join("")}</optgroup>`
+    return `<optgroup label="Pages">${pages.filter(p=>p.kind!=="link").map(p=>o(p.id==="home"?"home":"page:"+p.id,p.title)).join("")}</optgroup>`
       +(fr.length?`<optgroup label="Fundraisers">${fr.map(e=>o("fund:"+e.fid,e.t+" · "+dayFmt(e.d))).join("")}</optgroup>`:"")
       +(withUrl?`<optgroup label="Other">${o("email","Email the lodge")}${o("url","A web address")}</optgroup>`:"");
   }
@@ -125,7 +137,7 @@
   const connectedPage=k=>pages.find(p=>p.auto===k);
   function connect(k,on){
     const c=CONNECTED[k];if(!c)return;
-    if(on){if(connectedPage(k))return;if(pages.length>=MAX_PAGES)return alert(`A site can have up to ${MAX_PAGES} pages.`);
+    if(on){if(connectedPage(k))return;if(realPages().length>=MAX_PAGES)return alert(`A site can have up to ${MAX_PAGES} pages.`);
       const p={id:"p"+rid(7),title:c.name,slug:uniqueSlug(c.name),nav:true,auto:k,sections:c.make()};
       change(()=>{const i=pages.findIndex(x=>x.id!=="home"&&/contact|visit/i.test(x.title));pages.splice(i>0?i:pages.length,0,p)})}
     else{const p=connectedPage(k);if(!p)return;if(!confirm(`Take the ${p.title} page off the site? You can turn it back on any time.`))return drawOverview();
@@ -159,7 +171,8 @@
     const Q=window.LodgeNetSite&&window.LodgeNetSite.qrPublic;
     return {
       /* a members-only page goes out with its title only; its sections go in publicPrivate(), which the public site lookup never returns */
-      layout:{v:2,theme:Object.assign({},layout.theme),pages:pages.map(p=>p.members?{id:p.id,slug:p.slug,title:p.title,nav:p.nav!==false,members:true,sections:[]}:{id:p.id,slug:p.slug,title:p.title,nav:p.nav!==false,sections:p.sections})},
+      layout:{v:2,theme:Object.assign({},layout.theme),pages:pages.map(p=>Object.assign(p.members?{id:p.id,slug:p.slug,title:p.title,nav:p.nav!==false,members:true,sections:[]}:{id:p.id,slug:p.slug,title:p.title,nav:p.nav!==false,sections:isMenuItem(p)?[]:p.sections},
+        p.parent&&pageById(p.parent)?{parent:p.parent}:{},isMenuItem(p)?{kind:p.kind}:{},p.kind==="link"?{url:L.safeHref(p.url)}:{}))},
       funds:fundraisers().map(e=>({id:e.fid,t:e.t,d:e.d,time:e.time||"",note:e.note||"",goal:+e.goal||0,raised:+e.raised||0,charity:e.charity||""})),
       ...lodgeLists(),
       store:hasStore&&planNow()!=="starter"?A.products.filter(x=>!x.off).map(x=>({id:x.id,n:x.n,p:+x.p||0,img:x.img||"",tag:x.tag||"",sizes:x.sizes||"",colors:x.colors||"",kind:x.kind||""})):[],
@@ -176,6 +189,9 @@
     edit:'<svg viewBox="0 0 20 20"><path d="M4 16l1-4 8-8 3 3-8 8z"/></svg>',
     plus:'<svg viewBox="0 0 20 20"><path d="M10 4v12M4 10h12"/></svg>',back:'<svg viewBox="0 0 20 20"><path d="M12 5l-5 5 5 5"/></svg>',
     home:'<svg viewBox="0 0 20 20"><path d="M3.5 9.5 10 4l6.5 5.5M5.5 8v8h9V8"/></svg>',page:'<svg viewBox="0 0 20 20"><path d="M5.5 3h6l3.5 3.5V17h-9.5z"/><path d="M11.5 3v3.5H15"/></svg>',
+    pic:'<svg viewBox="0 0 20 20"><rect x="3" y="4" width="14" height="12" rx="1"/><circle cx="7.5" cy="8.5" r="1.5"/><path d="m3.5 15 4.5-4.5 3 3 2-2 3.5 3.5"/></svg>',
+    menu:'<svg viewBox="0 0 20 20"><path d="M4 6h12M4 10h12M4 14h7"/><path d="m13.5 13 2 2 2-2"/></svg>',
+    link:'<svg viewBox="0 0 20 20"><path d="M8.5 11.5a3 3 0 0 0 4.2 0l2.6-2.6a3 3 0 0 0-4.2-4.2l-1 1"/><path d="M11.5 8.5a3 3 0 0 0-4.2 0l-2.6 2.6a3 3 0 0 0 4.2 4.2l1-1"/></svg>',
     gear:'<svg viewBox="0 0 20 20"><circle cx="10" cy="10" r="2.6"/><path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.7 4.7l1.4 1.4M13.9 13.9l1.4 1.4M4.7 15.3l1.4-1.4M13.9 6.1l1.4-1.4"/></svg>'
   };
   /* small wireframe thumbnails for the section library */
@@ -186,6 +202,7 @@
     imageText:box(6,8,32,34,1)+ln(44,12,26)+ln(44,21,30)+ln(44,28,28)+ln(44,35,22),
     features:ln(26,6,28)+[6,30,54].map(x=>box(x,16,20,3,1)+ln(x,24,20)+ln(x,30,16)).join(""),
     cta:box(2,6,76,38,1)+ln(20,16,40)+ln(26,23,28)+box(30,31,20,6),
+    picture:box(12,5,56,32,1)+ln(26,41,28),
     gallery:[4,30,56].map(x=>box(x,6,20,18,1)+box(x,27,20,18,1)).join(""),
     video:box(10,6,60,38,1)+'<path d="M35 18v14l12-7z" class="t"/>',
     events:[8,22,36].map(y=>box(6,y,10,10,1)+ln(22,y+2,40)+ln(22,y+7,26)).join(""),
@@ -204,8 +221,8 @@
   function font(k){if(loadedFonts[k]||!L.FONTS[k])return;loadedFonts[k]=true;const l=document.createElement("link");l.rel="stylesheet";l.href=L.fontHref(k);document.head.appendChild(l)}
   function draw(){
     const c=$("#bld-canvas"),stage=$("#bld-stage"),y=stage.scrollTop;
-    font(layout.theme.font);
-    c.innerHTML=L.render(A.publicSite(),{page:curPage(),edit:!previewing,root:ROOT});
+    const site=A.publicSite();L.usedFonts(site).forEach(font);
+    c.innerHTML=L.render(site,{page:curPage(),edit:!previewing,root:ROOT});
     if(!previewing)decorate(c);
     stage.scrollTop=y;
     const p=curPage();$("#bld-url").textContent=(CLOUD&&SLUG?location.host:"www.lodgenet.app")+ROOT+(p.slug?"/"+p.slug:"");
@@ -262,7 +279,9 @@
   function pickFiles(multiple){return new Promise(ok=>{const i=document.createElement("input");i.type="file";i.accept="image/*";i.multiple=!!multiple;
     i.onchange=()=>ok([...i.files]);i.click()})}
   async function shrink(files,kind){const out=[];for(const f of files){try{out.push(await A.shrinkPic(await A.fileUrl(f),kind))}catch(e){alert(`${f.name} isn't a picture LodgeNet can read.`)}}return out}
-  async function choosePic(s,path){
+  async function choosePic(s,path,url){
+    if(url){if(path==="images"){if((s.images||[]).length>=GAL_MAX)return alert(`A gallery holds up to ${GAL_MAX} photos.`);return change(()=>{s.images=(s.images||[]).concat(url)})}
+      return change(()=>setPath(s,path,url))}
     if(path==="images"){const room=GAL_MAX-(s.images||[]).length;if(room<=0)return alert(`A gallery holds up to ${GAL_MAX} photos. Add another gallery section for more.`);
       const files=(await pickFiles(true)).slice(0,room);if(!files.length)return;const u=await shrink(files,"gallery");if(u.length)change(()=>{s.images=(s.images||[]).concat(u)});return}
     const files=await pickFiles(false);if(!files.length)return;
@@ -323,7 +342,7 @@
   document.addEventListener("dragend",()=>$$("#bld-canvas .bx-hold").forEach(x=>x.classList.remove("bx-hold")));
 
   /* ---------- left panel ---------- */
-  const TITLES={add:"Add to this page",pages:"Pages",design:"Design",settings:"Lodge info"};
+  const TITLES={add:"Add to this page",pages:"Pages and menu",pics:"Pictures",design:"Design",settings:"Lodge info"};
   function showTab(t){tab=t;panelOpen=true;drawPanel()}
   function closePanel(){panelOpen=false;if(tab==="edit"){sel=null;tab="add";$$("#bld-canvas .bx-on").forEach(x=>x.classList.remove("bx-on"))}insertAt=null;
     $$("#bld-canvas .bx-gap.on").forEach(g=>g.classList.remove("on"));drawPanel();drawTools()}
@@ -333,7 +352,7 @@
     if(!panelOpen)return;
     $$(".bld-panel").forEach(p=>p.hidden=p.dataset.panel!==tab);
     const s=tab==="edit"&&secOf(sel);$("#bld-side-title").textContent=s?L.SECTIONS[s.type].name:TITLES[tab]||"";
-    if(tab==="add")drawAdd();if(tab==="edit")drawEdit();if(tab==="design")drawDesign();if(tab==="pages"){drawPages();fitMinis($("#bld-pages"))}
+    if(tab==="add")drawAdd();if(tab==="edit")drawEdit();if(tab==="design")drawDesign();if(tab==="pics")drawPics();if(tab==="pages"){drawPages();fitMinis($("#bld-pages"))}
   }
   /* ---------- Build it with AI: the Add panel's assistant (api/site-assist.js) ---------- */
   const AI={busy:false,mode:"section",prompt:"",msg:"",err:false};
@@ -382,7 +401,7 @@
       if(!r.ok)throw new Error(d.error||"The assistant couldn't answer just now. Try again.");
       AI.busy=false;
       if(d.mode==="page"){
-        if(pages.length>=MAX_PAGES)throw new Error(`A site can have up to ${MAX_PAGES} pages.`);
+        if(realPages().length>=MAX_PAGES)throw new Error(`A site can have up to ${MAX_PAGES} pages.`);
         const title=String(d.title||"New page").slice(0,60),p={id:"p"+rid(7),title,slug:uniqueSlug(title),nav:true,sections:[]};
         p.sections=aiSections(d.sections,p);
         change(()=>{pages.push(p);curId=p.id;sel=p.sections[0]&&p.sections[0].id;tab="edit"});
@@ -425,6 +444,7 @@
     imageText:[["heading","Heading","line"],["body","Text","area"],["image","Picture","image"],["side","Picture on the","choice",[["left","Left"],["right","Right"]]],["button","Button","button"]],
     features:[["heading","Heading","line"],["style","Style","choice",[["lines","Simple"],["cards","Cards"]]],["items","Columns","items"]],
     cta:[["heading","Heading","line"],["body","Text","area"],["button","Button","button"]],
+    picture:[["image","Picture","image"],["caption","Caption","line","Optional"],["size","Size","choice",[["narrow","Small"],["wide","Wide"],["full","Edge to edge"]]]],
     gallery:[["heading","Heading","line"],["images","Photos","gallery"]],
     video:[["heading","Heading","line"],["url","YouTube or Vimeo link","url"]],
     events:[["heading","Heading","line"],["count","How many to show","choice",[["3","3"],["6","6"],["12","12"]]]],
@@ -444,6 +464,10 @@
     store:'Items come from <a href="#merchandise">Merchandise</a>. The store comes with a paid plan.',
     html:'Scripts and styles work. It runs in a sealed frame, so it can\'t reach LodgeNet sign-ins or the lodge\'s records.'
   };
+  /* pick from the lodge's pictures without uploading again */
+  function libStrip(path,cur){const P=sitePics(),all=P.lib.concat(P.used).filter(u=>u!==cur);if(!all.length)return "";
+    return `<details class="bld-libpick"><summary>Or pick from your pictures (${all.length})</summary><div class="bld-libgrid">${all.map((u,i)=>`<button type="button" data-ed-lib="${path}" data-i="${i}" aria-label="Use picture ${i+1}"><img src="${esc(u)}" alt="" loading="lazy"></button>`).join("")}</div></details>`}
+  const libAt=(i,cur)=>{const P=sitePics();return P.lib.concat(P.used).filter(u=>u!==cur)[+i]};
   function field(s,[path,label,kind,extra]){
     const v=getPath(s,path),id="ed-"+path.replace(/\./g,"-");
     if(kind==="line")return `<div class="field"><label for="${id}">${label}</label><input id="${id}" data-ed="${path}" value="${esc(v||"")}"${extra?` placeholder="${esc(extra)}"`:""}></div>`;
@@ -454,7 +478,7 @@
       <span class="row-acts"><button type="button" class="btn line sm" data-ed-htm="${path}">Load an .html file</button><span class="hint">${v?Math.ceil(String(v).length/1000)+" KB of "+L.HTML_MAX/1000+" KB":""}</span></span></div>`;
     if(kind==="choice")return `<div class="field"><span class="flabel">${label}</span><div class="bld-seg bld-seg-full" role="group" aria-label="${esc(label)}">${extra.map(([k,t])=>`<button type="button" data-ed-choice="${path}" data-v="${k}" aria-pressed="${String(String(v)===k)}">${t}</button>`).join("")}</div></div>`;
     if(kind==="image")return `<div class="field"><span class="flabel">${label}</span>${L.okImg(v)?`<img class="bld-pic" src="${esc(v)}" alt="">`:""}
-      <span class="row-acts"><button type="button" class="btn line sm" data-ed-pic="${path}">${L.okImg(v)?"Replace":"Choose a picture"}</button>${L.okImg(v)?`<button type="button" class="btn line sm" data-ed-unpic="${path}">Remove</button>`:""}</span></div>`;
+      <span class="row-acts"><button type="button" class="btn line sm" data-ed-pic="${path}">${L.okImg(v)?"Upload a new one":"Upload a picture"}</button>${L.okImg(v)?`<button type="button" class="btn line sm" data-ed-unpic="${path}">Remove</button>`:""}</span>${libStrip(path,v)}</div>`;
     if(kind==="button"){const b=v||{},link=b.link||"",u=isUrl(link)||link==="url";
       return `<fieldset class="bld-fs"><legend>${label}</legend>
         <div class="field"><label for="${id}-l">Words on the button</label><input id="${id}-l" data-ed="${path}.label" value="${esc(b.label||"")}" placeholder="Leave empty for no button"></div>
@@ -470,15 +494,25 @@
         <button type="button" data-ed-gmove="${i}" data-dir="-1"${i?"":" disabled"} aria-label="Move photo ${i+1} earlier">${I.up}</button>
         <button type="button" data-ed-gmove="${i}" data-dir="1"${i<g.length-1?"":" disabled"} aria-label="Move photo ${i+1} later">${I.down}</button>
         <button type="button" data-ed-gdel="${i}" aria-label="Remove photo ${i+1}">${I.del}</button></span></figure>`).join("")}</div>
-      ${g.length<GAL_MAX?'<button type="button" class="btn line sm" data-ed-gadd>Add photos</button>':""}</div>`}
+      ${g.length<GAL_MAX?'<button type="button" class="btn line sm" data-ed-gadd>Add photos</button>'+libStrip(path,""):""}</div>`}
     return "";
   }
+  /* this section's own font and text colors; empty means it follows the site's Design settings */
+  const colorRow=(k,label,v,dflt)=>`<div class="field bld-colrow"><label for="sty-${k}">${label}</label><span class="row-acts">
+      <input type="color" id="sty-${k}" data-sty="${k}" value="${esc(L.okColor(v)||dflt)}"><span class="hint">${L.okColor(v)?esc(v):"Site default"}</span>
+      ${L.okColor(v)?`<button type="button" class="link-btn" data-sty-reset="${k}">Use site default</button>`:""}</span></div>`;
+  function styleBox(s){return `<fieldset class="bld-fs"><legend>Text style</legend>
+      <div class="field"><label for="sty-font">Font</label><select id="sty-font" data-sty="font"><option value="">Site font (${esc((L.FONTS[layout.theme.font]||L.FONTS.modern).name)})</option>
+        ${Object.entries(L.FONTS).map(([k,f])=>`<option value="${k}"${s.font===k?" selected":""}>${esc(f.name)}</option>`).join("")}</select></div>
+      ${colorRow("hc","Heading color",s.hc,L.okColor(layout.theme.hc)||(/^#[0-9a-f]{6}$/i.test(A.siteColor||"")?A.siteColor:"#1c3a75"))}
+      ${colorRow("tc","Text color",s.tc,L.okColor(layout.theme.tc)||"#2a2a2a")}</fieldset>`}
   function drawEdit(){
     const s=secOf(sel),el=$("#bld-edit");if(!s){tab="add";return drawPanel()}
     const arr=curPage().sections,i=arr.indexOf(s),bg=s.type!=="hero"&&s.type!=="html";
     el.innerHTML=`${NOTES[s.type]?`<p class="bld-note">${NOTES[s.type]}</p>`:""}
       ${(FIELDS[s.type]||[]).map(f=>field(s,f)).join("")}
       ${bg?field(s,["bg","Background","choice",[["plain","White"],["tint","Cream"],["color","Lodge color"]]]):""}
+      ${s.type==="html"?"":styleBox(s)}
       <div class="bld-acts"><button type="button" class="btn line sm" data-ed-act="up"${i?"":" disabled"}>${I.up}Up</button><button type="button" class="btn line sm" data-ed-act="down"${i<arr.length-1?"":" disabled"}>${I.down}Down</button>
         <button type="button" class="btn line sm" data-ed-act="dup">${I.dup}Duplicate</button><button type="button" class="btn line sm bld-danger" data-ed-act="del">${I.del}Delete</button></div>`;
   }
@@ -493,12 +527,15 @@
     if(t.dataset.edUrl){let v=t.value.trim();if(v&&!/^(https?:|mailto:|tel:)/i.test(v))v="https://"+v;v=v.replace(/^http:/i,"https:");
       if(v&&!L.safeHref(v))return alert("Enter a full web address that starts with https://");change(()=>setPath(s,t.dataset.edUrl+".link",v||"url"));return}
     if(t.dataset.ed==="url")drawEdit();
+    if(t.dataset.sty){const k=t.dataset.sty,v=t.value;change(()=>{if(k==="font"?L.FONTS[v]:L.okColor(v))s[k]=v;else delete s[k]})}
   });
   edit.addEventListener("keydown",e=>{if(e.key==="Enter"&&e.target.tagName==="INPUT")e.preventDefault()});
   edit.addEventListener("click",async e=>{const b=e.target.closest("button");if(!b)return;const d=b.dataset,s=secOf(sel);
     if(!s)return;
     if(d.edChoice)return change(()=>setPath(s,d.edChoice,d.v));
     if(d.edPic)return choosePic(s,d.edPic);
+    if(d.edLib){const u=libAt(d.i,d.edLib==="images"?"":getPath(s,d.edLib));if(u)return choosePic(s,d.edLib,u);return}
+    if(d.styReset){const k=d.styReset;return change(()=>{delete s[k]})}
     if(d.edUnpic)return change(()=>setPath(s,d.edUnpic,""));
     if("edItemAdd" in d)return change(()=>{s.items=(s.items||[]).concat({title:"New column",body:""})});
     if(d.edItemDel)return change(()=>s.items.splice(+d.edItemDel,1));
@@ -519,7 +556,11 @@
     const th=layout.theme,logo=A.pics.logo;Object.keys(L.FONTS).forEach(font);
     const opt=(k,v,label,extra)=>`<button type="button" class="bld-opt" data-theme="${k}" data-v="${v}" aria-pressed="${String(th[k]===v)}">${extra||""}<span>${label}</span></button>`;
     $("#bld-color").value=/^#[0-9a-f]{6}$/i.test(A.siteColor||"")?A.siteColor:"#1c3a75";
-    $("#bld-design").innerHTML=`<h3 class="bld-h">Fonts</h3><div class="bld-opts">${Object.entries(L.FONTS).map(([k,f])=>opt("font",k,f.name,`<b style="font-family:${esc(f.head)}">Aa</b>`)).join("")}</div>
+    const tcol=(k,label,dflt)=>`<div class="field bld-colrow"><label for="th-${k}">${label}</label><span class="row-acts"><input type="color" id="th-${k}" data-thcolor="${k}" value="${esc(L.okColor(th[k])||dflt)}">
+      <span class="hint">${L.okColor(th[k])?esc(th[k]):"Default"}</span>${L.okColor(th[k])?`<button type="button" class="link-btn" data-threset="${k}">Reset</button>`:""}</span></div>`;
+    $("#bld-design").innerHTML=`<h3 class="bld-h">Text colors</h3><p class="hint" style="margin:-4px 0 8px">For the whole site, on white and cream sections. To color one section, click it and use Text style.</p>
+      ${tcol("hc","Headings",/^#[0-9a-f]{6}$/i.test(A.siteColor||"")?A.siteColor:"#1c3a75")}${tcol("tc","Paragraphs","#2a2a2a")}
+      <h3 class="bld-h">Fonts</h3><p class="hint" style="margin:-4px 0 8px">Headings and text for the whole site. A section can pick its own under Text style.</p><div class="bld-opts">${Object.entries(L.FONTS).map(([k,f])=>opt("font",k,f.name,`<b style="font-family:${esc(f.head)}">Aa</b>`)).join("")}</div>
       <h3 class="bld-h">Buttons</h3><div class="bld-opts bld-opts-2">${opt("btn","rounded","Rounded",'<i class="bld-btn-demo"></i>')}${opt("btn","square","Square",'<i class="bld-btn-demo sq"></i>')}</div>
       <h3 class="bld-h">Header</h3><div class="bld-opts bld-opts-2">${opt("header","center","Centered",'<i class="bld-head-demo"></i>')}${opt("header","left","Logo left",'<i class="bld-head-demo lft"></i>')}</div>
       <h3 class="bld-h">Logo or seal</h3>
@@ -532,10 +573,30 @@
   $('[data-panel="design"]').addEventListener("click",async e=>{const b=e.target.closest("button");if(!b)return;
     if(b.dataset.design){applyDesign(b.dataset.design);return}
     if(b.dataset.theme){const k=b.dataset.theme,v=b.dataset.v;change(()=>{layout.theme[k]=v});return}
+    if(b.dataset.threset){const k=b.dataset.threset;change(()=>{delete layout.theme[k]});return}
     if("logo" in b.dataset){const f=await pickFiles(false);if(!f.length)return;try{A.pics.logo=await A.shrinkPic(await A.fileUrl(f[0]),"logo")}catch(err){return alert("That file isn't a picture LodgeNet can read.")}drawAll();A.save();return}
     if("unlogo" in b.dataset){A.pics.logo="";drawAll();A.save()}
   });
   $("#bld-color").addEventListener("input",e=>A.setColor(e.target.value));
+  $('[data-panel="design"]').addEventListener("change",e=>{const k=e.target.dataset.thcolor;if(!k)return;const v=e.target.value;change(()=>{if(L.okColor(v))layout.theme[k]=v})});
+
+  /* ---------- Pictures: the lodge's picture library ---------- */
+  function drawPics(){const P=sitePics(),n=P.lib.length;
+    const tile=(u,i,lib)=>`<figure class="bld-libtile"><img src="${esc(u)}" alt="" loading="lazy"><span class="bld-libacts">
+      <button type="button" class="btn sm" data-lib-add="${lib?"l":"u"}${i}">Add to page</button>${lib?`<button type="button" class="btn line sm" data-lib-del="${i}" aria-label="Delete picture">${I.del}</button>`:""}</span></figure>`;
+    $("#bld-pics").innerHTML=`<p class="bld-lead">Upload pictures once and use them anywhere: add one to the page here, or pick it when you change a banner, a picture or a gallery.</p>
+      <button type="button" class="btn sm" data-lib-up${n>=LIB_MAX?" disabled":""}>${I.plus}Upload pictures</button><span class="hint"> ${n} of ${LIB_MAX}</span>
+      <h3 class="bld-h">Uploaded</h3>${n?`<div class="bld-lib">${P.lib.map((u,i)=>tile(u,i,true)).join("")}</div>`:'<p class="hint">Nothing uploaded yet.</p>'}
+      ${P.used.length?`<h3 class="bld-h">Already on your site</h3><div class="bld-lib">${P.used.map((u,i)=>tile(u,i,false)).join("")}</div>`:""}`;
+  }
+  $("#bld-pics").addEventListener("click",async e=>{const b=e.target.closest("button");if(!b)return;const d=b.dataset;
+    if("libUp" in d){const room=LIB_MAX-layout.pics.length;const files=(await pickFiles(true)).slice(0,room);if(!files.length)return;
+      const u=await shrink(files,"block");if(u.length){layout.pics.push(...u.filter(x=>!layout.pics.includes(x)));drawPics();A.save()}return}
+    if(d.libDel){if(!confirm("Delete this picture from your library? Places already using it keep it."))return;layout.pics.splice(+d.libDel,1);drawPics();A.save();return}
+    if(d.libAdd){const P=sitePics(),u=(d.libAdd[0]==="l"?P.lib:P.used)[+d.libAdd.slice(1)];if(!u)return;
+      const arr=curPage().sections;if(isMenuItem(curPage()))return alert("Open a page first (Pages), then add the picture.");if(arr.length>=MAX_SECTIONS)return alert(`A page can hold up to ${MAX_SECTIONS} sections.`);
+      const sec=L.newSection("picture",{image:u});change(()=>{const i=insertAt!=null?insertAt:sel&&secOf(sel)?arr.findIndex(x=>x.id===sel)+1:arr.length;arr.splice(i,0,sec);sel=sec.id;insertAt=null;tab="edit"});reveal(sec.id)}
+  });
 
   /* ---------- Pages ---------- */
   const slugify=t=>String(t||"").toLowerCase().normalize("NFKD").replace(/[̀-ͯ]/g,"").replace(/&/g," and ").replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"").slice(0,48)||"page";
@@ -550,31 +611,74 @@
         <h3 class="bld-title">Add a page</h3><p class="bld-lead">Start from a ready-made page and change anything on it.</p>
         ${L.TEMPLATE_GROUPS.map(g=>`<h3 class="bld-h">${esc(g)}</h3><div class="bld-tpls">${Object.entries(L.TEMPLATES).filter(([,t])=>t.group===g).map(([k,t])=>
           `<button type="button" class="bld-tpl" data-tpl="${k}">${tplMini(k)}<span>${t.members?'<svg class="bld-tpl-lock" viewBox="0 0 20 20" aria-hidden="true"><rect x="4.5" y="9" width="11" height="8" rx="1.5"/><path d="M7 9V6.5a3 3 0 0 1 6 0V9"/></svg>':""}${esc(t.name)}</span></button>`).join("")}</div>`).join("")}`
-      :`<p class="bld-lead">Click a page to edit it. The menu on the site follows this order.</p>
-      <ul class="bld-pages">${pages.map((p,i)=>`<li class="${p.id===curId?"on":""}">
-        <div class="bld-page-row"><button type="button" class="bld-page-go" data-pg-go="${p.id}">${p.id==="home"?I.home:I.page}<span><b>${esc(p.title)}</b><small>${esc(p.slug?"/"+p.slug:"/")}${p.members?" · members only":""}${p.nav===false?" · hidden from menu":""}${p.auto&&CONNECTED[p.auto]?" · fills itself from "+esc(CONNECTED[p.auto].tab):""}</small></span></button>
-          ${p.id==="home"?"":`<button type="button" class="bld-icon" data-pg-up="${i}"${i>1?"":" disabled"} title="Move up">${I.up}<span class="sr">Move ${esc(p.title)} up</span></button><button type="button" class="bld-icon" data-pg-down="${i}"${i<n-1?"":" disabled"} title="Move down">${I.down}<span class="sr">Move ${esc(p.title)} down</span></button>`}
-          <button type="button" class="bld-icon" data-pg-set="${p.id}" aria-expanded="${String(pageOpen===p.id)}" title="Page settings">${I.gear}<span class="sr">Settings for ${esc(p.title)}</span></button></div>
-        ${pageOpen===p.id?`<div class="bld-page-set">
-          <div class="field"><label for="pg-t-${p.id}">Page name</label><input id="pg-t-${p.id}" data-pg-title="${p.id}" value="${esc(p.title)}"></div>
-          ${p.id==="home"?"":`<div class="field"><label for="pg-s-${p.id}">Address</label><div class="pre"><span>…/</span><input id="pg-s-${p.id}" data-pg-slug="${p.id}" value="${esc(p.slug)}" autocapitalize="off" spellcheck="false"></div><span class="hint">Changing it breaks links people saved. Buttons and QR codes keep working.</span></div>`}
+      :`<p class="bld-lead">Click a page to edit it. The site's menu follows this order. To make a dropdown, add a menu and put pages or links under it (in each one's settings, ${I.gear}).</p>
+      <ul class="bld-pages">${tree()}</ul>
+      <div class="bld-acts" style="margin-top:12px">
+        ${realPages().length<MAX_PAGES?`<button type="button" class="btn sm" data-pg-add>${I.plus}Add a page</button>`:`<p class="hint">That's the most pages a lodge site can have (${MAX_PAGES}).</p>`}
+        ${menuCount()<MAX_MENU?`<button type="button" class="btn line sm" data-pg-menu>${I.menu}Add a dropdown menu</button><button type="button" class="btn line sm" data-pg-link>${I.link}Add a link</button>`:""}</div>
+      ${bodiesDir().length?`<div class="bld-note" style="margin-top:14px"><b>Masonic bodies menu</b><br>A dropdown with every Masonic body in ${esc(window.LodgeNetDistrict.name()||"your district")}, and under each one its lodges, chapters and clubs with where they meet. It comes from the District tab.
+        <div style="margin-top:8px"><button type="button" class="btn sm" data-pg-bodies>${pages.some(x=>x.auto==="bodies")?"Rebuild the Masonic bodies menu":"Add a Masonic bodies menu"}</button></div></div>`:""}`;
+    function tree(){
+      const row=(p,depth)=>{const kind=p.kind==="menu"?"menu":p.kind==="link"?"link":"page",sib=siblings(p),si=sib.indexOf(p),open=pageOpen===p.id;
+        const sub=p.kind==="link"?(L.safeHref(p.url)||"No web address yet"):(p.slug?"/"+p.slug:"/");
+        const notes=[kind==="menu"?"dropdown menu":"",p.members?"members only":"",p.nav===false?"hidden from menu":"",p.auto&&CONNECTED[p.auto]?"fills itself from "+CONNECTED[p.auto].tab:""].filter(Boolean).join(" · ");
+        return `<li class="${p.id===curId?"on":""}" style="--d:${depth}">
+        <div class="bld-page-row"><button type="button" class="bld-page-go" data-pg-go="${p.id}">${p.id==="home"?I.home:I[kind]}<span><b>${esc(p.title)}</b><small>${esc(sub)}${notes?" · "+esc(notes):""}</small></span></button>
+          ${p.id==="home"?"":`<button type="button" class="bld-icon" data-pg-up="${p.id}"${si>0&&!(sib[si-1].id==="home")?"":" disabled"} title="Move up">${I.up}<span class="sr">Move ${esc(p.title)} up</span></button><button type="button" class="bld-icon" data-pg-down="${p.id}"${si<sib.length-1?"":" disabled"} title="Move down">${I.down}<span class="sr">Move ${esc(p.title)} down</span></button>`}
+          <button type="button" class="bld-icon" data-pg-set="${p.id}" aria-expanded="${String(open)}" title="Settings">${I.gear}<span class="sr">Settings for ${esc(p.title)}</span></button></div>
+        ${open?`<div class="bld-page-set">
+          <div class="field"><label for="pg-t-${p.id}">${kind==="page"?"Page name":kind==="menu"?"Menu name":"Words in the menu"}</label><input id="pg-t-${p.id}" data-pg-title="${p.id}" value="${esc(p.title)}"></div>
+          ${kind==="link"?`<div class="field"><label for="pg-u-${p.id}">Web address</label><input id="pg-u-${p.id}" data-pg-url="${p.id}" value="${esc(p.url||"")}" placeholder="https://" inputmode="url" autocapitalize="off" spellcheck="false"><span class="hint">Opens in a new tab.</span></div>`:""}
+          ${p.id==="home"||kind==="link"?"":`<div class="field"><label for="pg-s-${p.id}">Address</label><div class="pre"><span>…/</span><input id="pg-s-${p.id}" data-pg-slug="${p.id}" value="${esc(p.slug)}" autocapitalize="off" spellcheck="false"></div><span class="hint">${kind==="menu"?"This address lists everything in the menu.":"Changing it breaks links people saved. Buttons and QR codes keep working."}</span></div>`}
+          ${p.id==="home"?"":`<div class="field"><label for="pg-p-${p.id}">Where it goes in the menu</label><select id="pg-p-${p.id}" data-pg-parent="${p.id}">${parentOptions(p)}</select></div>`}
           <label class="check"><input type="checkbox" data-pg-nav="${p.id}"${p.nav!==false?" checked":""}> Show in the site menu</label>
-          ${p.id==="home"?"":`<label class="check"><input type="checkbox" data-pg-members="${p.id}"${p.members?" checked":""}> Members only: signed-in brethren on the roll</label>`}
-          ${p.id==="home"?"":`<button type="button" class="btn line sm bld-danger" data-pg-del="${p.id}">${I.del}Delete page</button>`}</div>`:""}</li>`).join("")}</ul>
-      ${n<MAX_PAGES?`<button type="button" class="btn sm" data-pg-add>${I.plus}Add a page</button>`:`<p class="hint">That's the most pages a lodge site can have (${MAX_PAGES}).</p>`}`;
+          ${p.id==="home"||kind!=="page"?"":`<label class="check"><input type="checkbox" data-pg-members="${p.id}"${p.members?" checked":""}> Members only: signed-in brethren on the roll</label>`}
+          ${p.id==="home"?"":`<button type="button" class="btn line sm bld-danger" data-pg-del="${p.id}">${I.del}Delete ${kind==="page"?"page":kind==="menu"?"menu":"link"}</button>`}</div>`:""}</li>
+        ${kidsOf(p.id).map(c=>row(c,depth+1)).join("")}`};
+      return pages.filter(p=>!p.parent||!pageById(p.parent)).map(p=>row(p,0)).join("");
+    }
+  }
+  const menuCount=()=>pages.filter(isMenuItem).length;
+  const siblings=p=>pages.filter(x=>(x.parent&&pageById(x.parent)?x.parent:"")===(p.parent&&pageById(p.parent)?p.parent:""));
+  /* a page can go under any menu or page that leaves the whole thing three levels deep at most */
+  function parentOptions(p){const h=subtreeHeight(p);
+    const ok=pages.filter(c=>c!==p&&c.kind!=="link"&&c.id!=="home"&&!isUnder(c,p)&&depthOf(c)+1+h<=2);
+    return `<option value="">Top of the menu</option>${ok.map(c=>`<option value="${esc(c.id)}"${p.parent===c.id?" selected":""}>Under ${esc("— ".repeat(depthOf(c))+c.title)}${c.kind==="menu"?" (menu)":""}</option>`).join("")}`}
+  const bodiesDir=()=>window.LodgeNetDistrict&&window.LodgeNetDistrict.directory?window.LodgeNetDistrict.directory():[];
+  function removeTree(p){kidsOf(p.id).forEach(removeTree);const i=pages.indexOf(p);if(i>=0)pages.splice(i,1)}
+  function buildBodies(){
+    const dir=bodiesDir();if(!dir.length)return;
+    const old=pages.find(x=>x.auto==="bodies");
+    const kinds=[];dir.forEach(b=>{if(!kinds.includes(b.kind))kinds.push(b.kind)});
+    const need=1+kinds.length+dir.length,have=menuCount()-(old?1+pages.filter(x=>isUnder(x,old)).length:0);
+    if(have+need>MAX_MENU)return alert(`That menu needs ${need} entries and the site has room for ${MAX_MENU-have} more menu items and links.`);
+    if(old&&!confirm("Rebuild the Masonic bodies menu from the District tab? Changes you made inside it are replaced."))return;
+    const mapUrl=b=>"https://www.google.com/maps/search/?api=1&query="+encodeURIComponent(b.addr||b.name);
+    change(()=>{let at=pages.length;if(old){at=pages.indexOf(old);removeTree(old)}
+      const top={id:"p"+rid(7),kind:"menu",auto:"bodies",title:"Masonic bodies",nav:true,sections:[]};top.slug=uniqueSlug(top.title);
+      const add=[top];
+      kinds.forEach(k=>{const m={id:"p"+rid(7),kind:"menu",title:k,parent:top.id,nav:true,sections:[]};m.slug=uniqueSlug(k);add.push(m);
+        dir.filter(b=>b.kind===k).forEach(b=>{const town=String(b.town||"").trim(),t=town&&!b.name.toLowerCase().includes(town.toLowerCase())?`${b.name} (${town})`:b.name;
+          const l={id:"p"+rid(7),kind:"link",title:t.slice(0,60),url:L.safeHref(b.web)||mapUrl(b),parent:m.id,nav:true,sections:[]};l.slug=uniqueSlug(l.title);add.push(l)})});
+      pages.splice(Math.min(at,pages.length),0,...add);pageOpen=null});
   }
   const fitTpls=()=>fitMinis($("#bld-pages"));
   const pg=$("#bld-pages");
   pg.addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;const d=b.dataset;
     if("pgAdd" in d){addingPage=true;drawPages();return fitTpls()}
     if("pgCancel" in d){addingPage=false;return drawPages()}
+    if("pgMenu" in d||"pgLink" in d){const m="pgMenu" in d,title=m?"New menu":"New link",x={id:"p"+rid(7),kind:m?"menu":"link",title,nav:true,sections:[],...(m?{}:{url:""})};x.slug=uniqueSlug(title);
+      change(()=>{pages.push(x);pageOpen=x.id});requestAnimationFrame(()=>{const i=$(`#pg-t-${x.id}`);if(i){i.focus();i.select()}});return}
+    if("pgBodies" in d)return buildBodies();
     if(d.tpl){const t=L.TEMPLATES[d.tpl];const p={id:"p"+rid(7),title:t.title,slug:uniqueSlug(t.title),nav:true,sections:t.make(),...(t.members?{members:true}:{})};
       addingPage=false;change(()=>{pages.push(p);curId=p.id;sel=null});return}
-    if(d.pgGo)return go(d.pgGo);
+    if(d.pgGo){const p=pageById(d.pgGo);if(p&&p.kind==="link"){pageOpen=p.id;return drawPages()}return go(d.pgGo)}
     if(d.pgSet){pageOpen=pageOpen===d.pgSet?null:d.pgSet;return drawPages()}
-    if(d.pgUp||d.pgDown){const i=+(d.pgUp||d.pgDown),j=d.pgUp?i-1:i+1;if(j<1||j>=pages.length)return;return change(()=>{[pages[i],pages[j]]=[pages[j],pages[i]]})}
-    if(d.pgDel){const p=pageById(d.pgDel);if(!p||!confirm(`Delete the page "${p.title}" and everything on it?`))return;
-      change(()=>{pages.splice(pages.indexOf(p),1);if(curId===p.id)curId="home";pageOpen=null});
+    if(d.pgUp||d.pgDown){const p=pageById(d.pgUp||d.pgDown),sib=siblings(p),k=sib.indexOf(p),q=sib[d.pgUp?k-1:k+1];if(!q||q.id==="home")return;
+      return change(()=>{const i=pages.indexOf(p),j=pages.indexOf(q);[pages[i],pages[j]]=[pages[j],pages[i]]})}
+    if(d.pgDel){const p=pageById(d.pgDel);if(!p)return;const k=kidsOf(p.id);
+      if(!confirm(p.kind==="link"?`Delete the link "${p.title}"?`:`Delete the ${p.kind==="menu"?"menu":"page"} "${p.title}"${p.kind==="menu"?"":" and everything on it"}?${k.length?` The ${k.length} item${k.length>1?"s":""} under it move up a level.`:""}`))return;
+      change(()=>{k.forEach(c=>{if(p.parent)c.parent=p.parent;else delete c.parent});pages.splice(pages.indexOf(p),1);if(curId===p.id)curId="home";pageOpen=null});
       if(window.LodgeNetSite.pageDeleted)window.LodgeNetSite.pageDeleted(p.id)}
   });
   pg.addEventListener("keydown",e=>{if(e.key==="Enter"&&e.target.tagName==="INPUT"){e.preventDefault();e.target.blur()}});
@@ -582,13 +686,16 @@
     if(d.pgTitle){const p=pageById(d.pgTitle);if(p)change(()=>{p.title=t.value.trim().slice(0,60)||p.title})}
     if(d.pgSlug){const p=pageById(d.pgSlug);if(p)change(()=>{p.slug=uniqueSlug(t.value||p.title,p)})}
     if(d.pgNav){const p=pageById(d.pgNav);if(p)change(()=>{p.nav=t.checked})}
+    if(d.pgParent){const p=pageById(d.pgParent);if(p)change(()=>{if(t.value&&pageById(t.value))p.parent=t.value;else delete p.parent})}
+    if(d.pgUrl){const p=pageById(d.pgUrl);if(p){let v=t.value.trim();if(v&&!/^(https?:|mailto:|tel:)/i.test(v))v="https://"+v;v=v.replace(/^http:/i,"https:");
+      if(v&&!L.safeHref(v))return alert("Enter a full web address that starts with https://");change(()=>{p.url=v})}}
     if(d.pgMembers){const p=pageById(d.pgMembers);if(p)change(()=>{if(t.checked)p.members=true;else delete p.members})}
   });
 
   /* ---------- top bar and the frame's bar ---------- */
   function drawPagePick(){
-    $("#bld-page").innerHTML=pages.map(p=>`<option value="${esc(p.id)}"${p.id===curId?" selected":""}>${esc(p.title)}</option>`).join("")
-      +(pages.length<MAX_PAGES?'<option value="+">+ Add a page…</option>':"");
+    $("#bld-page").innerHTML=pages.filter(p=>p.kind!=="link").map(p=>`<option value="${esc(p.id)}"${p.id===curId?" selected":""}>${esc(p.title)}</option>`).join("")
+      +(realPages().length<MAX_PAGES?'<option value="+">+ Add a page…</option>':"");
     $("#bld-sitename").textContent=A.publicSite().full||"Your lodge";
   }
   $("#bld-page").addEventListener("change",e=>{if(e.target.value==="+"){addingPage=true;showTab("pages");drawPagePick();return}go(e.target.value)});
