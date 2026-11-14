@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg xmlns="http://www.w3.org/2000/svg"
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   height="800" width="800" viewBox="-400 -400 800 800">
+  <metadata><rdf:RDF><cc:Work rdf:about="">
+    <dc:format>image/svg+xml</dc:format>
+    <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+    <dc:title>Triple tau</dc:title>
+  </cc:Work></rdf:RDF></metadata>
+  <circle r="360.9655" stroke-width="40.861" stroke="#cc0000" fill="#ffffff"/>
+  <path fill="#cc0000" d="M-295.539,170.63H295.539L0,-341.259Z
+M-223.543,129.063L0,-258.125L223.543,129.063Z
+M-140.981,-2.716V114.419H-99.435V75.595H99.435V114.419H140.981V-2.716H99.435V34.74H20.434V-100.113H58.5732V-140.981H-58.5732V-100.113H-20.434V34.74H-99.435V-2.716Z"/>
+</svg>

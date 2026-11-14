@@ -607,10 +607,12 @@
       sr:'<path d="M10 2.5 12 7l5 .5-3.8 3.3 1.2 4.9L10 13l-4.4 2.7 1.2-4.9L3 7.5 8 7z"/>',club:'<circle cx="7" cy="7.5" r="2.5"/><circle cx="13" cy="7.5" r="2.5"/><path d="M2.5 16c.5-2.6 2.3-4 4.5-4s4 1.4 4.5 4M8.5 16c.5-2.6 2.3-4 4.5-4s4 1.4 4.5 4"/>',
       chapter:'<path d="M3 16h14M5 16V9l5-5 5 5v7"/><path d="M8.5 16v-4h3v4"/>',council:'<path d="M4 16V7l6-4 6 4v9z"/><path d="M8 16v-5h4v5"/>',
       commandery:'<path d="M10 2.5v15M5 7h10"/><path d="M6 12.5c1.2 1.6 2.5 2.5 4 2.5s2.8-.9 4-2.5"/>',yorkrite:'<path d="M3 16h14M4.5 16V9.5L10 5l5.5 4.5V16"/><path d="M10 9v7M7 12h6"/>'};
+    /* each order's own emblem; the Scottish Rite Club shares the Rite's double-headed eagle */
+    const EMB={blue:"blue.png",pha:"pha.png",sr:"sr.png",club:"sr.png",chapter:"chapter.svg",council:"council.png",commandery:"commandery.png",yorkrite:"yorkrite.png"};
     box.innerHTML=`<div class="row-sp"><div><h4>Organization type</h4><p class="hint" style="margin:2px 0 0">The whole dashboard follows this: officer chairs, the name of your meetings and their write-ups, degrees and titles on the roll, the membership pipeline, and the website's wording.</p></div>
         <span class="pill ok">${esc(ORG.name||"Blue Lodge")}</span></div>
       ${OR.GROUPS.map(g=>`<h5 class="org-g">${esc(g)}</h5><div class="org-grid">${Object.entries(OR.TYPES).filter(([,t])=>t.group===g).map(([k,t])=>`<button type="button" class="org-opt" data-org="${k}" aria-pressed="${String(k===cur)}"${canEdit?"":" disabled"}>
-          <span class="org-ic" aria-hidden="true"><svg viewBox="0 0 20 20">${ICON[k]||ICON.blue}</svg></span><span class="org-t"><b>${esc(t.name)}</b><small>${esc(t.desc)}</small>
+          ${EMB[k]?`<span class="org-ic org-emb" aria-hidden="true"><img src="/assets/brand/orgs/${EMB[k]}" alt="" width="44" height="44" loading="lazy"></span>`:`<span class="org-ic" aria-hidden="true"><svg viewBox="0 0 20 20">${ICON[k]||ICON.blue}</svg></span>`}<span class="org-t"><b>${esc(t.name)}</b><small>${esc(t.desc)}</small>
           <small class="org-eg">${esc(t.seats.slice(0,3).map(x=>x.t.replace(/,.*$/,"")).join(" · "))} · ${esc(t.meetings)}</small></span></button>`).join("")}</div>`).join("")}
       ${canEdit?"":'<p class="hint">Officers can change the organization type.</p>'}`;
     box.onclick=async e=>{const b=e.target.closest("[data-org]");if(!b||b.dataset.org===cur||!canEdit)return;
