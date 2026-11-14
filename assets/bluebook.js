@@ -789,7 +789,7 @@
         </div>
         <p class="hint bb-th">Drag any section on the page to move it. Click one to style it; arrow keys nudge it (Shift for bigger steps).</p>`;
       const up=()=>{tools(p);changed(false)};
-      T.querySelectorAll("[data-sec]").forEach(b=>b.addEventListener("click",()=>{s.sec=b.dataset.sec;tools(p);marks()}));
+      T.querySelectorAll("[data-sec]").forEach(b=>b.addEventListener("click",()=>{s.sec=b.dataset.sec;s.act=true;tools(p);marks()}));
       const tf=T.querySelector("[data-tf]");if(tf)tf.addEventListener("change",()=>{setSt(p,k,"f",tf.value);up()});
       const ts=T.querySelector("[data-ts]");if(ts)ts.addEventListener("change",()=>{setSt(p,k,"s",+ts.value||null);up()});
       T.querySelectorAll("[data-tb]").forEach(b=>b.addEventListener("click",()=>{const key=b.dataset.tb,nv=!eff(key),dv=key==="b"&&defB;setSt(p,k,key,nv===dv?null:nv);up()}));
@@ -797,27 +797,33 @@
       const tm=T.querySelector("[data-tm]");if(tm)tm.addEventListener("click",()=>{setSt(p,k,"dx",null);setSt(p,k,"dy",null);up()});
       const tr=T.querySelector("[data-tr]");if(tr)tr.addEventListener("click",()=>{if(p.st)delete p.st[k];if(p.st&&!Object.keys(p.st).length)delete p.st;if(p.k==="text"&&k==="body")delete p.center;up()});
     }
-    function marks(){box.querySelectorAll(".bb-hb").forEach(b=>b.classList.toggle("on",b.dataset.k===s.sec))}
+    /* a section stays outlined only while it's being worked on: clicking anywhere off the page and the style bar lets it go */
+    function marks(){box.querySelectorAll(".bb-hb").forEach(b=>b.classList.toggle("on",!!s.act&&b.dataset.k===s.sec))}
+    if(s.offA)document.removeEventListener("pointerdown",s.offA,true);
+    s.offA=e=>{if(!box.isConnected||!s.act)return;if(e.target.closest&&e.target.closest(".bb-hb,.bb-tools"))return;
+      s.act=false;marks();const a=document.activeElement;if(a&&a.classList&&a.classList.contains("bb-hb"))a.blur()};
+    document.addEventListener("pointerdown",s.offA,true);
     /* boxes over the preview, one per section, to drag */
     function overlay(boxes,k){
       const ov=box.querySelector(".bb-ov"),p=B.pages.find(x=>x.id===s.sel);if(!ov||!p)return;
       const L=SECS[p.k];ov.innerHTML="";if(!canEdit||!L)return;
       const had=document.activeElement&&document.activeElement.classList.contains("bb-hb")?document.activeElement.dataset.k:null;
       for(const bx of boxes){const n=(L.find(x=>x[0]===bx.k)||[])[1];if(!n)continue;
-        const d=document.createElement("div");d.className="bb-hb"+(bx.k===s.sec?" on":"");d.dataset.k=bx.k;d.tabIndex=0;d.setAttribute("role","button");
+        const d=document.createElement("div");d.className="bb-hb"+(s.act&&bx.k===s.sec?" on":"");d.dataset.k=bx.k;d.tabIndex=0;d.setAttribute("role","button");
         d.setAttribute("aria-label",`${n}: drag to move, or use the arrow keys`);d.title=n;
         Object.assign(d.style,{left:(bx.x*k-3)+"px",top:(bx.y*k-3)+"px",width:(bx.w*k+6)+"px",height:(bx.h*k+6)+"px"});
         d.innerHTML=`<span>${esc(n)}</span>`;ov.appendChild(d);
         const move=(ddx,ddy)=>{const o=stOf(p,bx.k);setSt(p,bx.k,"dx",Math.round((+o.dx||0)+ddx)||null);setSt(p,bx.k,"dy",Math.round((+o.dy||0)+ddy)||null);s.sec=bx.k;tools(p);changed(false)};
-        d.addEventListener("pointerdown",e=>{if(e.button)return;e.preventDefault();d.setPointerCapture(e.pointerId);d.focus();
+        d.addEventListener("pointerdown",e=>{if(e.button)return;e.preventDefault();s.act=true;s.sec=bx.k;marks();d.setPointerCapture(e.pointerId);d.focus();
           const x0=e.clientX,y0=e.clientY;let mx=0,my=0;d.classList.add("drag");
           const mv=ev=>{mx=ev.clientX-x0;my=ev.clientY-y0;d.style.transform=`translate(${mx}px,${my}px)`};
           const end=()=>{d.removeEventListener("pointermove",mv);d.removeEventListener("pointerup",end);d.removeEventListener("pointercancel",end);d.classList.remove("drag");
             if(Math.abs(mx)+Math.abs(my)>3)move(mx/k,my/k);else{d.style.transform="";s.sec=bx.k;tools(p);marks()}};
           d.addEventListener("pointermove",mv);d.addEventListener("pointerup",end);d.addEventListener("pointercancel",end)});
         d.addEventListener("keydown",e=>{const st=e.shiftKey?10:1,m={ArrowLeft:[-st,0],ArrowRight:[st,0],ArrowUp:[0,-st],ArrowDown:[0,st]}[e.key];
-          if(m){e.preventDefault();d.style.transform=`translate(${(m[0])*k}px,${m[1]*k}px)`;move(m[0],m[1])}
-          else if(e.key==="Enter"||e.key===" "){e.preventDefault();s.sec=bx.k;tools(p);marks()}});
+          if(m){e.preventDefault();s.act=true;d.style.transform=`translate(${(m[0])*k}px,${m[1]*k}px)`;move(m[0],m[1])}
+          else if(e.key==="Escape"){s.act=false;marks();d.blur()}
+          else if(e.key==="Enter"||e.key===" "){e.preventDefault();s.act=true;s.sec=bx.k;tools(p);marks()}});
         if(had===bx.k)d.focus();
       }
     }
