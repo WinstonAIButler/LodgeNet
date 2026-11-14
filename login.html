@@ -81,10 +81,12 @@
 
       <!-- arriving from a password reset email -->
       <div class="card auth-card" id="v-reset" hidden style="max-width:420px">
-        <h3>Choose a new password</h3>
+        <h3 id="r-title">Choose a new password</h3>
+        <p class="hint" id="r-text" hidden></p>
         <form id="f-reset" novalidate>
           <div class="field"><label for="r-pass">New password</label><input id="r-pass" type="password" autocomplete="new-password" minlength="8" required></div>
-          <button class="btn" type="submit">Save password</button>
+          <p class="hint" style="margin:0">At least 8 characters.</p>
+          <button class="btn" type="submit" id="r-go">Save password</button>
         </form>
         <p class="auth-msg" id="r-msg" role="status" aria-live="polite"></p>
       </div>
