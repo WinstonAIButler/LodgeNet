@@ -89,7 +89,7 @@
     const nos=pageNos(B),list=only?B.pages.filter(p=>only.includes(p.id)):B.pages;
     for(let i=0;i<list.length;i++){
       if(i)doc.addPage([PW,PH],"portrait");
-      const p=list[i];
+      const p=list[i];doc._boxes=[];
       try{PAGE[p.k]?PAGE[p.k](doc,p,B,nos):PAGE.text(doc,p,B,nos)}catch(e){doc.setFontSize(9);doc.text("Couldn't draw this page: "+pdfText(e.message||e),M,M+10)}
       if(nos[p.id]&&p.k!=="calendar"&&p.k!=="picture"&&p.k!=="cover"){doc.setFont("times","normal");doc.setFontSize(10);doc.setTextColor(26,26,26);doc.text(String(nos[p.id]),PW/2,PH-14,{align:"center"})}
     }
@@ -115,6 +115,33 @@
     const fmt=/^data:image\/png/.test(src)?"PNG":"JPEG",pr=doc.getImageProperties(src),k=Math.min(w/pr.width,h/pr.height);
     const iw=pr.width*k,ih=pr.height*k;doc.addImage(src,fmt,x+(w-iw)/2,y+(h-ih)/2,iw,ih);
   }
+  /* each page's sections: [key, name, which style controls it takes (f font, b bold, i italic, s size, a align)] */
+  const SECS={cover:[["title","Title lines","fbia"],["edition","Edition","fbisa"],["picture","Picture",""]],
+    text:[["header","Heading","fbisa"],["body","Text","fbisa"]],
+    body:[["header","Name","fbisa"],["info","Location and meetings","f"],["officers","Officers","f"],["notes","Note at the bottom","fbisa"],["emblem","Emblem",""]],
+    sponsors:[["header","Heading","fbisa"],["body","Thank-you line","fbisa"],["table","Table","f"]]};
+  const FONTS=[["times","Times (serif)"],["helvetica","Helvetica (sans serif)"],["courier","Courier (typewriter)"]];
+  const stOf=(p,k)=>(p.st&&p.st[k])||{};
+  const famOf=(p,k,def)=>stOf(p,k).f||def||"times";
+  function font(doc,p,k,fam,bold,italic){const o=stOf(p,k),b=o.b!=null?o.b:bold,i=o.i!=null?o.i:italic;
+    doc.setFont(o.f||fam||"times",b&&i?"bolditalic":b?"bold":i?"italic":"normal")}
+  const alignOf=(p,k,def)=>stOf(p,k).a||def;
+  const ax=(a,l,r)=>a==="left"?(l==null?M:l):a==="right"?(r==null?PW-M:r):((l==null?M:l)+(r==null?PW-M:r))/2;
+  const sizeOf2=(p,k)=>+stOf(p,k).s||0;
+  /* draw one section moved by its own offset, and note the box it covers so it can be dragged on the preview */
+  function sec(doc,p,k,fn){
+    const o=stOf(p,k),dx=+o.dx||0,dy=+o.dy||0,bx=[1e9,1e9,-1e9,-1e9];
+    const grow=(a,b,c,d)=>{bx[0]=Math.min(bx[0],a,c);bx[1]=Math.min(bx[1],b,d);bx[2]=Math.max(bx[2],a,c);bx[3]=Math.max(bx[3],b,d)};
+    const T=doc.text,L=doc.line,R=doc.rect,I=doc.addImage,own={text:doc.hasOwnProperty("text"),line:doc.hasOwnProperty("line"),rect:doc.hasOwnProperty("rect"),addImage:doc.hasOwnProperty("addImage")};
+    doc.text=function(t,x,y,opt){const fs=doc.getFontSize(),ls=Array.isArray(t)?t:[t],w=Math.max(0,...ls.map(v=>doc.getTextWidth(String(v)))),al=opt&&opt.align,x0=al==="center"?x-w/2:al==="right"?x-w:x;
+      grow(x0+dx,y+dy-fs*.8,x0+w+dx,y+dy+fs*.25+(ls.length-1)*fs*1.15);return T.call(doc,t,x+dx,y+dy,opt)};
+    doc.line=function(a,b,c,d,st){grow(a+dx,b+dy-1,c+dx,d+dy+1);return L.call(doc,a+dx,b+dy,c+dx,d+dy,st)};
+    doc.rect=function(x,y,w,h,st){grow(x+dx,y+dy,x+w+dx,y+h+dy);return R.call(doc,x+dx,y+dy,w,h,st)};
+    doc.addImage=function(src,fmt,x,y,w,h,...r){grow(x+dx,y+dy,x+w+dx,y+h+dy);return I.call(doc,src,fmt,x+dx,y+dy,w,h,...r)};
+    try{fn()}finally{
+      for(const [n,v] of [["text",T],["line",L],["rect",R],["addImage",I]]){if(own[n])doc[n]=v;else delete doc[n]}}
+    if(doc._boxes&&bx[0]<1e9)doc._boxes.push({k,x:bx[0],y:bx[1],w:bx[2]-bx[0],h:bx[3]-bx[1]});
+  }
   const PAGE={
     cover(doc,p,B){
       doc.setTextColor(26,26,26);doc.setFont("times","bold");
@@ -123,11 +150,11 @@
       let h=0;lines.forEach((l,i)=>h+=sizes[i]*1.3+(l.trim()?0:-sizes[i]*.6));
       const ed=+B.edition?ordinal(+B.edition)+" Annual Edition":"";
       if(p.src)h+=150;if(ed)h+=30;
-      let y=Math.max(M+30,(PH-h)/2);
-      lines.forEach((l,i)=>{doc.setFont("times",i===0||sizes[i]>14?"bold":"normal");doc.setFontSize(sizes[i]);
-        doc.splitTextToSize(pdfText(l),PW-2*M).forEach(x=>{doc.text(x,PW/2,y+sizes[i],{align:"center"});y+=sizes[i]*1.3})});
-      if(p.src){image(doc,p.src,M+30,y+10,PW-2*M-60,130);y+=150}
-      if(ed){doc.setFont("times","bold");doc.setFontSize(16);doc.text(ed,PW/2,y+24,{align:"center"})}
+      let y=Math.max(M+30,(PH-h)/2);const a=alignOf(p,"title","center");
+      sec(doc,p,"title",()=>lines.forEach((l,i)=>{font(doc,p,"title","times",i===0||sizes[i]>14,false);doc.setFontSize(sizes[i]);
+        doc.splitTextToSize(pdfText(l),PW-2*M).forEach(x=>{doc.text(x,ax(a),y+sizes[i],{align:a});y+=sizes[i]*1.3})}));
+      if(p.src){sec(doc,p,"picture",()=>image(doc,p.src,M+30,y+10,PW-2*M-60,130));y+=150}
+      if(ed)sec(doc,p,"edition",()=>{const a2=alignOf(p,"edition","center");font(doc,p,"edition","times",true,false);doc.setFontSize(sizeOf2(p,"edition")||16);doc.text(ed,ax(a2),y+24,{align:a2})});
     },
     picture(doc,p){
       const src=adOf(p);if(src)image(doc,src,0,0,PW,PH);
@@ -135,40 +162,45 @@
     },
     text(doc,p,B){
       doc.setTextColor(26,26,26);let y=M+6;
-      if(p.title){doc.setFont("times","bold");const t=fit(doc,pdfText(yr(B,p.title)),PW-2*M,80,20,12,1.2);
-        t.L.forEach(l=>{doc.text(l,PW/2,y+t.s,{align:"center"});y+=t.s*1.2});y+=8}
-      doc.setFont("times","normal");
-      const body=pdfText(yr(B,p.body||"")),r=fit(doc,body,PW-2*M,PH-30-y,12,6.5,1.3);
-      r.L.forEach(l=>{doc.text(l,p.center?PW/2:M,y+r.s,p.center?{align:"center"}:{});y+=r.s*1.3});
+      if(p.title)sec(doc,p,"header",()=>{const z=sizeOf2(p,"header"),a=alignOf(p,"header","center");font(doc,p,"header","times",true,false);
+        const t=fit(doc,pdfText(yr(B,p.title)),PW-2*M,z?PH:80,z||20,z||12,1.2);
+        t.L.forEach(l=>{doc.text(l,ax(a),y+t.s,{align:a});y+=t.s*1.2});y+=8});
+      sec(doc,p,"body",()=>{const z=sizeOf2(p,"body"),a=alignOf(p,"body",p.center?"center":"left");font(doc,p,"body","times",false,false);
+        const body=pdfText(yr(B,p.body||"")),r=fit(doc,body,PW-2*M,PH-30-y-Math.max(0,+stOf(p,"body").dy||0),z||12,z||6.5,1.3);
+        r.L.forEach(l=>{doc.text(l,ax(a),y+r.s,{align:a});y+=r.s*1.3})});
     },
     body(doc,p,B){
       doc.setTextColor(26,26,26);
       const emb=p.src?64:0,TW=PW-2*M-(emb?emb+6:0);
       let y=M+2;
-      if(p.src)image(doc,p.src,PW-M-emb,M,emb,emb);
-      doc.setFont("times","bold");
-      const tt=fit(doc,pdfText(p.title||"Lodge or body"),TW,92,24,13,1.12);
-      tt.L.forEach(l=>{doc.text(l,PW/2-(emb?(emb+6)/2:0),y+tt.s,{align:"center"});y+=tt.s*1.12});
+      if(p.src)sec(doc,p,"emblem",()=>image(doc,p.src,PW-M-emb,M,emb,emb));
+      sec(doc,p,"header",()=>{const z=sizeOf2(p,"header"),a=alignOf(p,"header","center");font(doc,p,"header","times",true,false);
+        const tt=fit(doc,pdfText(p.title||"Lodge or body"),TW,z?PH:92,z||24,z||13,1.12);
+        tt.L.forEach(l=>{doc.text(l,ax(a,M,PW-M-(emb?emb+6:0)),y+tt.s,{align:a});y+=tt.s*1.12})});
       y=Math.max(y+6,emb?M+emb+4:0);
       /* two columns: location and correspondence | stated communications */
       const CW=(PW-2*M)/2-4,X2=M+CW+8;
-      const col=(x,y0,head,text,sz)=>{let yy=y0;if(head){doc.setFont("times","bold");doc.setFontSize(11.5);doc.splitTextToSize(head,CW).forEach(l=>{doc.text(l,x,yy+11.5);yy+=13})}
-        doc.setFont("times","normal");doc.setFontSize(sz||10.5);
+      const IF=famOf(p,"info");
+      const col=(x,y0,head,text,sz)=>{let yy=y0;if(head){doc.setFont(IF,"bold");doc.setFontSize(11.5);doc.splitTextToSize(head,CW).forEach(l=>{doc.text(l,x,yy+11.5);yy+=13})}
+        doc.setFont(IF,"normal");doc.setFontSize(sz||10.5);
         pdfText(text).split("\n").forEach(par=>doc.splitTextToSize(par,CW).forEach(l=>{if(/@|^www\.|^https?:/i.test(l))doc.setTextColor(26,60,170);doc.text(l,x,yy+(sz||10.5));doc.setTextColor(26,26,26);yy+=(sz||10.5)*1.18}));
         return yy};
       let yl=y,yr2=y;
+      sec(doc,p,"info",()=>{
       if(p.loc)yl=col(M,yl,"Location:",p.loc)+6;
       const mail=[p.mail,p.email].filter(Boolean).join("\n");
       if(mail)yl=col(M,yl,"Correspondence to:",mail,10)+4;
       const meets=[p.meets,p.dinner?"Dinner: "+p.dinner:"",p.meetsNote].filter(Boolean).join("\n");
-      if(meets)yr2=col(X2,yr2,"Stated Communications:",meets)+4;
+      if(meets)yr2=col(X2,yr2,"Stated Communications:",meets)+4});
       y=Math.max(yl,yr2)+2;
       const offs=officersOf(p,B).filter(o=>o&&(o.t||o.n||o.p));
+      const OF=famOf(p,"officers"),nk=stOf(p,"notes");
+      const notes=pdfText(yr(B,p.notes||"")),noteH=notes&&!(+nk.dx||+nk.dy)?Math.min(80,doc.splitTextToSize(notes,PW-2*M).length*11+6):0;
+      sec(doc,p,"officers",()=>{
       doc.setLineWidth(1.6);doc.line(M-6,y,PW-M+6,y);y+=4;
-      doc.setFont("times","bold");doc.setFontSize(12.5);doc.text("Officers for "+B.year,PW/2,y+13,{align:"center"});y+=22;
-      const notes=pdfText(yr(B,p.notes||"")),noteH=notes?Math.min(80,doc.splitTextToSize(notes,PW-2*M).length*11+6):0;
+      doc.setFont(OF,"bold");doc.setFontSize(12.5);doc.text("Officers for "+B.year,PW/2,y+13,{align:"center"});y+=22;
       const room=PH-30-noteH-y,step=offs.length?Math.max(10,Math.min(26,room/offs.length)):0,sz=Math.min(10.5,Math.max(6.5,step*.62));
-      doc.setFont("times","normal");doc.setFontSize(sz);
+      doc.setFont(OF,"normal");doc.setFontSize(sz);
       const RW=Math.min(88,Math.max(56,...offs.map(o=>doc.getTextWidth(pdfText(o.t))))),NX=M+4+RW+6;
       offs.forEach(o=>{
         const ty=y+sz,rt=pdfText(o.t);
@@ -178,21 +210,25 @@
         if(doc.getTextWidth(nm)>room)doc.setFontSize(Math.max(6,sz*room/doc.getTextWidth(nm)));
         doc.text(nm,NX,ty);doc.setFontSize(sz);
         if(ph)doc.text(ph,PW-M-2,ty,{align:"right"});
-        y+=step});
-      if(notes){doc.setFontSize(8.5);doc.splitTextToSize(notes,PW-2*M).slice(0,7).forEach(l=>{doc.text(l,M,y+9);y+=11})}
+        y+=step})});
+      if(notes)sec(doc,p,"notes",()=>{const z=sizeOf2(p,"notes")||8.5,a=alignOf(p,"notes","left");font(doc,p,"notes","times",false,false);doc.setFontSize(z);
+        doc.splitTextToSize(notes,PW-2*M).slice(0,Math.max(7,Math.round(60/z))).forEach(l=>{doc.text(l,ax(a),y+z+.5,{align:a});y+=z*1.3})});
     },
     sponsors(doc,p,B,nos){
       doc.setTextColor(26,26,26);let y=M+4;
-      doc.setFont("times","normal");doc.setFontSize(20);doc.text(pdfText(p.title||"Sponsor Index"),PW/2,y+20,{align:"center"});y+=28;
-      if(p.body){doc.setFontSize(10);doc.splitTextToSize(pdfText(yr(B,p.body)),PW-2*M).forEach(l=>{doc.text(l,M,y+10);y+=11.5});y+=6}
+      sec(doc,p,"header",()=>{const z=sizeOf2(p,"header")||20,a=alignOf(p,"header","center");font(doc,p,"header","times",false,false);doc.setFontSize(z);
+        doc.splitTextToSize(pdfText(p.title||"Sponsor Index"),PW-2*M).forEach(l=>{doc.text(l,ax(a),y+z,{align:a});y+=z*1.2});y+=4});
+      if(p.body)sec(doc,p,"body",()=>{const z=sizeOf2(p,"body")||10,a=alignOf(p,"body","left");font(doc,p,"body","times",false,false);doc.setFontSize(z);
+        doc.splitTextToSize(pdfText(yr(B,p.body)),PW-2*M).forEach(l=>{doc.text(l,ax(a),y+z,{align:a});y+=z*1.15});y+=6});
       const rows=sponsorRows(B,nos),min=Math.max(rows.length,+p.rows||0);
       const x1=M,x2=PW-M-46,x3=PW-M,rh=15;
-      doc.setFont("times","bold");doc.setFontSize(12);doc.text("Business",(x1+x2)/2,y+11,{align:"center"});doc.text("Page",(x2+x3)/2,y+11,{align:"center"});y+=15;
-      doc.setLineWidth(.6);doc.setFont("times","normal");doc.setFontSize(10);
+      const TF=famOf(p,"table");sec(doc,p,"table",()=>{
+      doc.setFont(TF,"bold");doc.setFontSize(12);doc.text("Business",(x1+x2)/2,y+11,{align:"center"});doc.text("Page",(x2+x3)/2,y+11,{align:"center"});y+=15;
+      doc.setLineWidth(.6);doc.setFont(TF,"normal");doc.setFontSize(10);
       for(let i=0;i<min&&y+rh<PH-24;i++){
         doc.rect(x1,y,x2-x1,rh);doc.rect(x2,y,x3-x2,rh);
         const r=rows[i];if(r){doc.text(doc.splitTextToSize(pdfText(r.name),x2-x1-8)[0],x1+4,y+11);doc.text(String(r.no||""),(x2+x3)/2,y+11,{align:"center"})}
-        y+=rh}
+        y+=rh}})
     },
     calendar(doc,p,B){
       /* drawn sideways, as in the printed book: the month reads up the page */
@@ -719,7 +755,7 @@
         form=`<p class="bb-note">This is <b>${esc(x.name)}</b>'s ad. It's kept on the <a href="#sponsors">Sponsors tab</a> with the rest of their details: a new ad picked here or there replaces it in both places. Untick "In the book" there to take it out.</p>
         <div class="field"><label>Their ad</label>${x.ad?`<img class="bb-pic" src="${esc(x.ad)}" alt="">`:'<p class="hint" style="margin:0">No ad picture yet.</p>'}<span class="ct-adds"><label class="btn line sm">${x.ad?"Replace the ad":"Add the ad"}<input type="file" accept="image/*" hidden data-spic></label></span></div>`}
       else if(p.k==="picture")form=`${F("sponsor","Sponsor (for the sponsor index; leave empty for artwork)")}${pic(p,"The page as a picture")}<p class="hint">For a new ad, use + Add a sponsor so it's kept on the Sponsors tab too. A picture the shape of the page fills it (${sizeName(sizeOf(B))}).</p>`;
-      else form=`${F("title","Heading")}${F("body","Text",14)}<label class="check"><input type="checkbox" data-c="center"${p.center?" checked":""}> Center the lines</label>`;
+      else form=`${F("title","Heading")}${F("body","Text",14)}`;
       el.innerHTML=`<div class="bb-pg">
         <div class="bb-pgh"><h3>${esc(label(p))}</h3><span class="hint">${esc(KN[p.k])}${p.from?` · page ${p.from} of ${esc(B.source||"the imported PDF")}`:""}</span></div>
         ${canEdit?`<div class="bb-pga">
@@ -727,9 +763,63 @@
           <select data-kind aria-label="Kind of page">${KINDS.map(([k,n])=>`<option value="${k}"${p.k===k?" selected":""}>${n}</option>`).join("")}</select>
           <button type="button" class="btn line sm" data-mv="-1"${i?"":" disabled"} aria-label="Move page up">↑</button><button type="button" class="btn line sm" data-mv="1"${i<B.pages.length-1?"":" disabled"} aria-label="Move page down">↓</button>
           <button type="button" class="btn line sm" data-dup>Copy</button><button type="button" class="btn line sm" data-del>Delete</button></div>`:""}
-        <div class="bb-cols"><div class="bb-form">${form}</div><figure class="bb-prev"><canvas></canvas><figcaption class="hint">As printed, ${sizeName(sizeOf(B))}</figcaption></figure></div>
+        <div class="bb-cols"><div class="bb-form">${canEdit&&SECS[p.k]?'<div class="bb-tools"></div>':""}${form}</div><figure class="bb-prev"><div class="bb-cv"><canvas></canvas><div class="bb-ov"></div></div><figcaption class="hint">As printed, ${sizeName(sizeOf(B))}</figcaption></figure></div>
       </div>`;
-      wire(el,p,i);preview();
+      wire(el,p,i);tools(p);preview();
+    }
+    /* the style bar: pick a section (or click it on the page), then its font, bold, italic, size and alignment */
+    const SIZES_PT=[7,8,9,10,11,12,13,14,16,18,20,22,24,28,32,36,40,48];
+    function setSt(p,k,key,v){p.st=p.st||{};const o=p.st[k]=p.st[k]||{};if(v==null||v===""||v===false&&key!=="b"&&key!=="i")delete o[key];else o[key]=v;
+      if(!Object.keys(o).length)delete p.st[k];if(!Object.keys(p.st).length)delete p.st}
+    function tools(p){
+      const T=box.querySelector(".bb-tools"),L=SECS[p.k];if(!T||!L)return;
+      if(!L.some(x=>x[0]===s.sec))s.sec=L[0][0];
+      const [k,name,can]=L.find(x=>x[0]===s.sec),o=stOf(p,k),has=c=>can.includes(c);
+      const defA={cover:"center"}[p.k]||(k==="body"&&p.k==="text"?(p.center?"center":"left"):k==="header"||k==="title"||k==="edition"?"center":"left");
+      const a=o.a||defA,moved=+o.dx||+o.dy,defB=(k==="header"&&p.k!=="sponsors")||k==="edition",eff=key=>o[key]!=null?o[key]:key==="b"&&defB;
+      T.innerHTML=`<div class="bb-tsec" role="group" aria-label="Section">${L.map(([kk,n])=>`<button type="button" class="bb-tb" data-sec="${kk}" aria-pressed="${kk===k}">${esc(n)}</button>`).join("")}</div>
+        <div class="bb-trow">
+          ${has("f")?`<select data-tf aria-label="Font"><option value="">Font: as printed</option>${FONTS.map(([v,n])=>`<option value="${v}"${o.f===v?" selected":""}>${n}</option>`).join("")}</select>`:""}
+          ${has("b")?`<button type="button" class="bb-tb bb-b" data-tb="b" aria-pressed="${!!eff("b")}" title="Bold" aria-label="Bold">B</button>`:""}
+          ${has("i")?`<button type="button" class="bb-tb bb-i" data-tb="i" aria-pressed="${!!eff("i")}" title="Italic" aria-label="Italic">I</button>`:""}
+          ${has("s")?`<select data-ts aria-label="Size"><option value="">Size: fit</option>${SIZES_PT.map(n=>`<option value="${n}"${+o.s===n?" selected":""}>${n} pt</option>`).join("")}</select>`:""}
+          ${has("a")?`<span class="bb-tsec" role="group" aria-label="Alignment">${[["left","Left","M3 4h14M3 8h9M3 12h14M3 16h9"],["center","Center","M3 4h14M6 8h8M3 12h14M6 16h8"],["right","Right","M3 4h14M8 8h9M3 12h14M8 16h9"]].map(([v,n,d])=>`<button type="button" class="bb-tb" data-ta="${v}" aria-pressed="${a===v}" title="Align ${n.toLowerCase()}" aria-label="Align ${n.toLowerCase()}"><svg width="18" height="18" viewBox="0 0 20 20" aria-hidden="true"><path d="${d}" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round"/></svg></button>`).join("")}</span>`:""}
+          <span class="bb-sp"></span>
+          ${moved?'<button type="button" class="link-btn" data-tm>Put back in place</button>':""}${p.st&&p.st[k]?'<button type="button" class="link-btn" data-tr>Reset this section</button>':""}
+        </div>
+        <p class="hint bb-th">Drag any section on the page to move it. Click one to style it; arrow keys nudge it (Shift for bigger steps).</p>`;
+      const up=()=>{tools(p);changed(false)};
+      T.querySelectorAll("[data-sec]").forEach(b=>b.addEventListener("click",()=>{s.sec=b.dataset.sec;tools(p);marks()}));
+      const tf=T.querySelector("[data-tf]");if(tf)tf.addEventListener("change",()=>{setSt(p,k,"f",tf.value);up()});
+      const ts=T.querySelector("[data-ts]");if(ts)ts.addEventListener("change",()=>{setSt(p,k,"s",+ts.value||null);up()});
+      T.querySelectorAll("[data-tb]").forEach(b=>b.addEventListener("click",()=>{const key=b.dataset.tb,nv=!eff(key),dv=key==="b"&&defB;setSt(p,k,key,nv===dv?null:nv);up()}));
+      T.querySelectorAll("[data-ta]").forEach(b=>b.addEventListener("click",()=>{setSt(p,k,"a",b.dataset.ta===defA?null:b.dataset.ta);up()}));
+      const tm=T.querySelector("[data-tm]");if(tm)tm.addEventListener("click",()=>{setSt(p,k,"dx",null);setSt(p,k,"dy",null);up()});
+      const tr=T.querySelector("[data-tr]");if(tr)tr.addEventListener("click",()=>{if(p.st)delete p.st[k];if(p.st&&!Object.keys(p.st).length)delete p.st;if(p.k==="text"&&k==="body")delete p.center;up()});
+    }
+    function marks(){box.querySelectorAll(".bb-hb").forEach(b=>b.classList.toggle("on",b.dataset.k===s.sec))}
+    /* boxes over the preview, one per section, to drag */
+    function overlay(boxes,k){
+      const ov=box.querySelector(".bb-ov"),p=B.pages.find(x=>x.id===s.sel);if(!ov||!p)return;
+      const L=SECS[p.k];ov.innerHTML="";if(!canEdit||!L)return;
+      const had=document.activeElement&&document.activeElement.classList.contains("bb-hb")?document.activeElement.dataset.k:null;
+      for(const bx of boxes){const n=(L.find(x=>x[0]===bx.k)||[])[1];if(!n)continue;
+        const d=document.createElement("div");d.className="bb-hb"+(bx.k===s.sec?" on":"");d.dataset.k=bx.k;d.tabIndex=0;d.setAttribute("role","button");
+        d.setAttribute("aria-label",`${n}: drag to move, or use the arrow keys`);d.title=n;
+        Object.assign(d.style,{left:(bx.x*k-3)+"px",top:(bx.y*k-3)+"px",width:(bx.w*k+6)+"px",height:(bx.h*k+6)+"px"});
+        d.innerHTML=`<span>${esc(n)}</span>`;ov.appendChild(d);
+        const move=(ddx,ddy)=>{const o=stOf(p,bx.k);setSt(p,bx.k,"dx",Math.round((+o.dx||0)+ddx)||null);setSt(p,bx.k,"dy",Math.round((+o.dy||0)+ddy)||null);s.sec=bx.k;tools(p);changed(false)};
+        d.addEventListener("pointerdown",e=>{if(e.button)return;e.preventDefault();d.setPointerCapture(e.pointerId);d.focus();
+          const x0=e.clientX,y0=e.clientY;let mx=0,my=0;d.classList.add("drag");
+          const mv=ev=>{mx=ev.clientX-x0;my=ev.clientY-y0;d.style.transform=`translate(${mx}px,${my}px)`};
+          const end=()=>{d.removeEventListener("pointermove",mv);d.removeEventListener("pointerup",end);d.removeEventListener("pointercancel",end);d.classList.remove("drag");
+            if(Math.abs(mx)+Math.abs(my)>3)move(mx/k,my/k);else{d.style.transform="";s.sec=bx.k;tools(p);marks()}};
+          d.addEventListener("pointermove",mv);d.addEventListener("pointerup",end);d.addEventListener("pointercancel",end)});
+        d.addEventListener("keydown",e=>{const st=e.shiftKey?10:1,m={ArrowLeft:[-st,0],ArrowRight:[st,0],ArrowUp:[0,-st],ArrowDown:[0,st]}[e.key];
+          if(m){e.preventDefault();d.style.transform=`translate(${(m[0])*k}px,${m[1]*k}px)`;move(m[0],m[1])}
+          else if(e.key==="Enter"||e.key===" "){e.preventDefault();s.sec=bx.k;tools(p);marks()}});
+        if(had===bx.k)d.focus();
+      }
     }
     const pic=(p,n)=>`<div class="field"><label>${n}</label>${p.src?`<img class="bb-pic" src="${esc(p.src)}" alt="">`:""}<span class="ct-adds"><label class="btn line sm">${p.src?"Replace":"Add a picture"}<input type="file" accept="image/*" hidden data-pic></label>${p.src?'<button type="button" class="link-btn" data-unpic>Remove</button>':""}</span></div>`;
     const listEd=(key,n,cols)=>`<div class="field"><label>${n}</label><div class="bb-lst" data-l="${key}">${B[key].map((x,j)=>`<div class="bb-off">${cols.map(([c,cn,ph,type])=>`<input data-lc="${c}" data-j="${j}" type="${type||"text"}" value="${esc(x[c]||"")}" placeholder="${esc(ph||cn)}" aria-label="${esc(cn)}">`).join("")}<span class="ct-rowbtns"><button type="button" class="btn line sm" data-lx="${j}" aria-label="Remove">✕</button></span></div>`).join("")}</div>
@@ -799,6 +889,7 @@
         const page=await pdf.getPage(1),dpr=Math.min(window.devicePixelRatio||1,2),w=Math.min(300,(c.parentElement.clientWidth||300),675*PW/PH),vp=page.getViewport({scale:w/PW*dpr});
         c.width=Math.round(vp.width);c.height=Math.round(vp.height);c.style.width=w+"px";
         await page.render({canvasContext:c.getContext("2d"),viewport:vp}).promise;pdf.destroy();
+        if(me===run)overlay(doc._boxes||[],w/PW);
       }catch(e){if(me===run){const f=box.querySelector(".bb-prev figcaption");if(f)f.textContent="Couldn't draw this page: "+(e.message||e)}}
     },250)}
     drawList();drawPage();
@@ -857,6 +948,19 @@
 .bb-dg{max-width:100%;height:auto;overflow:visible}.bb-dg rect{fill:none;stroke:var(--muted);stroke-width:.8;stroke-dasharray:3 2}
 .bb-dg rect.on{fill:var(--ct);fill-opacity:.22;stroke:var(--ct);stroke-width:2;stroke-dasharray:none}
 .bb-dg text{font-size:10px;fill:var(--muted)}.bb-dg .dim line{stroke:var(--fg);stroke-width:1}.bb-dg .dim text{fill:var(--fg);font-weight:600}
+.bb-tools{display:grid;gap:8px;padding:10px;border:1px solid var(--line);background:var(--surface)}
+.bb-tsec{display:inline-flex;flex-wrap:wrap;gap:4px}.bb-trow{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.bb-tools select{width:auto!important;padding:6px 8px!important;font-size:13px!important}
+.bb-tb{border:1px solid var(--line);background:var(--bg);color:var(--fg);font:inherit;font-size:13px;padding:5px 10px;min-height:32px;cursor:pointer;display:inline-flex;align-items:center}
+.bb-tb[aria-pressed="true"]{background:var(--ct);border-color:var(--ct);color:#fff}
+.bb-b{font-weight:700;font-family:Georgia,serif}.bb-i{font-style:italic;font-family:Georgia,serif}.bb-th{margin:0;font-size:12px}
+.bb-cv{position:relative;line-height:0}.bb-ov{position:absolute;inset:0}
+.bb-hb{position:absolute;border:1px dashed transparent;cursor:grab;touch-action:none;outline:none}
+.bb-ov:hover .bb-hb{border-color:rgba(47,74,109,.35)}
+.bb-hb:hover,.bb-hb:focus-visible,.bb-hb.on{border:1.5px solid var(--ct);background:rgba(47,74,109,.05)}
+.bb-hb.drag{cursor:grabbing;background:rgba(47,74,109,.1);z-index:2}
+.bb-hb span{position:absolute;top:-18px;left:-1px;font:600 10.5px/1 system-ui,sans-serif;background:var(--ct);color:#fff;padding:3px 5px;white-space:nowrap;display:none}
+.bb-hb:hover span,.bb-hb.on span,.bb-hb:focus-visible span{display:block}
 .bb-prev canvas{width:300px;max-width:100%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.2),0 6px 18px rgba(0,0,0,.08)}`;
   document.head.appendChild(css);
 
