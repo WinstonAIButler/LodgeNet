@@ -12,10 +12,14 @@
   const store={get(){try{const v=JSON.parse(localStorage.getItem(NEXT_KEY)||"null");return v&&Date.now()-v.t<7*864e5?okNext(v.next):null}catch(e){return null}},
     set(n){try{localStorage.setItem(NEXT_KEY,JSON.stringify({next:n,t:Date.now()}))}catch(e){}},
     clear(){try{localStorage.removeItem(NEXT_KEY)}catch(e){}}};
-  const next=okNext(new URLSearchParams(location.search).get("next"))||store.get();
+  /* an invitation email from Settings → People comes back to /login?invited=<lodge slug> */
+  const INVITED=(new URLSearchParams(location.search).get("invited")||"").replace(/[^a-z0-9-]/gi,"");
+  const next=okNext(new URLSearchParams(location.search).get("next"))||(INVITED?"/lodges/"+INVITED:null)||store.get();
   /* read before the client takes the tokens out of the address */
   const HASH=new URLSearchParams(location.hash.slice(1));
   let recovering=HASH.get("type")==="recovery";
+  /* a new person's invitation link signs them in with no password yet: they choose one first */
+  const inviting=HASH.get("type")==="invite";
   let sb=null,mode="in";
 
   function show(id){["loading","v-off","v-out","v-reset","v-in"].forEach(v=>$("#"+v).hidden=v!==id)}
@@ -186,6 +190,13 @@
     sb.auth.onAuthStateChange(ev=>{if(ev==="PASSWORD_RECOVERY"){recovering=true;show("v-reset")}});
     const s=await A.session();
     if(recovering&&s){show("v-reset");return}
+    if(inviting&&s){
+      const m=s.user.user_metadata||{};
+      $("#head-title").textContent="You're invited";$("#head-text").textContent="Finish setting up your LodgeNet account.";
+      $("#r-title").textContent="Welcome to LodgeNet";
+      $("#r-text").textContent=`${m.invited_by?m.invited_by+" added you":"You've been added"} to ${m.invited_to||"your lodge"}'s dashboard as ${s.user.email}. Create a password so you can sign in any time.`;
+      $("#r-text").hidden=false;$("#r-go").textContent="Create password and open the dashboard";
+      show("v-reset");$("#r-pass").focus();return}
     if(s)return signedIn(s);
     show("v-out");
     window.LodgeNetOAuth.render($("#oauth-box"),back(),()=>{if(next)store.set(next)});
