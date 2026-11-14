@@ -1204,3 +1204,18 @@ body.bx-dragging #bld-canvas .bx-txt,body.bx-dragging #bld-canvas iframe{pointer
 .dist-off-t input{width:100%;min-width:0;padding:6px 7px;border:1px solid transparent;background:transparent;color:var(--fg);font:inherit}
 .dist-off-t input:hover,.dist-off-t input:focus{border-color:var(--line);background:var(--surface)}
 .dist-off-t td:first-child{width:36%}.dist-off-t td:nth-child(3){width:28%}.dist-off-t td:last-child{width:28px}
+
+/* Website editor: nested menu items, the picture library, text style */
+.bld-pages li{margin-left:calc(var(--d,0) * 18px)}
+.bld-lib{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:12px}
+.bld-libtile{margin:0;border:1px solid var(--ed-line);border-radius:8px;overflow:hidden;background:var(--ed-chrome)}
+.bld-libtile img{width:100%;aspect-ratio:4/3;object-fit:cover;display:block}
+.bld-libacts{display:flex;gap:6px;padding:6px;justify-content:space-between;align-items:center}
+.bld-libacts .btn svg{width:14px;height:14px}
+.bld-libpick{margin-top:8px}
+.bld-libpick summary{cursor:pointer;font-size:13px;color:var(--ed-accent,var(--link))}
+.bld-libgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:8px;max-height:220px;overflow:auto}
+.bld-libgrid button{padding:0;border:2px solid transparent;border-radius:6px;overflow:hidden;cursor:pointer;background:none}
+.bld-libgrid button:hover,.bld-libgrid button:focus-visible{border-color:var(--ed-accent,var(--link))}
+.bld-libgrid img{width:100%;aspect-ratio:1;object-fit:cover;display:block}
+.bld-colrow input[type=color]{width:42px;height:32px;padding:2px;border:1px solid var(--ed-line);border-radius:6px;background:none;cursor:pointer}

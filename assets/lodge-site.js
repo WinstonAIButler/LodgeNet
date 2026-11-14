@@ -55,7 +55,9 @@
     const md=document.querySelector('meta[name="description"]');
     if(md)md.content=`${title}${place?", "+place:""}.${site.schedule?" "+(site.meetings||"Stated Communications")+" "+site.schedule+".":""}`;
     const th=Object.assign({},L.THEME,(site.layout&&site.layout.theme)||{});
-    if(th.font!=="modern"){const f=document.createElement("link");f.rel="stylesheet";f.href=L.fontHref(th.font);document.head.appendChild(f)}
+    /* the site's font and any a section picked for itself (Modern is in the page already) */
+    (L.usedFonts?L.usedFonts(site):[th.font]).filter(k=>k!=="modern").forEach(k=>{const f=document.createElement("link");f.rel="stylesheet";f.href=L.fontHref(k);document.head.appendChild(f)});
+    if(o.page&&o.page.kind==="link"){const u=L.safeHref(o.page.url);if(u){location.replace(u);return}o.page=null;o.view="404"}
     if(o.page&&o.page.members)return membersPage(site,o,cfg);
     paint(site,o);
   }
