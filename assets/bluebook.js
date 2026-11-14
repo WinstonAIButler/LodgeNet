@@ -1,5 +1,5 @@
 /* The "Blue Book" layout for a lodge's own tabs (custom-tabs.js): a yearly directory and calendar book, kept page for page
-   in the order and look of the printed book (4 × 9 in pages), so officers bring it up to date each year instead of
+   in the order and look of the printed book (4 × 9 in pages, or any common booklet size picked under Page size), so officers bring it up to date each year instead of
    rebuilding it. Start it from last year's PDF (Import from PDF) and every page comes in as one of:
      cover     the front: year, title lines, edition
      body      a lodge or body: name, location, stated communications, correspondence and the officers table
@@ -13,7 +13,20 @@
    and reads the PDF on import. Both load only when needed. */
 (function(){
   const PDFJS="/assets/vendor/pdf.min.js",PDFJS_WORKER="/assets/vendor/pdf.worker.min.js",JSPDF="/assets/vendor/jspdf.umd.min.js";
-  const PW=288,PH=648,M=18;                      /* page in points: 4 × 9 in, 1/4 in margins */
+  let PW=288,PH=648;const M=18;                  /* page in points (72 to the inch), 1/4 in margins; set from the book's size */
+  /* the common booklet sizes, in points; the first is the size every book had before sizes could be picked */
+  const SIZES=[
+    {id:"4x9",name:"Slim",w:288,h:648,note:"Rack card size. Mails in a #10 envelope."},
+    {id:"4.25x5.5",name:"Pocket",w:306,h:396,note:"A quarter of a letter sheet. Mails in an A2 envelope."},
+    {id:"a6",name:"A6",w:297.64,h:419.53,note:"International pocket size. Mails in a C6 envelope."},
+    {id:"5.5x8.5",name:"Half letter",w:396,h:612,note:"The most common booklet: letter sheets folded in half. Mails in a 6 × 9 envelope."},
+    {id:"a5",name:"A5",w:419.53,h:595.28,note:"International half sheet. Mails in a C5 envelope."},
+    {id:"6x9",name:"Trade",w:432,h:648,note:"Paperback book size. Mails in a 6½ × 9½ envelope."},
+    {id:"8.5x11",name:"Letter",w:612,h:792,note:"Full letter sheet, folded from 11 × 17. Mails in a 9 × 12 envelope."}];
+  const sizeOf=B=>SIZES.find(x=>x.id===(B&&B.size))||SIZES[0];
+  const inch=pt=>String(+(pt/72).toFixed(2));
+  const sizeName=z=>`${inch(z.w)} × ${inch(z.h)} in`;
+  function setSize(B){const z=sizeOf(B);PW=z.w;PH=z.h;return z}
   const PIC_W=640,PIC_Q=.78,WARN_BYTES=8e6;
   const MONTHS=["January","February","March","April","May","June","July","August","September","October","November","December"];
   const DAYS=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
@@ -72,7 +85,7 @@
     return out;
   }
   async function draw(B,only){
-    const J=await jspdf(),doc=new J({unit:"pt",format:[PW,PH],orientation:"portrait"});
+    const J=await jspdf();setSize(B);const doc=new J({unit:"pt",format:[PW,PH],orientation:"portrait"});
     const nos=pageNos(B),list=only?B.pages.filter(p=>only.includes(p.id)):B.pages;
     for(let i=0;i<list.length;i++){
       if(i)doc.addPage([PW,PH],"portrait");
@@ -194,7 +207,8 @@
       doc.setFillColor(214,220,230);const[fx,fy]=T(gx,gy+28);doc.rect(fx,fy-gw,hh+0,gw,"F");
       text(MONTHS[m].toUpperCase()+" "+y0,gx+gw/2,gy+21,"center",12,true);
       doc.setLineWidth(.9);line(gx,gy+28,gx+gw,gy+28);
-      DAYS.forEach((d,i)=>text(d.toUpperCase(),gx+cw*i+cw/2,top+12,"center",8.5,true));
+      doc.setFont("helvetica","bold");doc.setFontSize(8.5);const dw=Math.max(...DAYS.map(d=>doc.getTextWidth(d.toUpperCase()))),ds=Math.min(8.5,8.5*(cw-4)/dw);
+      DAYS.forEach((d,i)=>text(ds<6?d.slice(0,3).toUpperCase():d.toUpperCase(),gx+cw*i+cw/2,top+12,"center",ds<6?8:ds,true));
       doc.setLineWidth(.8);line(gx,top,gx+gw,top);line(gx,top+hh,gx+gw,top+hh);
       for(let w=0;w<=weeks;w++)line(gx,top+hh+ch*w,gx+gw,top+hh+ch*w);
       for(let i=0;i<=7;i++)line(gx+cw*i,top,gx+cw*i,top+hh+ch*weeks);
@@ -551,11 +565,13 @@
     box.innerHTML=`<div class="bb">
       <div class="bb-bar">
         <div class="bb-ed"><b class="bb-year"></b><span class="hint bb-prog"></span></div><span class="bb-sp"></span>
+        ${canEdit?`<button type="button" class="btn line sm" data-size aria-expanded="false" aria-controls="bb-sz-${esc(t.id)}"></button>`:'<span class="hint bb-szl"></span>'}
         ${canEdit?`<label class="btn line sm">Import from PDF<input type="file" accept="application/pdf,.pdf" hidden data-imp></label>
         <button type="button" class="btn line sm" data-next>Start the next year's book</button>`:""}
         <button type="button" class="btn sm" data-out>Download the Blue Book (PDF)</button>
       </div>
       <p class="hint bb-msg" role="status"></p>
+      ${canEdit?`<div class="bb-box bb-sizes" id="bb-sz-${esc(t.id)}" hidden></div>`:""}
       <div class="bb-main"><div class="bb-side"><ol class="bb-list" aria-label="Pages"></ol>
         ${canEdit?'<div class="bb-adds"><button type="button" class="btn line sm" data-addp>+ Add a section</button><button type="button" class="btn line sm" data-adds>+ Add a sponsor</button></div><div class="bb-slot"></div>':""}</div>
         <div class="bb-page"></div></div>
@@ -571,7 +587,41 @@
     }
     head();
 
+    /* the page size: cards for the common sizes, each drawn to scale, and a diagram of the chosen one against the others */
+    function sizeUI(){
+      const z=sizeOf(B),b=$("[data-size]"),l=$(".bb-szl"),f=box.querySelector(".bb-prev figcaption");
+      if(b)b.textContent="Page size: "+sizeName(z);if(l)l.textContent="Pages "+sizeName(z);
+      if(f)f.textContent="As printed, "+sizeName(z);
+      const P=$(".bb-sizes");if(!P||P.hidden)return;
+      const n=B.pages.length,pad=n%4?4-n%4:0;
+      P.innerHTML=`<div class="bb-szh"><b>Size of the book's pages</b><span class="hint">Every page is drawn again at the new size. Type stays the same size; long text shrinks to fit a smaller page, and ads keep their shape with white space around them if the shapes differ.</span></div>
+        <div class="bb-szw"><div class="bb-szs" role="radiogroup" aria-label="Page size">${SIZES.map(x=>{const k=5/72;return `<label class="bb-sz${x===z?" on":""}">
+          <input type="radio" name="bbsz-${esc(t.id)}" value="${x.id}"${x===z?" checked":""}>
+          <svg class="bb-szt" width="44" height="57" viewBox="0 0 44 57" aria-hidden="true"><rect x="${(44-x.w*k)/2}" y="${57-x.h*k}" width="${x.w*k}" height="${x.h*k}"/></svg>
+          <span><b>${esc(x.name)}</b><span class="bb-szd">${sizeName(x)}</span>${x===SIZES[0]?'<span class="hint">The imported book</span>':""}</span></label>`}).join("")}</div>
+        <figure class="bb-dgf">${diagram(z)}<figcaption><b>${esc(z.name)}, ${sizeName(z)}</b><span class="hint">${esc(z.note)}</span>
+          ${n?`<span class="hint">${n} pages${pad?`. Booklets print in sets of 4 pages, so the printer will add ${pad} blank page${pad>1?"s":""} unless you add ${pad>1?"them":"one"}`:", a whole number of 4-page sets"}.</span>`:""}</figcaption></figure></div>`;
+      P.querySelectorAll("input[type=radio]").forEach(r=>r.addEventListener("change",()=>{if(!r.checked)return;B.size=r.value;
+        msg(`Pages are now ${sizeName(sizeOf(B))}. Look through the pages before you download: a smaller page fits less on each one.`);
+        sizeUI();changed(false);const q=P.querySelector(`input[value="${CSS.escape(r.value)}"]`);if(q)q.focus()}));
+    }
+    /* every size outlined to scale from the same corner, the chosen one filled and measured */
+    function diagram(z){
+      const k=190/792,L=30,T=8,bw=612*k,bh=792*k,W=L+bw+56,H=T+bh+30,yb=T+bh;
+      const r=x=>`<rect class="${x===z?"on":""}" x="${L}" y="${(yb-x.h*k).toFixed(1)}" width="${(x.w*k).toFixed(1)}" height="${(x.h*k).toFixed(1)}"/>`;
+      const zw=z.w*k,zh=z.h*k;
+      return `<svg class="bb-dg" viewBox="0 0 ${W.toFixed(0)} ${H.toFixed(0)}" width="${W.toFixed(0)}" height="${H.toFixed(0)}" role="img" aria-label="${esc(z.name)} page, ${sizeName(z)}, drawn to scale against the other sizes">
+        ${SIZES.filter(x=>x!==z).map(r).join("")}${r(z)}
+        <text class="ref" x="${L+bw-3}" y="${T+11}" text-anchor="end">Letter</text>
+        <g class="dim"><line x1="${L}" y1="${yb+10}" x2="${L+zw}" y2="${yb+10}"/><line x1="${L}" y1="${yb+6}" x2="${L}" y2="${yb+14}"/><line x1="${L+zw}" y1="${yb+6}" x2="${L+zw}" y2="${yb+14}"/>
+        <text x="${L+zw/2}" y="${yb+25}" text-anchor="middle">${inch(z.w)} in</text>
+        <line x1="${L-10}" y1="${yb}" x2="${L-10}" y2="${yb-zh}"/><line x1="${L-14}" y1="${yb}" x2="${L-6}" y2="${yb}"/><line x1="${L-14}" y1="${yb-zh}" x2="${L-6}" y2="${yb-zh}"/>
+        <text x="${L-14}" y="${yb-zh/2}" text-anchor="middle" transform="rotate(-90 ${L-14} ${yb-zh/2})" dy="-3">${inch(z.h)} in</text></g></svg>`;
+    }
+    sizeUI();
+
     if(canEdit){
+      $("[data-size]").addEventListener("click",e=>{const P=$(".bb-sizes"),open=P.hidden;P.hidden=!open;e.currentTarget.setAttribute("aria-expanded",String(open));sizeUI()});
       $("[data-imp]").addEventListener("change",async e=>{const f=e.target.files[0];e.target.value="";if(!f)return;
         if(B.pages.length&&!confirm(`Replace the ${B.pages.length} pages in this book with the pages of ${f.name}? Anything typed here will be replaced.`))return;
         try{s.busy=true;const r=await importPdf(f,m=>msg(m));
@@ -668,7 +718,7 @@
       else if(p.k==="picture"&&sponsorOf(p)){const x=sponsorOf(p);
         form=`<p class="bb-note">This is <b>${esc(x.name)}</b>'s ad. It's kept on the <a href="#sponsors">Sponsors tab</a> with the rest of their details: a new ad picked here or there replaces it in both places. Untick "In the book" there to take it out.</p>
         <div class="field"><label>Their ad</label>${x.ad?`<img class="bb-pic" src="${esc(x.ad)}" alt="">`:'<p class="hint" style="margin:0">No ad picture yet.</p>'}<span class="ct-adds"><label class="btn line sm">${x.ad?"Replace the ad":"Add the ad"}<input type="file" accept="image/*" hidden data-spic></label></span></div>`}
-      else if(p.k==="picture")form=`${F("sponsor","Sponsor (for the sponsor index; leave empty for artwork)")}${pic(p,"The page as a picture")}<p class="hint">For a new ad, use + Add a sponsor so it's kept on the Sponsors tab too. A tall picture fills the 4 × 9 in page.</p>`;
+      else if(p.k==="picture")form=`${F("sponsor","Sponsor (for the sponsor index; leave empty for artwork)")}${pic(p,"The page as a picture")}<p class="hint">For a new ad, use + Add a sponsor so it's kept on the Sponsors tab too. A picture the shape of the page fills it (${sizeName(sizeOf(B))}).</p>`;
       else form=`${F("title","Heading")}${F("body","Text",14)}<label class="check"><input type="checkbox" data-c="center"${p.center?" checked":""}> Center the lines</label>`;
       el.innerHTML=`<div class="bb-pg">
         <div class="bb-pgh"><h3>${esc(label(p))}</h3><span class="hint">${esc(KN[p.k])}${p.from?` · page ${p.from} of ${esc(B.source||"the imported PDF")}`:""}</span></div>
@@ -677,7 +727,7 @@
           <select data-kind aria-label="Kind of page">${KINDS.map(([k,n])=>`<option value="${k}"${p.k===k?" selected":""}>${n}</option>`).join("")}</select>
           <button type="button" class="btn line sm" data-mv="-1"${i?"":" disabled"} aria-label="Move page up">↑</button><button type="button" class="btn line sm" data-mv="1"${i<B.pages.length-1?"":" disabled"} aria-label="Move page down">↓</button>
           <button type="button" class="btn line sm" data-dup>Copy</button><button type="button" class="btn line sm" data-del>Delete</button></div>`:""}
-        <div class="bb-cols"><div class="bb-form">${form}</div><figure class="bb-prev"><canvas></canvas><figcaption class="hint">As printed, 4 × 9 in</figcaption></figure></div>
+        <div class="bb-cols"><div class="bb-form">${form}</div><figure class="bb-prev"><canvas></canvas><figcaption class="hint">As printed, ${sizeName(sizeOf(B))}</figcaption></figure></div>
       </div>`;
       wire(el,p,i);preview();
     }
@@ -746,7 +796,7 @@
       const c=box.querySelector(".bb-prev canvas"),id=s.sel,me=++run;if(!c||!id)return;
       try{const doc=await draw(B,[id]),lib=await pdfjs(),pdf=await lib.getDocument({data:doc.output("arraybuffer")}).promise;
         if(me!==run){pdf.destroy();return}
-        const page=await pdf.getPage(1),dpr=Math.min(window.devicePixelRatio||1,2),w=Math.min(300,(c.parentElement.clientWidth||300)),vp=page.getViewport({scale:w/PW*dpr});
+        const page=await pdf.getPage(1),dpr=Math.min(window.devicePixelRatio||1,2),w=Math.min(300,(c.parentElement.clientWidth||300),675*PW/PH),vp=page.getViewport({scale:w/PW*dpr});
         c.width=Math.round(vp.width);c.height=Math.round(vp.height);c.style.width=w+"px";
         await page.render({canvasContext:c.getContext("2d"),viewport:vp}).promise;pdf.destroy();
       }catch(e){if(me===run){const f=box.querySelector(".bb-prev figcaption");if(f)f.textContent="Couldn't draw this page: "+(e.message||e)}}
@@ -795,8 +845,20 @@
 .bb-old ol{margin:6px 0 0;padding-left:20px;font-size:13px;color:var(--muted)}
 .bb-pic{display:block;max-width:160px;max-height:240px;border:1px solid var(--line);margin-bottom:6px}
 .bb-prev{margin:0;display:grid;gap:6px;justify-items:center;position:sticky;top:12px}
+.bb-szh{display:grid;gap:2px}
+.bb-szw{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:16px;align-items:start}@media(max-width:760px){.bb-szw{grid-template-columns:1fr}}
+.bb-szs{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.bb-sz{display:flex;gap:10px;align-items:center;padding:8px 10px;border:1px solid var(--line);background:var(--bg);cursor:pointer;font-size:13.5px}
+.bb-sz:hover{border-color:var(--ct)}.bb-sz.on{border-color:var(--ct);box-shadow:inset 0 0 0 1px var(--ct)}
+.bb-sz input{position:absolute;opacity:0;pointer-events:none}.bb-sz:has(input:focus-visible){outline:2px solid var(--ct);outline-offset:2px}
+.bb-sz>span{display:grid;gap:1px;min-width:0}.bb-szd{font-variant-numeric:tabular-nums}.bb-sz .hint{font-size:11.5px}
+.bb-szt{flex:none}.bb-szt rect{fill:var(--surface);stroke:var(--muted);stroke-width:1}.bb-sz.on .bb-szt rect{fill:var(--ct);stroke:var(--ct);fill-opacity:.25}
+.bb-dgf{margin:0;display:grid;gap:6px;justify-items:center;max-width:260px}.bb-dgf figcaption{display:grid;gap:3px;text-align:center;font-size:13.5px}
+.bb-dg{max-width:100%;height:auto;overflow:visible}.bb-dg rect{fill:none;stroke:var(--muted);stroke-width:.8;stroke-dasharray:3 2}
+.bb-dg rect.on{fill:var(--ct);fill-opacity:.22;stroke:var(--ct);stroke-width:2;stroke-dasharray:none}
+.bb-dg text{font-size:10px;fill:var(--muted)}.bb-dg .dim line{stroke:var(--fg);stroke-width:1}.bb-dg .dim text{fill:var(--fg);font-weight:600}
 .bb-prev canvas{width:300px;max-width:100%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.2),0 6px 18px rgba(0,0,0,.08)}`;
   document.head.appendChild(css);
 
-  window.LodgeNetBlueBook={mount,_test:{parseRule,ruleDays,bumpYear,nextYear,monthItems,draw,syncDistrict,officersOf,syncSponsors,properSeats}};
+  window.LodgeNetBlueBook={mount,_test:{SIZES,sizeOf,setSize,parseRule,ruleDays,bumpYear,nextYear,monthItems,draw,syncDistrict,officersOf,syncSponsors,properSeats}};
 })();
