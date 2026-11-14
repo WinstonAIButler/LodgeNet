@@ -496,6 +496,12 @@ body.app{background:var(--bg)}
 .col-h{display:flex;justify-content:space-between;align-items:center;gap:6px;font-size:13px}
 .pcard{background:var(--surface);border:1px solid var(--line);border-radius:0;padding:10px;display:grid;gap:4px;font-size:14px}
 .set-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px}
+.set-people{grid-column:1/-1;display:grid;gap:8px}
+.set-people .roll td:last-child{white-space:nowrap}.set-people .roll select{padding:5px 8px;border:1px solid var(--line);background:var(--bg);color:var(--fg);font:inherit;font-size:13px}
+.set-people .invite .field{display:grid;gap:6px}.set-people .invite label{font-size:13px;font-weight:600}
+.set-people .invite input,.set-people .invite select{padding:8px 10px;border:1px solid var(--line);background:var(--bg);color:var(--fg);font:inherit}
+.pp-msg{margin:0;font-size:14px}.pp-msg:empty{display:none}.pp-err{color:#b3261e}
+@media(max-width:640px){.set-people .roll td{display:block;text-align:left!important;white-space:normal!important;border-top:0;padding:2px 0}.set-people .roll tr{display:block;border-top:1px solid var(--line);padding:6px 0}}
 .data-card .data-acts{display:flex;flex-wrap:wrap;gap:8px}
 .gate-wrap{min-height:100vh;display:grid;place-content:center;justify-items:center;gap:20px;padding:24px 16px;background:var(--side-bg)}
 .gate-wrap .auth-gate{background:var(--surface)}
