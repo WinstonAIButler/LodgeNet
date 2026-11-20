@@ -10,10 +10,14 @@
    answers only a signed-in brother on the lodge's roll; everyone else sees a sign-in screen. */
 (function(){
   const L=window.LodgeSite,$=s=>document.querySelector(s),esc=L.esc;
-  const pm=location.pathname.match(/\/site\/([^/?#]+)(?:\/([^?#]*))?/)||[];
-  const slug=decodeURIComponent(pm[1]||new URLSearchParams(location.search).get("slug")||"");
+  /* On a lodge's own web address (yourlodge.org, supabase/domains.sql) the whole site is the lodge's: pages are /<page>
+     and the lodge is found from the address. On LodgeNet it lives under /site/<slug>/. */
+  const CUSTOM=!/(^|\.)(lodgenet\.app|vercel\.app)$|^(localhost|127\.0\.0\.1)$/.test(location.hostname);
+  if(CUSTOM&&location.pathname==="/lodge-site")history.replaceState(null,"","/"+location.search);
+  const pm=CUSTOM?[null,null,location.pathname.replace(/^\/+/,"")]:location.pathname.match(/\/site\/([^/?#]+)(?:\/([^?#]*))?/)||[];
+  let slug=decodeURIComponent(pm[1]||new URLSearchParams(location.search).get("slug")||"");
   const rest=decodeURIComponent(pm[2]||"").replace(/\/+$/,"");
-  const root="/site/"+encodeURIComponent(slug);
+  const root=CUSTOM?"":"/site/"+encodeURIComponent(slug);
   function show(title,body){$("#state").innerHTML=`<h1>${esc(title)}</h1><p>${esc(body)}</p><p><a href="/">LodgeNet</a></p>`}
   function paint(site,o){
     const box=$("#site");box.innerHTML=L.render(site,o);
@@ -62,10 +66,15 @@
     paint(site,o);
   }
   (async()=>{
-    if(!slug)return show("No lodge here","This address doesn't name a lodge.");
     try{
       const cfg=await (await fetch("/api/config",{cache:"no-store"})).json();
       if(!cfg.url||!cfg.key)throw new Error("not configured");
+      if(CUSTOM){
+        const h=await fetch(cfg.url+"/rest/v1/rpc/site_slug_for_host",{method:"POST",headers:{apikey:cfg.key,Authorization:"Bearer "+cfg.key,"Content-Type":"application/json"},body:JSON.stringify({h:location.hostname})});
+        slug=h.ok?(await h.json())||"":"";
+        if(!slug)return show("This web address isn't set up yet","If this is your lodge's address, finish connecting it in the lodge dashboard under Settings.");
+      }
+      if(!slug)return show("No lodge here","This address doesn't name a lodge.");
       const r=await fetch(cfg.url+"/rest/v1/rpc/published_site",{method:"POST",headers:{apikey:cfg.key,Authorization:"Bearer "+cfg.key,"Content-Type":"application/json"},body:JSON.stringify({s:slug})});
       if(!r.ok)throw new Error("HTTP "+r.status);
       const d=await r.json();

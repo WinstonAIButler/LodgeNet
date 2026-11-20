@@ -25,6 +25,28 @@
     {
       "source": "/site/:slug/:rest*",
       "destination": "/lodge-site"
+    },
+    {
+      "source": "/((?!api/|assets/|login|start|lodges/|owner|favicon|robots\\.txt|sitemap\\.xml).*)",
+      "missing": [
+        {
+          "type": "host",
+          "value": "(.*\\.)?lodgenet\\.app"
+        },
+        {
+          "type": "host",
+          "value": ".*\\.vercel\\.app"
+        },
+        {
+          "type": "host",
+          "value": "localhost"
+        },
+        {
+          "type": "host",
+          "value": "127\\.0\\.0\\.1"
+        }
+      ],
+      "destination": "/lodge-site"
     }
   ],
   "headers": [
@@ -53,6 +75,15 @@
     },
     "api/site-assist.js": {
       "maxDuration": 120
+    },
+    "api/domains.js": {
+      "maxDuration": 120
     }
-  }
+  },
+  "crons": [
+    {
+      "path": "/api/domains?cron=1",
+      "schedule": "0 9 * * *"
+    }
+  ]
 }
