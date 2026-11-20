@@ -1219,3 +1219,17 @@ body.bx-dragging #bld-canvas .bx-txt,body.bx-dragging #bld-canvas iframe{pointer
 .bld-libgrid button:hover,.bld-libgrid button:focus-visible{border-color:var(--ed-accent,var(--link))}
 .bld-libgrid img{width:100%;aspect-ratio:1;object-fit:cover;display:block}
 .bld-colrow input[type=color]{width:42px;height:32px;padding:2px;border:1px solid var(--ed-line);border-radius:6px;background:none;cursor:pointer}
+/* Settings → Web address (assets/domains.js) */
+.set-domain .dom-list{display:grid;gap:8px;margin:8px 0}
+.set-domain .dom-row{border-top:1px solid var(--line);padding-top:8px}
+.set-domain .dom-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.set-domain .dom-acts{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+.set-domain .dom-check{margin:4px 0 0;padding-left:16px}
+.set-domain .dom-btns{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px}
+.set-domain .dom-form{display:flex;gap:8px;margin-top:8px}
+.set-domain .dom-form input{flex:1;min-width:0}
+.set-domain .dom-q{display:flex;gap:10px;align-items:center}.set-domain .dom-q span:first-child{flex:1;min-width:0}
+.set-domain .dom-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}.set-domain .dom-grid .wide{grid-column:1/-1}
+.set-domain .dom-recs{width:100%;font-size:12px;border-collapse:collapse;margin-top:6px}
+.set-domain .dom-recs th,.set-domain .dom-recs td{text-align:left;padding:3px 6px 3px 0;vertical-align:top}
+.set-domain .dom-recs code{word-break:break-all}

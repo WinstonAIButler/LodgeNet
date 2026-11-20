@@ -745,6 +745,7 @@
     renderOrg();
     $("#set-role").textContent=CLOUD?`You're signed in as ${CLOUD.email}, ${ROLE[CLOUD.role]||CLOUD.role} of this lodge. Officers can change the dashboard; members can read it.`:"Sign in to manage who can open this dashboard.";
     renderPeople();
+    if(window.LodgeNetDomains)window.LodgeNetDomains.render();
   }
   /* People on this dashboard: who can sign in, invites waiting, and (for the account owner) adding people.
      lodge_members and lodge_invites in supabase/schema.sql; the database only lets the account owner change them. */
